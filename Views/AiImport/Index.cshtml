@@ -1,0 +1,215 @@
+@{
+    ViewData["Title"] = "AI Import";
+}
+
+<div class="container-fluid">
+    <div class="text-center mb-5">
+        <h1 class="display-4">
+            <i class="bi bi-robot text-primary me-3"></i>AI Import
+        </h1>
+        <p class="lead text-muted">
+            Use artificial intelligence to automatically extract data from your invoices and payment documents.
+        </p>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="row justify-content-center g-4">
+        <!-- Import Invoice -->
+        <div class="col-lg-4 col-md-6">
+            <div class="card h-100 shadow-sm border-0 hover-shadow">
+                <div class="card-body text-center p-5">
+                    <div class="bg-info bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-4" 
+                         style="width: 100px; height: 100px;">
+                        <i class="bi bi-receipt text-info" style="font-size: 3rem;"></i>
+                    </div>
+                    <h3 class="card-title">Import Invoice</h3>
+                    <p class="card-text text-muted">
+                        Upload an invoice document (PDF or image) and let AI extract the details automatically.
+                    </p>
+                    <ul class="list-unstyled text-start text-muted small mb-4">
+                        <li><i class="bi bi-check-circle text-success me-2"></i>Invoice number & dates</li>
+                        <li><i class="bi bi-check-circle text-success me-2"></i>Customer/Supplier details</li>
+                        <li><i class="bi bi-check-circle text-success me-2"></i>Line items & amounts</li>
+                        <li><i class="bi bi-check-circle text-success me-2"></i>GST calculations</li>
+                        <li><i class="bi bi-check-circle text-success me-2"></i>Document stored for reference</li>
+                    </ul>
+                    <a asp-action="Invoice" class="btn btn-info btn-lg px-5">
+                        <i class="bi bi-upload me-2"></i>Import Invoice
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Import Payment -->
+        <div class="col-lg-4 col-md-6">
+            <div class="card h-100 shadow-sm border-0 hover-shadow">
+                <div class="card-body text-center p-5">
+                    <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-4" 
+                         style="width: 100px; height: 100px;">
+                        <i class="bi bi-credit-card text-success" style="font-size: 3rem;"></i>
+                    </div>
+                    <h3 class="card-title">Import Payment</h3>
+                    <p class="card-text text-muted">
+                        Upload a payment receipt or bank statement to extract payment information.
+                    </p>
+                    <ul class="list-unstyled text-start text-muted small mb-4">
+                        <li><i class="bi bi-check-circle text-success me-2"></i>Payment date & amount</li>
+                        <li><i class="bi bi-check-circle text-success me-2"></i>Bank account details</li>
+                        <li><i class="bi bi-check-circle text-success me-2"></i>Payer/Payee identification</li>
+                        <li><i class="bi bi-check-circle text-success me-2"></i>Auto-match by account number</li>
+                        <li><i class="bi bi-check-circle text-success me-2"></i>Document stored for reference</li>
+                    </ul>
+                    <a asp-action="Payment" class="btn btn-success btn-lg px-5">
+                        <i class="bi bi-upload me-2"></i>Import Payment
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Batch Import -->
+        <div class="col-lg-4 col-md-6">
+            <div class="card h-100 shadow-sm border-0 hover-shadow">
+                <div class="card-body text-center p-5">
+                    <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-4" 
+                         style="width: 100px; height: 100px;">
+                        <i class="bi bi-files text-primary" style="font-size: 3rem;"></i>
+                    </div>
+                    <h3 class="card-title">Batch Import</h3>
+                    <p class="card-text text-muted">
+                        Upload multiple documents at once for bulk processing and review.
+                    </p>
+                    <ul class="list-unstyled text-start text-muted small mb-4">
+                        <li><i class="bi bi-check-circle text-success me-2"></i>Process multiple files</li>
+                        <li><i class="bi bi-check-circle text-success me-2"></i>Review all at once</li>
+                        <li><i class="bi bi-check-circle text-success me-2"></i>Auto entity matching</li>
+                        <li><i class="bi bi-check-circle text-success me-2"></i>Progress tracking</li>
+                        <li><i class="bi bi-check-circle text-success me-2"></i>All documents stored</li>
+                    </ul>
+                    <a asp-action="Batch" class="btn btn-primary btn-lg px-5">
+                        <i class="bi bi-collection me-2"></i>Batch Import
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Documents -->
+    <div class="row justify-content-center mt-4">
+        <div class="col-lg-8">
+            <div class="card bg-light border-0">
+                <div class="card-body text-center py-4">
+                    <i class="bi bi-folder2-open text-secondary me-2 fs-4"></i>
+                    <span class="fs-5">View all imported documents</span>
+                    <a asp-action="Documents" class="btn btn-outline-secondary ms-3">
+                        <i class="bi bi-arrow-right me-1"></i>Open Documents
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Supported Formats -->
+    <div class="row justify-content-center mt-5">
+        <div class="col-lg-8">
+            <div class="card bg-light border-0">
+                <div class="card-body">
+                    <h5 class="text-center mb-3">
+                        <i class="bi bi-file-earmark-check me-2"></i>Supported Formats
+                    </h5>
+                    <div class="row text-center">
+                        <div class="col">
+                            <i class="bi bi-file-pdf text-danger fs-1"></i>
+                            <p class="mb-0 small">PDF</p>
+                        </div>
+                        <div class="col">
+                            <i class="bi bi-file-image text-info fs-1"></i>
+                            <p class="mb-0 small">PNG</p>
+                        </div>
+                        <div class="col">
+                            <i class="bi bi-file-image text-warning fs-1"></i>
+                            <p class="mb-0 small">JPEG</p>
+                        </div>
+                        <div class="col">
+                            <i class="bi bi-file-image text-secondary fs-1"></i>
+                            <p class="mb-0 small">GIF</p>
+                        </div>
+                        <div class="col">
+                            <i class="bi bi-file-image text-success fs-1"></i>
+                            <p class="mb-0 small">WebP</p>
+                        </div>
+                    </div>
+                    <p class="text-center text-muted small mt-3 mb-0">
+                        Maximum file size: 500MB per document
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- How It Works -->
+    <div class="row justify-content-center mt-5">
+        <div class="col-lg-10">
+            <h4 class="text-center mb-4">
+                <i class="bi bi-gear me-2"></i>How It Works
+            </h4>
+            <div class="row g-4">
+                <div class="col-md-3 text-center">
+                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                         style="width: 50px; height: 50px;">
+                        <span class="fw-bold">1</span>
+                    </div>
+                    <h6>Upload Document</h6>
+                    <p class="small text-muted">Select your invoice or payment document</p>
+                </div>
+                <div class="col-md-3 text-center">
+                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                         style="width: 50px; height: 50px;">
+                        <span class="fw-bold">2</span>
+                    </div>
+                    <h6>AI Processing</h6>
+                    <p class="small text-muted">AI extracts data and matches entities</p>
+                </div>
+                <div class="col-md-3 text-center">
+                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                         style="width: 50px; height: 50px;">
+                        <span class="fw-bold">3</span>
+                    </div>
+                    <h6>Review & Edit</h6>
+                    <p class="small text-muted">Verify extracted data and select entities</p>
+                </div>
+                <div class="col-md-3 text-center">
+                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                         style="width: 50px; height: 50px;">
+                        <span class="fw-bold">4</span>
+                    </div>
+                    <h6>Save</h6>
+                    <p class="small text-muted">Create invoice/payment with document linked</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hover-shadow {
+        transition: all 0.3s ease;
+    }
+    .hover-shadow:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    }
+</style>

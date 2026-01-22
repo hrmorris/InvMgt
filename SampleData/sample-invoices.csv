@@ -1,0 +1,7 @@
+InvoiceNumber,InvoiceDate,DueDate,CustomerName,TotalAmount,CustomerAddress,CustomerEmail,CustomerPhone,Notes
+INV-001,2025-01-01,2025-01-31,Acme Corporation,1500.00,123 Main Street New York NY 10001,contact@acme.com,(555) 123-4567,First invoice of the year
+INV-002,2025-01-05,2025-02-05,Global Tech Inc,2750.50,456 Tech Blvd San Francisco CA 94105,billing@globaltech.com,(555) 234-5678,Website development services
+INV-003,2025-01-10,2025-02-10,Best Retail LLC,890.00,789 Commerce Ave Chicago IL 60601,accounts@bestretail.com,(555) 345-6789,Monthly consulting
+INV-004,2025-01-15,2025-02-15,Premier Solutions,3200.00,321 Business Park Austin TX 78701,finance@premiersolutions.com,(555) 456-7890,Software license renewal
+INV-005,2025-01-20,2025-02-20,Innovative Designs,1250.75,654 Creative Lane Seattle WA 98101,admin@innovativedesigns.com,(555) 567-8901,Design project phase 1
+

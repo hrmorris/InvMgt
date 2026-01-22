@@ -1,0 +1,228 @@
+@model InvoiceManagement.Models.Requisition
+
+@{
+    ViewData["Title"] = "Create Purchase Order";
+    var suppliers = ViewBag.Suppliers as IEnumerable<InvoiceManagement.Models.Supplier>;
+}
+@functions {
+    public string FormatCurrency(decimal amount)
+    {
+        var settings = ViewData["CurrencySettings"] as CurrencySettings;
+        if (settings != null)
+        {
+            return CurrencyHelper.FormatCurrency(amount, settings);
+        }
+        return $"K {amount:N2}";
+    }
+    public string CurrencySymbol()
+    {
+        return ViewData["CurrencySymbol"]?.ToString() ?? "K";
+    }
+}
+
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-cart-plus"></i> Create Purchase Order</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-controller="Requisitions" asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Requisition
+        </a>
+    </div>
+</div>
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle"></i> @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow mb-3">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Source Requisition</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-4">Requisition Number</dt>
+                    <dd class="col-sm-8"><strong>@Model.RequisitionNumber</strong></dd>
+
+                    <dt class="col-sm-4">Date</dt>
+                    <dd class="col-sm-8">@Model.RequisitionDate.ToString("dd/MM/yyyy")</dd>
+
+                    <dt class="col-sm-4">Requested By</dt>
+                    <dd class="col-sm-8">@Model.RequestedBy</dd>
+
+                    <dt class="col-sm-4">Department</dt>
+                    <dd class="col-sm-8">@Model.Department</dd>
+
+                    <dt class="col-sm-4">Purpose</dt>
+                    <dd class="col-sm-8">@Model.Purpose</dd>
+
+                    <dt class="col-sm-4">Estimated Amount</dt>
+                    <dd class="col-sm-8"><strong>@FormatCurrency(Model.EstimatedAmount)</strong></dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="card shadow mb-3">
+            <div class="card-header">
+                <h5 class="mb-0">Requisition Items</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Item Description</th>
+                                <th>Quantity</th>
+                                <th>Unit</th>
+                                <th>Est. Price</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model.RequisitionItems)
+                            {
+                                <tr>
+                                    <td>@item.ItemDescription</td>
+                                    <td>@item.QuantityRequested</td>
+                                    <td>@item.Unit</td>
+                                    <td>@FormatCurrency(item.EstimatedUnitPrice)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Select Supplier</h5>
+            </div>
+            <div class="card-body">
+                <form asp-action="CreateFromRequisition" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="requisitionId" value="@Model.Id" />
+
+                    <div class="mb-3">
+                        <label for="supplierId" class="form-label">
+                            <i class="bi bi-building"></i> Supplier *
+                        </label>
+                        <select name="supplierId" id="supplierId" class="form-select" required onchange="updateSupplierDetails(this)">
+                            <option value="">-- Select a Supplier --</option>
+                            @if (suppliers != null)
+                            {
+                                @foreach (var supplier in suppliers)
+                                {
+                                    <option value="@supplier.Id" 
+                                            data-contact="@supplier.ContactPerson"
+                                            data-email="@supplier.Email"
+                                            data-phone="@supplier.Phone"
+                                            data-address="@supplier.Address"
+                                            data-terms="@supplier.PaymentTermsDays">
+                                        @supplier.SupplierName (@supplier.SupplierCode)
+                                    </option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div id="supplierDetails" class="alert alert-info d-none">
+                        <h6>Supplier Details:</h6>
+                        <dl class="row mb-0">
+                            <dt class="col-sm-4">Contact Person</dt>
+                            <dd class="col-sm-8" id="supplierContact">-</dd>
+
+                            <dt class="col-sm-4">Email</dt>
+                            <dd class="col-sm-8" id="supplierEmail">-</dd>
+
+                            <dt class="col-sm-4">Phone</dt>
+                            <dd class="col-sm-8" id="supplierPhone">-</dd>
+
+                            <dt class="col-sm-4">Address</dt>
+                            <dd class="col-sm-8" id="supplierAddress">-</dd>
+
+                            <dt class="col-sm-4">Payment Terms</dt>
+                            <dd class="col-sm-8" id="supplierTerms">-</dd>
+                        </dl>
+                    </div>
+
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle"></i> Create Purchase Order
+                        </button>
+                        <a asp-controller="Requisitions" asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow mb-3">
+            <div class="card-header bg-success text-white">
+                <i class="bi bi-check-circle"></i> Requisition Approved
+            </div>
+            <div class="card-body">
+                <p class="mb-2">This requisition has been fully approved and is ready for purchase order creation.</p>
+                <p class="mb-0"><strong>Next step:</strong> Select a supplier to create the purchase order.</p>
+            </div>
+        </div>
+
+        <div class="card shadow mb-3">
+            <div class="card-header bg-info text-white">
+                <i class="bi bi-lightbulb"></i> What Happens Next
+            </div>
+            <div class="card-body">
+                <ol class="mb-0">
+                    <li>Purchase order will be created</li>
+                    <li>Auto-generated PO number assigned</li>
+                    <li>All requisition items copied to PO</li>
+                    <li>Status set to "Pending_Approval"</li>
+                    <li>Supplier will be notified</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="card shadow">
+            <div class="card-header bg-warning">
+                <i class="bi bi-exclamation-triangle"></i> Important
+            </div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li>Ensure supplier is active</li>
+                    <li>Verify supplier contact details</li>
+                    <li>Check payment terms</li>
+                    <li>Confirm delivery capabilities</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function updateSupplierDetails(select) {
+            const selectedOption = select.options[select.selectedIndex];
+            const detailsDiv = document.getElementById('supplierDetails');
+            
+            if (selectedOption.value) {
+                document.getElementById('supplierContact').textContent = selectedOption.dataset.contact || '-';
+                document.getElementById('supplierEmail').textContent = selectedOption.dataset.email || '-';
+                document.getElementById('supplierPhone').textContent = selectedOption.dataset.phone || '-';
+                document.getElementById('supplierAddress').textContent = selectedOption.dataset.address || '-';
+                document.getElementById('supplierTerms').textContent = 'Net ' + selectedOption.dataset.terms + ' days';
+                
+                detailsDiv.classList.remove('d-none');
+            } else {
+                detailsDiv.classList.add('d-none');
+            }
+        }
+    </script>
+}
+

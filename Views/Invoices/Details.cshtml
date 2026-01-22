@@ -1,0 +1,430 @@
+@model Invoice
+
+@{
+    ViewData["Title"] = "Invoice Details";
+}
+@functions {
+    public string FormatCurrency(decimal amount)
+    {
+        var settings = ViewData["CurrencySettings"] as CurrencySettings;
+        if (settings != null)
+        {
+            return CurrencyHelper.FormatCurrency(amount, settings);
+        }
+        return $"K {amount:N2}";
+    }
+    public string CurrencySymbol()
+    {
+        return ViewData["CurrencySymbol"]?.ToString() ?? "K";
+    }
+}
+
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-file-earmark-text"></i> Invoice Details</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">
+                <i class="bi bi-pencil"></i> Edit
+            </a>
+            <a asp-action="GeneratePdf" asp-route-id="@Model.Id" class="btn btn-success">
+                <i class="bi bi-file-pdf"></i> Download PDF
+            </a>
+            <a asp-controller="Payments" asp-action="Create" asp-route-invoiceId="@Model.Id" class="btn btn-info">
+                <i class="bi bi-credit-card"></i> Add Payment
+            </a>
+        </div>
+        <a asp-action="Index" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle"></i> @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (Model.PaidAmount > Model.TotalAmount + 0.01m)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <h5 class="alert-heading"><i class="bi bi-exclamation-triangle-fill"></i> Over-Allocation Discrepancy Detected!</h5>
+        <p class="mb-2">This invoice has been <strong>over-allocated</strong>. The paid amount
+            (<strong>@FormatCurrency(Model.PaidAmount)</strong>) exceeds the invoice total
+            (<strong>@FormatCurrency(Model.TotalAmount)</strong>) by <strong
+                class="text-danger">@FormatCurrency(Model.PaidAmount - Model.TotalAmount)</strong>.</p>
+        <hr>
+        <p class="mb-0"><strong>Action Required:</strong> Please review the payment allocations and remove or adjust
+            incorrect allocations to reconcile this invoice with the correct payment amount.</p>
+        <div class="mt-3">
+            <a asp-controller="Payments" asp-action="Index" class="btn btn-outline-light me-2">
+                <i class="bi bi-credit-card"></i> Go to Payments
+            </a>
+            <form asp-action="RecalculatePaidAmount" asp-route-id="@Model.Id" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-warning"
+                    onclick="return confirm('This will recalculate the paid amount based on actual allocations. Continue?')">
+                    <i class="bi bi-arrow-clockwise"></i> Recalculate Paid Amount
+                </button>
+            </form>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Invoice Information</h6>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong>Invoice Number:</strong> @Model.InvoiceNumber
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Status:</strong> <span
+                            class="status-badge status-@Model.Status.ToLower()">@Model.Status</span>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <strong>Type:</strong>
+                        @if (Model.InvoiceType == "Supplier" || Model.SupplierId.HasValue)
+                        {
+                            <span class="badge bg-warning text-dark">Supplier Invoice (Payable)</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-info">Customer Invoice (Receivable)</span>
+                        }
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong>Invoice Date:</strong> @Model.InvoiceDate.ToString("dd/MM/yyyy")
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Due Date:</strong> @Model.DueDate.ToString("dd/MM/yyyy")
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <strong>@(Model.InvoiceType == "Supplier" || Model.SupplierId.HasValue ? "Supplier" :
+                                                        "Customer"):</strong>
+                        @if (Model.Supplier != null)
+                        {
+                            <a asp-controller="Admin" asp-action="EditSupplier" asp-route-id="@Model.SupplierId"
+                                class="text-decoration-none">
+                                <i class="bi bi-building me-1"></i>@Model.Supplier.SupplierName
+                            </a>
+                            @if (!string.IsNullOrEmpty(Model.Supplier.BankAccountNumber))
+                            {
+                                <br />
+                        
+                                <small class="text-muted font-monospace">Bank Account:
+                                    @Model.Supplier.BankAccountNumber</small>
+                            }
+                        }
+                        else
+                        {
+                            @Model.CustomerName
+                        }
+                    </div>
+                </div>
+                @if (!string.IsNullOrEmpty(Model.CustomerAddress))
+                {
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <strong>Address:</strong> @Model.CustomerAddress
+                        </div>
+                    </div>
+                }
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong>Email:</strong> @Model.CustomerEmail
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Phone:</strong> @Model.CustomerPhone
+                    </div>
+                </div>
+                @if (!string.IsNullOrEmpty(Model.Notes))
+                {
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <strong>Notes:</strong><br />
+                            @Model.Notes
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Invoice Items</h6>
+            </div>
+            <div class="card-body">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Description</th>
+                            <th>Quantity</th>
+                            <th>Unit Price</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            int index = 1;
+                        }
+                        @foreach (var item in Model.InvoiceItems)
+                        {
+                            <tr>
+                                <td>@index</td>
+                                <td>@item.Description</td>
+                                <td>@item.Quantity</td>
+                                <td>@FormatCurrency(item.UnitPrice)</td>
+                                <td>@FormatCurrency(item.TotalPrice)</td>
+                            </tr>
+                            index++;
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @if (Model.Payments.Any())
+        {
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Payment History</h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Payment #</th>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Method</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var payment in Model.Payments)
+                            {
+                                <tr>
+                                    <td>@payment.PaymentNumber</td>
+                                    <td>@payment.PaymentDate.ToString("dd/MM/yyyy")</td>
+                                    <td>@FormatCurrency(payment.Amount)</td>
+                                    <td>@payment.PaymentMethod</td>
+                                    <td>
+                                        <a asp-controller="Payments" asp-action="Details" asp-route-id="@payment.Id"
+                                            class="btn btn-sm btn-outline-primary">
+                                            View
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+
+        <!-- Imported Documents Section -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-folder2-open me-1"></i>Imported Documents
+                </h6>
+                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal"
+                    data-bs-target="#uploadDocumentModal">
+                    <i class="bi bi-upload me-1"></i>Upload Document
+                </button>
+            </div>
+            <div class="card-body">
+                @if (Model.ImportedDocuments != null && Model.ImportedDocuments.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm">
+                            <thead>
+                                <tr>
+                                    <th>File Name</th>
+                                    <th>Type</th>
+                                    <th>Size</th>
+                                    <th>Upload Date</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var doc in Model.ImportedDocuments.OrderByDescending(d => d.UploadDate))
+                                {
+                                    <tr>
+                                        <td>
+                                            <i
+                                                class="bi @(doc.ContentType?.Contains("pdf") == true ? "bi-file-pdf text-danger" : doc.ContentType?.Contains("image") == true ? "bi-file-image text-primary" : "bi-file-earmark") me-1"></i>
+                                            @doc.OriginalFileName
+                                        </td>
+                                        <td><span class="badge bg-info">@doc.DocumentType</span></td>
+                                        <td>@(doc.FileSize > 0 ? $"{doc.FileSize / 1024.0:N1} KB" : "-")</td>
+                                        <td>@doc.UploadDate.ToString("dd/MM/yyyy HH:mm")</td>
+                                        <td>
+                                            <span
+                                                class="badge @(doc.ProcessingStatus == "Processed" ? "bg-success" : doc.ProcessingStatus == "Error" ? "bg-danger" : "bg-warning")">
+                                                @doc.ProcessingStatus
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <a asp-controller="AiImport" asp-action="ViewDocument" asp-route-id="@doc.Id"
+                                                    class="btn btn-outline-info" title="Preview">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                                <a asp-controller="AiImport" asp-action="DownloadDocument"
+                                                    asp-route-id="@doc.Id" class="btn btn-outline-primary" title="Download">
+                                                    <i class="bi bi-download"></i>
+                                                </a>
+                                                <form asp-controller="AiImport" asp-action="DeleteDocument"
+                                                    asp-route-id="@doc.Id" method="post" class="d-inline"
+                                                    onsubmit="return confirm('Delete this document?');">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="returnUrl"
+                                                        value="@Url.Action("Details", "Invoices", new { id = Model.Id })" />
+                                                    <button type="submit" class="btn btn-outline-danger" title="Delete">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-folder2 display-4"></i>
+                        <p class="mt-2">No documents attached to this invoice.</p>
+                        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal"
+                            data-bs-target="#uploadDocumentModal">
+                            <i class="bi bi-upload me-1"></i>Upload First Document
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 bg-primary text-white">
+                <h6 class="m-0 font-weight-bold">Invoice Summary</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Subtotal:</span>
+                    <span class="text-end">@FormatCurrency(Model.SubTotal)</span>
+                </div>
+                @if (Model.GSTEnabled && Model.GSTAmount > 0)
+                {
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>GST (@(Model.GSTRate)%):</span>
+                        <span class="text-end">@FormatCurrency(Model.GSTAmount)</span>
+                    </div>
+                }
+                else if (!Model.GSTEnabled)
+                {
+                    <div class="d-flex justify-content-between mb-2 text-muted">
+                        <span><i class="bi bi-x-circle"></i> GST:</span>
+                        <span class="text-end">Not Applied</span>
+                    </div>
+                }
+                <hr />
+                <div class="d-flex justify-content-between mb-3">
+                    <strong>Total Amount:</strong>
+                    <span class="text-end"><strong>@FormatCurrency(Model.TotalAmount)</strong></span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <strong>Paid Amount:</strong>
+                    <span class="text-success text-end">@FormatCurrency(Model.PaidAmount)</span>
+                </div>
+                <hr />
+                <div class="d-flex justify-content-between">
+                    <strong>Balance Due:</strong>
+                    @if (Model.BalanceAmount < -0.01m)
+                    {
+                        <span class="text-danger text-end h5">@FormatCurrency(Model.BalanceAmount) <i
+                                class="bi bi-exclamation-triangle-fill" title="Over-allocated!"></i></span>
+                    }
+                    else if (Math.Abs(Model.BalanceAmount) <= 0.01m)
+                    {
+                        <span class="text-success text-end h5">@FormatCurrency(0)</span>
+                    }
+                    else
+                    {
+                        <span class="text-warning text-end h5">@FormatCurrency(Model.BalanceAmount)</span>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow">
+            <div class="card-body text-center">
+                <p class="text-muted">Created: @Model.CreatedDate.ToString("yyyy-MM-dd HH:mm")</p>
+                @if (Model.ModifiedDate.HasValue)
+                {
+                    <p class="text-muted">Modified: @Model.ModifiedDate.Value.ToString("yyyy-MM-dd HH:mm")</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Document Modal -->
+<div class="modal fade" id="uploadDocumentModal" tabindex="-1" aria-labelledby="uploadDocumentModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadDocumentModalLabel">
+                    <i class="bi bi-upload me-2"></i>Upload Document
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-controller="AiImport" asp-action="UploadDocumentToInvoice" method="post"
+                enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="invoiceId" value="@Model.Id" />
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="documentFile" class="form-label">Select File</label>
+                        <input type="file" class="form-control" id="documentFile" name="file" required
+                            accept=".pdf,.png,.jpg,.jpeg,.gif,.webp">
+                        <div class="form-text">Supported formats: PDF, PNG, JPG, JPEG, GIF, WEBP (max 500MB)</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="documentNotes" class="form-label">Notes (Optional)</label>
+                        <textarea class="form-control" id="documentNotes" name="notes" rows="2"
+                            placeholder="Enter any notes about this document..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-upload me-1"></i>Upload
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

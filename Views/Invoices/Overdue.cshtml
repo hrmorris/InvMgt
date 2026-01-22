@@ -1,0 +1,171 @@
+@model IEnumerable<Invoice>
+
+@{
+    ViewData["Title"] = "Overdue Invoices";
+}
+@functions {
+    public string FormatCurrency(decimal amount)
+    {
+        var settings = ViewData["CurrencySettings"] as CurrencySettings;
+        if (settings != null)
+        {
+            return CurrencyHelper.FormatCurrency(amount, settings);
+        }
+        return $"K {amount:N2}";
+    }
+    public string CurrencySymbol()
+    {
+        return ViewData["CurrencySymbol"]?.ToString() ?? "K";
+    }
+}
+
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2 text-danger"><i class="bi bi-exclamation-triangle"></i> Overdue Invoices</h1>
+    <div class="btn-toolbar mb-2 mb-md-0 gap-2">
+        <a asp-action="SupplierOutstanding" class="btn btn-primary">
+            <i class="bi bi-building"></i> View by Supplier
+        </a>
+        <a asp-action="Index" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to All Invoices
+        </a>
+    </div>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-success">
+        <h5><i class="bi bi-check-circle"></i> No Overdue Invoices</h5>
+        <p class="mb-0">Great news! You don't have any overdue invoices at this time.</p>
+    </div>
+}
+else
+{
+    var supplierGroups = Model
+        .GroupBy(i => i.Supplier?.SupplierName ?? i.CustomerName)
+        .Select(g => new {
+            SupplierName = g.Key,
+            InvoiceCount = g.Count(),
+            TotalOverdue = g.Sum(i => i.BalanceAmount),
+            MaxDaysOverdue = g.Max(i => (DateTime.Now - i.DueDate).Days)
+        })
+        .OrderByDescending(s => s.TotalOverdue)
+        .ToList();
+
+    <div class="alert alert-danger">
+        <h5><i class="bi bi-exclamation-triangle-fill"></i> Attention Required</h5>
+        <p class="mb-0">You have <strong>@Model.Count()</strong> overdue invoice(s) totaling <strong>@FormatCurrency(Model.Sum(i => i.BalanceAmount))</strong> in outstanding balance.</p>
+    </div>
+
+    <!-- Overdue by Supplier Summary -->
+    <div class="card shadow mb-4">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0"><i class="bi bi-building"></i> Overdue by Supplier</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Supplier</th>
+                            <th class="text-center">Invoices</th>
+                            <th class="text-center">Max Days Overdue</th>
+                            <th class="text-end">Overdue Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var supplier in supplierGroups)
+                        {
+                            var urgencyClass = supplier.MaxDaysOverdue > 90 ? "table-danger" : 
+                                               supplier.MaxDaysOverdue > 30 ? "table-warning" : "";
+                            <tr class="@urgencyClass">
+                                <td>
+                                    <i class="bi bi-building me-2"></i>
+                                    <strong>@supplier.SupplierName</strong>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-secondary">@supplier.InvoiceCount</span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="text-danger fw-bold">@supplier.MaxDaysOverdue days</span>
+                                </td>
+                                <td class="text-end">
+                                    <strong class="text-danger">@FormatCurrency(supplier.TotalOverdue)</strong>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot class="table-dark">
+                        <tr>
+                            <td><strong>Total</strong></td>
+                            <td class="text-center"><strong>@Model.Count()</strong></td>
+                            <td></td>
+                            <td class="text-end"><strong>@FormatCurrency(Model.Sum(i => i.BalanceAmount))</strong></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Invoice List -->
+    <div class="card shadow mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-list-ul"></i> All Overdue Invoices</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Invoice #</th>
+                            <th>Date</th>
+                            <th>Due Date</th>
+                            <th>Days Overdue</th>
+                            <th>Customer</th>
+                            <th>Total Amount</th>
+                            <th>Balance</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model)
+                        {
+                            var daysOverdue = (DateTime.Now - item.DueDate).Days;
+                            <tr class="table-danger">
+                                <td><a asp-action="Details" asp-route-id="@item.Id">@item.InvoiceNumber</a></td>
+                                <td>@item.InvoiceDate.ToString("dd/MM/yyyy")</td>
+                                <td>@item.DueDate.ToString("dd/MM/yyyy")</td>
+                                <td><strong class="text-danger">@daysOverdue days</strong></td>
+                                <td>@item.CustomerName</td>
+                                <td>@FormatCurrency(item.TotalAmount)</td>
+                                <td><strong class="text-danger">@FormatCurrency(item.BalanceAmount)</strong></td>
+                                <td><span class="status-badge status-overdue">@item.Status</span></td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary" title="View">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a asp-controller="Payments" asp-action="Create" asp-route-invoiceId="@item.Id" class="btn btn-sm btn-outline-success" title="Add Payment">
+                                            <i class="bi bi-credit-card"></i>
+                                        </a>
+                                        <a asp-action="GeneratePdf" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info" title="Download PDF">
+                                            <i class="bi bi-file-pdf"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr class="table-secondary">
+                            <td colspan="6" class="text-end"><strong>Total Outstanding:</strong></td>
+                            <td colspan="3"><strong>@FormatCurrency(Model.Sum(i => i.BalanceAmount))</strong></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+}

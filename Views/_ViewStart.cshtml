@@ -1,0 +1,24 @@
+@using InvoiceManagement.Services
+@using InvoiceManagement.Helpers
+
+@{
+    Layout = "_Layout";
+}
+
+@functions {
+    public string FormatCurrency(decimal amount)
+    {
+        var settings = ViewData["CurrencySettings"] as CurrencySettings;
+        if (settings != null)
+        {
+            return CurrencyHelper.FormatCurrency(amount, settings);
+        }
+        return $"K {amount:N2}"; // Fallback to PGK
+    }
+    
+    public string CurrencySymbol()
+    {
+        return ViewData["CurrencySymbol"]?.ToString() ?? "K";
+    }
+}
+

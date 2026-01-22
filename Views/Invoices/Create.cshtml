@@ -1,0 +1,365 @@
+@model Invoice
+
+@{
+    ViewData["Title"] = "Create Invoice";
+    var suppliers = ViewBag.Suppliers as List<Supplier> ?? new List<Supplier>();
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-plus-circle"></i> Create New Invoice</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-action="Index" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>
+
+<div class="card shadow">
+    <div class="card-body">
+        <form asp-action="Create" method="post">
+            <div asp-validation-summary="All" class="alert alert-danger"></div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <h5 class="mb-3">Invoice Information</h5>
+
+                    <div class="mb-3">
+                        <label asp-for="InvoiceNumber" class="form-label"></label>
+                        <input asp-for="InvoiceNumber" class="form-control" />
+                        <span asp-validation-for="InvoiceNumber" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="InvoiceDate" class="form-label"></label>
+                        <input asp-for="InvoiceDate" class="form-control" type="date" />
+                        <span asp-validation-for="InvoiceDate" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="InvoiceType" class="form-label">Invoice Type</label>
+                        <select asp-for="InvoiceType" class="form-select" id="invoiceTypeSelect">
+                            <option value="Supplier">Supplier Invoice (Payable - from supplier to us)</option>
+                            <option value="Customer">Customer Invoice (Receivable - from us to customer)</option>
+                        </select>
+                        <small class="form-text text-muted">Select Supplier if this invoice is FROM a supplier TO your
+                            organization</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="DueDate" class="form-label"></label>
+                        <input asp-for="DueDate" class="form-control" type="date" />
+                        <span asp-validation-for="DueDate" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Notes" class="form-label"></label>
+                        <textarea asp-for="Notes" class="form-control" rows="3"></textarea>
+                        <span asp-validation-for="Notes" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <h5 class="mb-3" id="partyInfoHeader">Supplier Information</h5>
+                    <small class="text-muted d-block mb-3" id="partyInfoHint">Enter the supplier details (who is billing
+                        you)</small>
+
+                    <div class="mb-3" id="supplierDropdownSection">
+                        <label asp-for="SupplierId" class="form-label">Select Supplier</label>
+                        <select asp-for="SupplierId" class="form-select" id="supplierSelect"
+                            onchange="updateSupplierInfo()">
+                            <option value="">-- Select Supplier or Enter Manually Below --</option>
+                            @foreach (var supplier in suppliers)
+                            {
+                                <option value="@supplier.Id" data-name="@supplier.SupplierName"
+                                    data-address="@supplier.Address" data-email="@supplier.Email"
+                                    data-phone="@supplier.Phone">@supplier.SupplierName</option>
+                            }
+                        </select>
+                        <small class="form-text text-muted">Select from existing suppliers or manually enter details
+                            below</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="CustomerName" class="form-label" id="nameLabel">Supplier Name</label>
+                        <input asp-for="CustomerName" class="form-control" id="supplierNameInput" />
+                        <span asp-validation-for="CustomerName" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="CustomerAddress" class="form-label" id="addressLabel">Supplier Address</label>
+                        <textarea asp-for="CustomerAddress" class="form-control" rows="2"
+                            id="CustomerAddress"></textarea>
+                        <span asp-validation-for="CustomerAddress" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="CustomerEmail" class="form-label" id="emailLabel">Supplier Email</label>
+                        <input asp-for="CustomerEmail" class="form-control" type="email" id="CustomerEmail" />
+                        <span asp-validation-for="CustomerEmail" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="CustomerPhone" class="form-label" id="phoneLabel">Supplier Phone</label>
+                        <input asp-for="CustomerPhone" class="form-control" id="CustomerPhone" />
+                        <span asp-validation-for="CustomerPhone" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="my-4">
+
+            <h5 class="mb-3">Invoice Items</h5>
+            <div id="invoice-items">
+                <div class="row mb-2">
+                    <div class="col-md-5">
+                        <label class="form-label">Description</label>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Quantity</label>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Unit Price</label>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Total</label>
+                    </div>
+                    <div class="col-md-1"></div>
+                </div>
+                <div class="invoice-item row mb-2">
+                    <div class="col-md-5">
+                        <input type="text" name="items[0].Description" class="form-control" required />
+                    </div>
+                    <div class="col-md-2">
+                        <input type="number" name="items[0].Quantity" class="form-control quantity" min="1" value="1"
+                            required />
+                    </div>
+                    <div class="col-md-2">
+                        <input type="number" name="items[0].UnitPrice" class="form-control unit-price" step="0.0001"
+                            min="0" required />
+                    </div>
+                    <div class="col-md-2">
+                        <input type="number" class="form-control item-total" readonly />
+                    </div>
+                    <div class="col-md-1">
+                        <button type="button" class="btn btn-danger btn-sm remove-item">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <button type="button" id="add-item" class="btn btn-secondary mb-3">
+                <i class="bi bi-plus"></i> Add Item
+            </button>
+
+            <div class="row">
+                <div class="col-md-8"></div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h6 class="card-title">Invoice Summary</h6>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Subtotal:</span>
+                                <span>@ViewBag.CurrencySymbol<span id="subtotal-amount">0.00</span></span>
+                            </div>
+
+                            <!-- GST Toggle and Custom Rate -->
+                            <div class="mb-2">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="gstEnabled" name="GSTEnabled"
+                                        value="true" checked onchange="updateGSTCalculation()">
+                                    <input type="hidden" name="GSTEnabled" value="false" id="gstEnabledHidden">
+                                    <label class="form-check-label" for="gstEnabled">Include GST</label>
+                                </div>
+                            </div>
+                            <div id="gstRateSection" class="mb-2">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text">GST Rate</span>
+                                    <input type="number" class="form-control" id="gstRateInput" name="GSTRate"
+                                        value="10" min="0" max="100" step="0.1" onchange="updateGSTCalculation()">
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2" id="gstRow">
+                                <span>GST (<span id="gstRateDisplay">10</span>%):</span>
+                                <span>@ViewBag.CurrencySymbol<span id="gst-amount">0.00</span></span>
+                            </div>
+                            <hr>
+                            <div class="d-flex justify-content-between">
+                                <strong>Total Amount:</strong>
+                                <strong>@ViewBag.CurrencySymbol<span id="total-amount">0.00</span></strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="bi bi-save"></i> Create Invoice
+                </button>
+                <a asp-action="Index" class="btn btn-secondary btn-lg">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+    <script>
+        let itemIndex = 1;
+
+        // Update labels based on invoice type
+        function updateLabelsForInvoiceType() {
+            const invoiceType = document.getElementById('invoiceTypeSelect').value;
+            const header = document.getElementById('partyInfoHeader');
+            const hint = document.getElementById('partyInfoHint');
+            const nameLabel = document.getElementById('nameLabel');
+            const addressLabel = document.getElementById('addressLabel');
+            const emailLabel = document.getElementById('emailLabel');
+            const phoneLabel = document.getElementById('phoneLabel');
+            const supplierDropdown = document.getElementById('supplierDropdownSection');
+
+            if (invoiceType === 'Supplier') {
+                header.textContent = 'Supplier Information';
+                hint.textContent = 'Enter the supplier details (who is billing you)';
+                if (nameLabel) nameLabel.textContent = 'Supplier Name';
+                if (addressLabel) addressLabel.textContent = 'Supplier Address';
+                if (emailLabel) emailLabel.textContent = 'Supplier Email';
+                if (phoneLabel) phoneLabel.textContent = 'Supplier Phone';
+                if (supplierDropdown) supplierDropdown.style.display = 'block';
+            } else {
+                header.textContent = 'Customer Information';
+                hint.textContent = 'Enter the customer details (who you are billing)';
+                if (nameLabel) nameLabel.textContent = 'Customer Name';
+                if (addressLabel) addressLabel.textContent = 'Customer Address';
+                if (emailLabel) emailLabel.textContent = 'Customer Email';
+                if (phoneLabel) phoneLabel.textContent = 'Customer Phone';
+                if (supplierDropdown) supplierDropdown.style.display = 'none';
+            }
+        }
+
+        // Supplier auto-fill function
+        function updateSupplierInfo() {
+            const select = document.getElementById('supplierSelect');
+            if (select && select.value) {
+                const selectedOption = select.options[select.selectedIndex];
+                const nameInput = document.getElementById('supplierNameInput');
+                const addressInput = document.getElementById('CustomerAddress');
+                const emailInput = document.getElementById('CustomerEmail');
+                const phoneInput = document.getElementById('CustomerPhone');
+
+                if (nameInput) nameInput.value = selectedOption.getAttribute('data-name') || '';
+                if (addressInput) addressInput.value = selectedOption.getAttribute('data-address') || '';
+                if (emailInput) emailInput.value = selectedOption.getAttribute('data-email') || '';
+                if (phoneInput) phoneInput.value = selectedOption.getAttribute('data-phone') || '';
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function () {
+            updateLabelsForInvoiceType();
+            document.getElementById('invoiceTypeSelect').addEventListener('change', updateLabelsForInvoiceType);
+
+            const supplierSelect = document.getElementById('supplierSelect');
+            if (supplierSelect) {
+                supplierSelect.addEventListener('change', updateSupplierInfo);
+            }
+
+            // Initialize GST calculation
+            updateGSTCalculation();
+        });
+
+        function calculateItemTotal(row) {
+            const quantity = parseFloat(row.querySelector('.quantity').value) || 0;
+            const unitPrice = parseFloat(row.querySelector('.unit-price').value) || 0;
+            const total = quantity * unitPrice;
+            row.querySelector('.item-total').value = total.toFixed(2);
+            calculateGrandTotal();
+        }
+
+        function updateGSTCalculation() {
+            const gstEnabled = document.getElementById('gstEnabled').checked;
+            const gstRateSection = document.getElementById('gstRateSection');
+            const gstRow = document.getElementById('gstRow');
+
+            if (gstEnabled) {
+                gstRateSection.style.display = 'block';
+                gstRow.style.display = 'flex';
+            } else {
+                gstRateSection.style.display = 'none';
+                gstRow.style.display = 'none';
+            }
+
+            calculateGrandTotal();
+        }
+
+        function calculateGrandTotal() {
+            let subtotal = 0;
+            document.querySelectorAll('.item-total').forEach(input => {
+                subtotal += parseFloat(input.value) || 0;
+            });
+
+            const gstEnabled = document.getElementById('gstEnabled').checked;
+            const gstRateInput = parseFloat(document.getElementById('gstRateInput').value) || 0;
+            const gstRate = gstEnabled ? (gstRateInput / 100) : 0;
+            const gstAmount = subtotal * gstRate;
+            const totalAmount = subtotal + gstAmount;
+
+            document.getElementById('subtotal-amount').textContent = subtotal.toFixed(2);
+            document.getElementById('gst-amount').textContent = gstAmount.toFixed(2);
+            document.getElementById('gstRateDisplay').textContent = gstRateInput.toFixed(1);
+            document.getElementById('total-amount').textContent = totalAmount.toFixed(2);
+        }
+
+        document.getElementById('add-item').addEventListener('click', function () {
+            const container = document.getElementById('invoice-items');
+            const newRow = document.querySelector('.invoice-item').cloneNode(true);
+
+            newRow.querySelectorAll('input').forEach(input => {
+                input.value = input.classList.contains('quantity') ? '1' : '';
+                input.name = input.name.replace(/\[\d+\]/, `[${itemIndex}]`);
+            });
+
+            container.appendChild(newRow);
+            itemIndex++;
+            setupItemEventListeners(newRow);
+        });
+
+        function setupItemEventListeners(row) {
+            row.querySelector('.quantity').addEventListener('input', () => calculateItemTotal(row));
+            row.querySelector('.unit-price').addEventListener('input', () => calculateItemTotal(row));
+            row.querySelector('.remove-item').addEventListener('click', function () {
+                if (document.querySelectorAll('.invoice-item').length > 1) {
+                    row.remove();
+                    reindexItems();
+                    calculateGrandTotal();
+                }
+            });
+        }
+
+        function reindexItems() {
+            // Reindex all items to ensure sequential naming for model binding
+            const items = document.querySelectorAll('.invoice-item');
+            items.forEach((item, index) => {
+                item.querySelectorAll('input').forEach(input => {
+                    if (input.name) {
+                        input.name = input.name.replace(/\[\d+\]/, `[${index}]`);
+                    }
+                });
+            });
+            itemIndex = items.length;
+        }
+
+        // Reindex before form submit
+        document.querySelector('form').addEventListener('submit', function () {
+            reindexItems();
+            // Update hidden field based on checkbox state
+            document.getElementById('gstEnabledHidden').disabled = document.getElementById('gstEnabled').checked;
+        });
+
+        document.querySelectorAll('.invoice-item').forEach(row => setupItemEventListeners(row));
+    </script>
+}

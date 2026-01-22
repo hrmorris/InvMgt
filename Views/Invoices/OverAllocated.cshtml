@@ -1,0 +1,142 @@
+@model IEnumerable<Invoice>
+
+@{
+    ViewData["Title"] = "Over-Allocated Invoices";
+}
+@functions {
+    public string FormatCurrency(decimal amount)
+    {
+        var settings = ViewData["CurrencySettings"] as CurrencySettings;
+        if (settings != null)
+        {
+            return CurrencyHelper.FormatCurrency(amount, settings);
+        }
+        return $"K {amount:N2}";
+    }
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-exclamation-triangle text-danger"></i> Over-Allocated Invoices</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        @if (Model.Any())
+        {
+            <form asp-action="RecalculateAllPaidAmounts" method="post" class="me-2">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-warning"
+                    onclick="return confirm('This will recalculate ALL invoice paid amounts based on actual allocations. Continue?')">
+                    <i class="bi bi-arrow-clockwise"></i> Fix All Discrepancies
+                </button>
+            </form>
+        }
+        <a asp-action="Index" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to All Invoices
+        </a>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle"></i> @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="alert alert-danger mb-4">
+    <h5 class="alert-heading"><i class="bi bi-exclamation-triangle-fill"></i> Allocation Discrepancy Report</h5>
+    <p class="mb-0">The invoices listed below have been allocated <strong>more than their total amount</strong>. This
+        indicates an error in payment allocation that needs correction.</p>
+    <hr>
+    <p class="mb-0"><strong>Action Required:</strong> For each invoice, go to the associated payment and remove or
+        adjust the incorrect allocation to reconcile the amounts.</p>
+</div>
+
+@if (Model.Any())
+{
+    <div class="card shadow">
+        <div class="card-header bg-danger text-white">
+            <h5 class="m-0"><i class="bi bi-list-check"></i> @Model.Count() Invoice(s) Need Attention</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Invoice #</th>
+                            <th>Supplier/Customer</th>
+                            <th>Invoice Date</th>
+                            <th class="text-end">Invoice Total</th>
+                            <th class="text-end">Paid Amount</th>
+                            <th class="text-end">Over-Allocated By</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var invoice in Model)
+                        {
+                            var overAmount = invoice.PaidAmount - invoice.TotalAmount;
+                            <tr class="table-danger">
+                                <td>
+                                    <a asp-action="Details" asp-route-id="@invoice.Id">
+                                        <strong>@invoice.InvoiceNumber</strong>
+                                    </a>
+                                </td>
+                                <td>
+                                    @invoice.CustomerName
+                                    @if (invoice.Supplier != null)
+                                    {
+                                        <br />
+
+                                        <small class="text-muted">(@invoice.Supplier.SupplierName)</small>
+                                    }
+                                </td>
+                                <td>@invoice.InvoiceDate.ToString("dd/MM/yyyy")</td>
+                                <td class="text-end">@FormatCurrency(invoice.TotalAmount)</td>
+                                <td class="text-end text-success fw-bold">@FormatCurrency(invoice.PaidAmount)</td>
+                                <td class="text-end text-danger fw-bold">@FormatCurrency(overAmount)</td>
+                                <td>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <a asp-action="Details" asp-route-id="@invoice.Id" class="btn btn-outline-primary"
+                                            title="View Details">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a asp-action="Edit" asp-route-id="@invoice.Id" class="btn btn-outline-secondary"
+                                            title="Edit Invoice">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        @if (invoice.PaymentAllocations != null && invoice.PaymentAllocations.Any())
+                                        {
+                                            var firstAllocation = invoice.PaymentAllocations.First();
+                                            <a asp-controller="Payments" asp-action="ManageAllocations"
+                                                asp-route-id="@firstAllocation.PaymentId" class="btn btn-outline-warning"
+                                                title="Manage Allocations">
+                                                <i class="bi bi-link-45deg"></i> Fix
+                                            </a>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot class="table-secondary">
+                        <tr>
+                            <th colspan="3">Total</th>
+                            <th class="text-end">@FormatCurrency(Model.Sum(i => i.TotalAmount))</th>
+                            <th class="text-end">@FormatCurrency(Model.Sum(i => i.PaidAmount))</th>
+                            <th class="text-end text-danger">@FormatCurrency(Model.Sum(i => i.PaidAmount - i.TotalAmount))
+                            </th>
+                            <th></th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="alert alert-success">
+        <i class="bi bi-check-circle"></i> <strong>All Clear!</strong> No over-allocated invoices found. All payment
+        allocations are correctly reconciled.
+    </div>
+}

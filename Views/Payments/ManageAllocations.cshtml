@@ -1,0 +1,326 @@
+@model Payment
+
+@{
+    ViewData["Title"] = "Manage Payment Allocations";
+    var availableInvoices = ViewBag.AvailableInvoices as List<Invoice> ?? new List<Invoice>();
+}
+@functions {
+    public string FormatCurrency(decimal amount)
+    {
+        var settings = ViewData["CurrencySettings"] as CurrencySettings;
+        if (settings != null)
+        {
+            return CurrencyHelper.FormatCurrency(amount, settings);
+        }
+        return $"K {amount:N2}";
+    }
+    public string CurrencySymbol()
+    {
+        return ViewData["CurrencySymbol"]?.ToString() ?? "K";
+    }
+}
+
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-link-45deg"></i> Manage Payment Allocations</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-secondary me-2">
+            <i class="bi bi-pencil"></i> Edit Payment
+        </a>
+        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Details
+        </a>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle"></i> @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle"></i> @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="row">
+    <!-- Payment Summary -->
+    <div class="col-md-4">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="m-0"><i class="bi bi-credit-card"></i> Payment Summary</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-6">Payment #:</dt>
+                    <dd class="col-sm-6"><strong>@Model.PaymentNumber</strong></dd>
+
+                    <dt class="col-sm-6">Date:</dt>
+                    <dd class="col-sm-6">@Model.PaymentDate.ToString("dd/MM/yyyy")</dd>
+
+                    <dt class="col-sm-6">Method:</dt>
+                    <dd class="col-sm-6">@Model.PaymentMethod</dd>
+
+                    @if (!string.IsNullOrEmpty(Model.ReferenceNumber))
+                    {
+                        <dt class="col-sm-6">Reference:</dt>
+                        <dd class="col-sm-6">@Model.ReferenceNumber</dd>
+                    }
+
+                    <dt class="col-sm-6">Total Amount:</dt>
+                    <dd class="col-sm-6"><strong class="text-primary">@FormatCurrency(Model.Amount)</strong></dd>
+
+                    <dt class="col-sm-6">Allocated:</dt>
+                    <dd class="col-sm-6"><span class="text-success">@FormatCurrency(Model.AllocatedAmount)</span></dd>
+
+                    <dt class="col-sm-6">Unallocated:</dt>
+                    <dd class="col-sm-6">
+                        <strong class="@(Model.UnallocatedAmount > 0 ? "text-warning" : "text-success")">
+                            @FormatCurrency(Model.UnallocatedAmount)
+                        </strong>
+                    </dd>
+
+                    <dt class="col-sm-6">Status:</dt>
+                    <dd class="col-sm-6">
+                        <span
+                            class="badge @(Model.Status == "Fully Allocated" ? "bg-success" : Model.Status == "Partially Allocated" ? "bg-warning text-dark" : "bg-secondary")">
+                            @Model.Status
+                        </span>
+                    </dd>
+                </dl>
+            </div>
+        </div>
+
+        @if (Model.AllocatedAmount > Model.Amount)
+        {
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle-fill"></i> <strong>Over-Allocation Warning!</strong>
+                <p class="mb-2">The total allocated amount (<strong>@FormatCurrency(Model.AllocatedAmount)</strong>) exceeds
+                    the payment amount (<strong>@FormatCurrency(Model.Amount)</strong>) by <strong
+                        class="text-danger">@FormatCurrency(Model.AllocatedAmount - Model.Amount)</strong>.</p>
+                <p class="mb-0"><strong>Action Required:</strong> Please review and remove supplier invoices to reconcile
+                    with the actual payment amount.</p>
+            </div>
+        }
+        else if (!Model.IsFullyAllocated)
+        {
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> <strong>Tip:</strong> You have
+                <strong>@FormatCurrency(Model.UnallocatedAmount)</strong> remaining to allocate to invoices.
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-success">
+                <i class="bi bi-check-circle"></i> This payment is fully allocated and balanced!
+            </div>
+        }
+    </div>
+
+    <!-- Allocations Management -->
+    <div class="col-md-8">
+        <!-- Current Allocations -->
+        @if (Model.PaymentAllocations != null && Model.PaymentAllocations.Any())
+        {
+            <div class="card shadow mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="m-0"><i class="bi bi-list-check"></i> Current Allocations</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Invoice</th>
+                                    <th>Customer</th>
+                                    <th>Invoice Total</th>
+                                    <th>Allocated</th>
+                                    <th>Date</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var allocation in Model.PaymentAllocations.OrderBy(a => a.AllocationDate))
+                                {
+                                    <tr>
+                                        <td>
+                                            <a asp-controller="Invoices" asp-action="Details"
+                                                asp-route-id="@allocation.InvoiceId">
+                                                <strong>@allocation.Invoice?.InvoiceNumber</strong>
+                                            </a>
+                                            @if (!string.IsNullOrEmpty(allocation.Notes))
+                                            {
+                                                <br />
+
+                                                <small class="text-muted">@allocation.Notes</small>
+                                            }
+                                        </td>
+                                        <td>@allocation.Invoice?.CustomerName</td>
+                                        <td>$@allocation.Invoice?.TotalAmount.ToString("N2")</td>
+                                        <td><strong class="text-success">@FormatCurrency(allocation.AllocatedAmount)</strong>
+                                        </td>
+                                        <td>@allocation.AllocationDate.ToString("dd/MM/yyyy")</td>
+                                        <td>
+                                            <form asp-action="RemoveAllocation" method="post" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="allocationId" value="@allocation.Id" />
+                                                <input type="hidden" name="paymentId" value="@Model.Id" />
+                                                <button type="submit" class="btn btn-sm btn-danger"
+                                                    onclick="return confirm('Remove this allocation?')">
+                                                    <i class="bi bi-trash"></i> Remove
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle"></i> No allocations yet. Add allocations below to assign this payment
+                to invoices.
+            </div>
+        }
+
+        <!-- Add New Allocation -->
+        @if (!Model.IsFullyAllocated && availableInvoices.Any())
+        {
+            <div class="card shadow">
+                <div class="card-header bg-info text-white">
+                    <h5 class="m-0"><i class="bi bi-plus-circle"></i> Add New Allocation</h5>
+                </div>
+                <div class="card-body">
+                    <form asp-action="AddAllocation" method="post" id="allocationForm">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="paymentId" value="@Model.Id" />
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="invoiceId" class="form-label">Select Invoice</label>
+                                <select name="invoiceId" id="invoiceId" class="form-select" required
+                                    onchange="updateInvoiceInfo()">
+                                    <option value="">-- Select an Invoice --</option>
+                                    @foreach (var invoice in availableInvoices)
+                                    {
+                                        var hasDocument = invoice.ImportedDocuments != null && invoice.ImportedDocuments.Any();
+                                        <option value="@invoice.Id" data-total="@invoice.TotalAmount"
+                                            data-balance="@invoice.BalanceAmount" data-customer="@invoice.CustomerName"
+                                            data-has-document="@hasDocument.ToString().ToLower()">
+                                            @(hasDocument ? "📄 " : "")@invoice.InvoiceNumber - @invoice.CustomerName (Balance:
+                                            @FormatCurrency(invoice.BalanceAmount))@(hasDocument ? "" : " [No Doc]")
+                                        </option>
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="amount" class="form-label">Amount to Allocate</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" name="amount" id="amount" class="form-control" step="0.01"
+                                        min="0.01" max="@Model.UnallocatedAmount" value="@Model.UnallocatedAmount" required
+                                        onchange="validateAmount()" />
+                                </div>
+                                <small class="form-text text-muted">
+                                    Max: @FormatCurrency(Model.UnallocatedAmount) (unallocated amount)
+                                </small>
+                            </div>
+                        </div>
+
+                        <div class="mb-3" id="invoiceInfo" style="display: none;">
+                            <div class="alert alert-secondary">
+                                <strong>Invoice Details:</strong><br />
+                                <span id="invoiceDetails"></span>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Notes (Optional)</label>
+                            <textarea name="notes" id="notes" class="form-control" rows="2"
+                            placeholder="Add any notes about this allocation"></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-plus-circle"></i> Add Allocation
+                        </button>
+                    </form>
+                </div>
+            </div>
+        }
+        else if (Model.IsFullyAllocated)
+        {
+            <div class="alert alert-success">
+                <i class="bi bi-check-circle-fill"></i> <strong>Payment Fully Allocated!</strong> All payment amount has
+                been allocated to invoices.
+            </div>
+        }
+        else if (!availableInvoices.Any())
+        {
+            <div class="alert alert-warning">
+                <i class="bi bi-info-circle"></i> No unpaid invoices available to allocate to. All invoices are either paid
+                or not in the system.
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function updateInvoiceInfo() {
+            const select = document.getElementById('invoiceId');
+            const infoDiv = document.getElementById('invoiceInfo');
+            const detailsSpan = document.getElementById('invoiceDetails');
+            const amountInput = document.getElementById('amount');
+
+            if (select.value) {
+                const selectedOption = select.options[select.selectedIndex];
+                const balance = parseFloat(selectedOption.getAttribute('data-balance'));
+                const total = parseFloat(selectedOption.getAttribute('data-total'));
+                const customer = selectedOption.getAttribute('data-customer');
+                const unallocated = @Model.UnallocatedAmount;
+
+                // Suggest the smaller of balance or unallocated
+                const suggested = Math.min(balance, unallocated);
+                amountInput.value = suggested.toFixed(2);
+                amountInput.max = Math.min(balance, unallocated);
+
+                detailsSpan.innerHTML = `
+                            <strong>Customer:</strong> ${customer}<br />
+                            <strong>Total:</strong> $${total.toFixed(2)}<br />
+                            <strong>Outstanding Balance:</strong> $${balance.toFixed(2)}<br />
+                            <strong>Suggested Amount:</strong> $${suggested.toFixed(2)}
+                        `;
+                infoDiv.style.display = 'block';
+            } else {
+                infoDiv.style.display = 'none';
+                amountInput.value = @Model.UnallocatedAmount;
+                amountInput.max = @Model.UnallocatedAmount;
+            }
+        }
+
+        function validateAmount() {
+            const amountInput = document.getElementById('amount');
+            const amount = parseFloat(amountInput.value);
+            const max = parseFloat(amountInput.max);
+
+            if (amount > max) {
+                alert(`Amount cannot exceed $${max.toFixed(2)}`);
+                amountInput.value = max.toFixed(2);
+            }
+        }
+    </script>
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

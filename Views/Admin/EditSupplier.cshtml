@@ -1,0 +1,207 @@
+@model InvoiceManagement.Models.Supplier
+
+@{
+    ViewData["Title"] = "Edit Supplier";
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-pencil"></i> Edit Supplier</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-action="Suppliers" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-body">
+                <form asp-action="EditSupplier" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="Id" />
+                    <input type="hidden" asp-for="CreatedDate" />
+                    
+                    <div asp-validation-summary="All" class="alert alert-danger"></div>
+
+                    <h5 class="mb-3"><i class="bi bi-building"></i> Basic Information</h5>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="SupplierCode" class="form-label">
+                                Supplier Code *
+                            </label>
+                            <input asp-for="SupplierCode" class="form-control" required />
+                            <span asp-validation-for="SupplierCode" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="SupplierName" class="form-label">
+                                Supplier Name *
+                            </label>
+                            <input asp-for="SupplierName" class="form-control" required />
+                            <span asp-validation-for="SupplierName" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Address" class="form-label">
+                            Address
+                        </label>
+                        <textarea asp-for="Address" class="form-control" rows="2"></textarea>
+                    </div>
+
+                    <hr>
+                    <h5 class="mb-3"><i class="bi bi-person"></i> Contact Information</h5>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="ContactPerson" class="form-label">
+                                Contact Person
+                            </label>
+                            <input asp-for="ContactPerson" class="form-control" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Email" class="form-label">
+                                Email
+                            </label>
+                            <input asp-for="Email" class="form-control" type="email" />
+                            <span asp-validation-for="Email" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Phone" class="form-label">
+                                Phone
+                            </label>
+                            <input asp-for="Phone" class="form-control" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Mobile" class="form-label">
+                                Mobile
+                            </label>
+                            <input asp-for="Mobile" class="form-control" />
+                        </div>
+                    </div>
+
+                    <hr>
+                    <h5 class="mb-3"><i class="bi bi-bank"></i> Financial Information</h5>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="TIN" class="form-label">
+                                Tax Identification Number (TIN)
+                            </label>
+                            <input asp-for="TIN" class="form-control" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="RegistrationNumber" class="form-label">
+                                Registration Number
+                            </label>
+                            <input asp-for="RegistrationNumber" class="form-control" />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="BankName" class="form-label">
+                                Bank Name
+                            </label>
+                            <input asp-for="BankName" class="form-control" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="BankAccountNumber" class="form-label">
+                                Bank Account Number
+                            </label>
+                            <input asp-for="BankAccountNumber" class="form-control" />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="PaymentTermsDays" class="form-label">
+                                Payment Terms (Days) *
+                            </label>
+                            <input asp-for="PaymentTermsDays" class="form-control" type="number" min="0" max="365" required />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Status" class="form-label">
+                                Status *
+                            </label>
+                            <select asp-for="Status" class="form-select" required>
+                                <option value="Active">Active</option>
+                                <option value="Inactive">Inactive</option>
+                                <option value="OnHold">On Hold</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <hr>
+                    <h5 class="mb-3"><i class="bi bi-box-seam"></i> Additional Information</h5>
+
+                    <div class="mb-3">
+                        <label asp-for="ProductsServices" class="form-label">
+                            Products/Services Supplied
+                        </label>
+                        <textarea asp-for="ProductsServices" class="form-control" rows="2"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Notes" class="form-label">
+                            Notes
+                        </label>
+                        <textarea asp-for="Notes" class="form-control" rows="3"></textarea>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle"></i> Update Supplier
+                        </button>
+                        <a asp-action="Suppliers" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow mb-3">
+            <div class="card-header bg-info text-white">
+                <i class="bi bi-info-circle"></i> Supplier Details
+            </div>
+            <div class="card-body">
+                <dl class="mb-0">
+                    <dt>Created Date</dt>
+                    <dd>@Model.CreatedDate.ToString("yyyy-MM-dd HH:mm")</dd>
+
+                    @if (Model.ModifiedDate.HasValue)
+                    {
+                        <dt>Last Modified</dt>
+                        <dd>@Model.ModifiedDate.Value.ToString("yyyy-MM-dd HH:mm")</dd>
+                    }
+                </dl>
+            </div>
+        </div>
+
+        <div class="card shadow">
+            <div class="card-header bg-warning">
+                <i class="bi bi-exclamation-triangle"></i> Important
+            </div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li>Changes take effect immediately</li>
+                    <li>Setting status to "Inactive" prevents new POs</li>
+                    <li>"On Hold" suspends all transactions</li>
+                    <li>Update contact info for better communication</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
+

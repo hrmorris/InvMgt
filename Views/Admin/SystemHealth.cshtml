@@ -1,0 +1,207 @@
+@using InvoiceManagement.Controllers
+@model SystemHealthData
+@{
+    ViewData["Title"] = "System Health";
+}
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">
+                <i class="bi bi-heart-pulse me-2"></i>System Health & Diagnostics
+            </h1>
+            <p class="text-muted mb-0">Monitor system status and performance</p>
+        </div>
+        <a href="@Url.Action("Index")" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Back to Admin
+        </a>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle me-2"></i>@TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle me-2"></i>@TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Status Overview -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="rounded-circle bg-success bg-opacity-10 p-3 d-inline-flex mb-3">
+                        <i class="bi bi-database-check text-success fs-3"></i>
+                    </div>
+                    <h5 class="card-title">Database Status</h5>
+                    <p class="card-text text-success fw-bold">@Model.DatabaseStatus</p>
+                    <small class="text-muted">Size: @Model.DatabaseSize</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="rounded-circle bg-primary bg-opacity-10 p-3 d-inline-flex mb-3">
+                        <i class="bi bi-clock-history text-primary fs-3"></i>
+                    </div>
+                    <h5 class="card-title">Server Uptime</h5>
+                    <p class="card-text fw-bold">@Model.Uptime.Days days @Model.Uptime.Hours hrs</p>
+                    <small class="text-muted">Started: @(DateTime.Now - Model.Uptime):yyyy-MM-dd HH:mm</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="rounded-circle bg-info bg-opacity-10 p-3 d-inline-flex mb-3">
+                        <i class="bi bi-memory text-info fs-3"></i>
+                    </div>
+                    <h5 class="card-title">Memory Usage</h5>
+                    <p class="card-text fw-bold">@Model.MemoryUsage MB</p>
+                    <small class="text-muted">Managed heap</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="rounded-circle bg-warning bg-opacity-10 p-3 d-inline-flex mb-3">
+                        <i class="bi bi-clock text-warning fs-3"></i>
+                    </div>
+                    <h5 class="card-title">Server Time</h5>
+                    <p class="card-text fw-bold">@Model.ServerTime.ToString("HH:mm:ss")</p>
+                    <small class="text-muted">@Model.ServerTime.ToString("yyyy-MM-dd")</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Warnings Section -->
+    @if (Model.Warnings.Any())
+    {
+        <div class="card border-warning mb-4 shadow-sm">
+            <div class="card-header bg-warning bg-opacity-10 border-0">
+                <h5 class="mb-0"><i class="bi bi-exclamation-triangle text-warning me-2"></i>Attention Required</h5>
+            </div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    @foreach (var warning in Model.Warnings)
+                    {
+                        <li class="text-warning-emphasis">@warning</li>
+                    }
+                </ul>
+            </div>
+        </div>
+    }
+
+    <!-- Data Statistics -->
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0">
+                    <h5 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Data Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-2 col-4 mb-3">
+                            <div class="p-3 bg-light rounded">
+                                <h4 class="mb-0 text-primary">@Model.TotalInvoices</h4>
+                                <small class="text-muted">Invoices</small>
+                            </div>
+                        </div>
+                        <div class="col-md-2 col-4 mb-3">
+                            <div class="p-3 bg-light rounded">
+                                <h4 class="mb-0 text-success">@Model.TotalPayments</h4>
+                                <small class="text-muted">Payments</small>
+                            </div>
+                        </div>
+                        <div class="col-md-2 col-4 mb-3">
+                            <div class="p-3 bg-light rounded">
+                                <h4 class="mb-0 text-info">@Model.TotalSuppliers</h4>
+                                <small class="text-muted">Suppliers</small>
+                            </div>
+                        </div>
+                        <div class="col-md-2 col-4 mb-3">
+                            <div class="p-3 bg-light rounded">
+                                <h4 class="mb-0 text-warning">@Model.TotalCustomers</h4>
+                                <small class="text-muted">Customers</small>
+                            </div>
+                        </div>
+                        <div class="col-md-2 col-4 mb-3">
+                            <div class="p-3 bg-light rounded">
+                                <h4 class="mb-0 text-secondary">@Model.TotalUsers</h4>
+                                <small class="text-muted">Users</small>
+                            </div>
+                        </div>
+                        <div class="col-md-2 col-4 mb-3">
+                            <div class="p-3 bg-light rounded">
+                                <h4 class="mb-0 text-dark">@Model.TotalDocuments</h4>
+                                <small class="text-muted">Documents</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Oldest Unpaid Invoice -->
+    @if (Model.OldestUnpaidInvoice != null)
+    {
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-0">
+                <h5 class="mb-0"><i class="bi bi-hourglass-split me-2 text-danger"></i>Oldest Unpaid Invoice</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Invoice #:</strong> @Model.OldestUnpaidInvoice.InvoiceNumber</p>
+                        <p><strong>Date:</strong> @Model.OldestUnpaidInvoice.InvoiceDate.ToString("dd-MMM-yyyy")</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Amount:</strong>
+                            @ViewBag.CurrencySymbol@Model.OldestUnpaidInvoice.TotalAmount.ToString("N2")</p>
+                        <p><strong>Status:</strong> <span class="badge bg-warning">@Model.OldestUnpaidInvoice.Status</span>
+                        </p>
+                    </div>
+                </div>
+                <a href="@Url.Action("Details", "Invoices", new { id = Model.OldestUnpaidInvoice.Id })"
+                    class="btn btn-outline-primary btn-sm">
+                    <i class="bi bi-eye me-1"></i> View Invoice
+                </a>
+            </div>
+        </div>
+    }
+
+    <!-- Quick Actions -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-transparent border-0">
+            <h5 class="mb-0"><i class="bi bi-lightning me-2"></i>Quick Actions</h5>
+        </div>
+        <div class="card-body">
+            <div class="d-flex flex-wrap gap-2">
+                <a href="@Url.Action("Backup")" class="btn btn-outline-primary">
+                    <i class="bi bi-hdd me-1"></i> Database Backup
+                </a>
+                <a href="@Url.Action("DataCleanup")" class="btn btn-outline-warning">
+                    <i class="bi bi-trash me-1"></i> Data Cleanup
+                </a>
+                <a href="@Url.Action("AuditLogs")" class="btn btn-outline-secondary">
+                    <i class="bi bi-journal-text me-1"></i> Audit Logs
+                </a>
+                <a href="@Url.Action("Analytics")" class="btn btn-outline-info">
+                    <i class="bi bi-graph-up me-1"></i> Analytics
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

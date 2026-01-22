@@ -1,0 +1,312 @@
+@model InvoiceManagement.Models.User
+@using InvoiceManagement.Services
+
+@{
+    ViewData["Title"] = $"User Profile - {Model.FullName}";
+    var activityStats = ViewBag.ActivityStats as UserActivityStats;
+    var auditLogs = ViewBag.AuditLogs as IEnumerable<InvoiceManagement.Models.AuditLog>;
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-person-badge"></i> User Profile</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a asp-action="EditUser" asp-route-id="@Model.Id" class="btn btn-outline-primary">
+                <i class="bi bi-pencil"></i> Edit
+            </a>
+            <a asp-action="ResetPassword" asp-route-id="@Model.Id" class="btn btn-outline-warning">
+                <i class="bi bi-key"></i> Reset Password
+            </a>
+        </div>
+        <a asp-action="Users" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Users
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- User Details Card -->
+    <div class="col-md-4">
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-person-circle"></i> User Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px; font-size: 32px;">
+                        @Model.FullName[0].ToString().ToUpper()
+                    </div>
+                    <h4 class="mt-3 mb-1">@Model.FullName</h4>
+                    <p class="text-muted">@Model.Username</p>
+                    @if (Model.Status == "Active")
+                    {
+                        <span class="badge bg-success">Active</span>
+                    }
+                    else if (Model.Status == "Suspended")
+                    {
+                        <span class="badge bg-warning text-dark">Suspended</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary">Inactive</span>
+                    }
+                </div>
+
+                <hr />
+
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Email</dt>
+                    <dd class="col-sm-8"><a href="mailto:@Model.Email">@Model.Email</a></dd>
+
+                    <dt class="col-sm-4">Phone</dt>
+                    <dd class="col-sm-8">@(Model.Phone ?? "Not provided")</dd>
+
+                    <dt class="col-sm-4">Department</dt>
+                    <dd class="col-sm-8">@Model.Department</dd>
+
+                    <dt class="col-sm-4">Facility</dt>
+                    <dd class="col-sm-8">@Model.Facility<br/><small class="text-muted">@Model.FacilityType</small></dd>
+
+                    <dt class="col-sm-4">Role</dt>
+                    <dd class="col-sm-8">
+                        @if (Model.Role == "Admin")
+                        {
+                            <span class="badge bg-danger">@Model.Role</span>
+                        }
+                        else if (Model.Role == "Finance_Officer" || Model.Role == "Finance_Manager")
+                        {
+                            <span class="badge bg-success">@Model.Role.Replace("_", " ")</span>
+                        }
+                        else if (Model.Role == "Supervisor" || Model.Role == "Health_Manager")
+                        {
+                            <span class="badge bg-primary">@Model.Role.Replace("_", " ")</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">@Model.Role.Replace("_", " ")</span>
+                        }
+                    </dd>
+
+                    <dt class="col-sm-4">Created</dt>
+                    <dd class="col-sm-8">@Model.CreatedDate.ToString("yyyy-MM-dd")</dd>
+
+                    <dt class="col-sm-4">Last Login</dt>
+                    <dd class="col-sm-8">
+                        @if (Model.LastLoginDate.HasValue)
+                        {
+                            @Model.LastLoginDate.Value.ToString("yyyy-MM-dd HH:mm")
+                        }
+                        else
+                        {
+                            <span class="text-muted">Never</span>
+                        }
+                    </dd>
+                </dl>
+
+                @if (!string.IsNullOrEmpty(Model.Notes))
+                {
+                    <hr />
+                    <h6>Notes</h6>
+                    <p class="text-muted mb-0">@Model.Notes</p>
+                }
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card shadow">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-lightning"></i> Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    @if (Model.Status == "Active")
+                    {
+                        <form asp-action="SuspendUser" asp-route-id="@Model.Id" method="post">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-warning w-100">
+                                <i class="bi bi-pause-circle"></i> Suspend User
+                            </button>
+                        </form>
+                        <form asp-action="ToggleUserStatus" asp-route-id="@Model.Id" method="post">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-secondary w-100">
+                                <i class="bi bi-toggle-off"></i> Deactivate User
+                            </button>
+                        </form>
+                    }
+                    else
+                    {
+                        <form asp-action="ActivateUser" asp-route-id="@Model.Id" method="post">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="bi bi-toggle-on"></i> Activate User
+                            </button>
+                        </form>
+                    }
+                    <a asp-action="DeleteUser" asp-route-id="@Model.Id" class="btn btn-outline-danger">
+                        <i class="bi bi-trash"></i> Delete User
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Activity Stats & Logs -->
+    <div class="col-md-8">
+        <!-- Activity Statistics -->
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-graph-up"></i> Activity Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3 col-6 mb-3">
+                        <div class="border rounded p-3">
+                            <h3 class="text-primary mb-1">@(activityStats?.TotalLogins ?? 0)</h3>
+                            <small class="text-muted">Total Logins</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6 mb-3">
+                        <div class="border rounded p-3">
+                            <h3 class="text-success mb-1">@(activityStats?.TotalActions ?? 0)</h3>
+                            <small class="text-muted">Total Actions</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6 mb-3">
+                        <div class="border rounded p-3">
+                            <h3 class="text-info mb-1">@(activityStats?.InvoicesCreated ?? 0)</h3>
+                            <small class="text-muted">Invoices Created</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6 mb-3">
+                        <div class="border rounded p-3">
+                            <h3 class="text-warning mb-1">@(activityStats?.PaymentsRecorded ?? 0)</h3>
+                            <small class="text-muted">Payments Recorded</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row text-center">
+                    <div class="col-md-3 col-6 mb-3">
+                        <div class="border rounded p-3">
+                            <h3 class="text-secondary mb-1">@(activityStats?.RequisitionsCreated ?? 0)</h3>
+                            <small class="text-muted">Requisitions</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6 mb-3">
+                        <div class="border rounded p-3">
+                            <h3 class="text-dark mb-1">@(activityStats?.PurchaseOrdersCreated ?? 0)</h3>
+                            <small class="text-muted">Purchase Orders</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6 mb-3">
+                        <div class="border rounded p-3">
+                            <small class="text-muted d-block">First Login</small>
+                            <strong>@(activityStats?.FirstLogin?.ToString("yyyy-MM-dd") ?? "Never")</strong>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6 mb-3">
+                        <div class="border rounded p-3">
+                            <small class="text-muted d-block">Last Login</small>
+                            <strong>@(activityStats?.LastLogin?.ToString("yyyy-MM-dd") ?? "Never")</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions by Type -->
+        @if (activityStats?.ActionsByType != null && activityStats.ActionsByType.Any())
+        {
+            <div class="card shadow mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-pie-chart"></i> Actions by Type</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        @foreach (var action in activityStats.ActionsByType.OrderByDescending(a => a.Value).Take(8))
+                        {
+                            <div class="col-md-3 col-6 mb-2">
+                                <div class="d-flex justify-content-between align-items-center p-2 bg-light rounded">
+                                    <span>@action.Key</span>
+                                    <span class="badge bg-primary">@action.Value</span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Recent Activity -->
+        <div class="card shadow">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-clock-history"></i> Recent Activity</h5>
+                <a asp-action="AuditLogs" asp-route-userId="@Model.Id" class="btn btn-sm btn-outline-primary">
+                    View All
+                </a>
+            </div>
+            <div class="card-body">
+                @if (auditLogs != null && auditLogs.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date/Time</th>
+                                    <th>Action</th>
+                                    <th>Entity</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var log in auditLogs.Take(15))
+                                {
+                                    <tr>
+                                        <td>
+                                            <small>@log.ActionDate.ToString("yyyy-MM-dd HH:mm")</small>
+                                        </td>
+                                        <td>
+                                            @if (log.Action == "Login")
+                                            {
+                                                <span class="badge bg-success">@log.Action</span>
+                                            }
+                                            else if (log.Action == "Logout")
+                                            {
+                                                <span class="badge bg-secondary">@log.Action</span>
+                                            }
+                                            else if (log.Action == "Created")
+                                            {
+                                                <span class="badge bg-primary">@log.Action</span>
+                                            }
+                                            else if (log.Action == "Updated")
+                                            {
+                                                <span class="badge bg-info">@log.Action</span>
+                                            }
+                                            else if (log.Action == "Deleted")
+                                            {
+                                                <span class="badge bg-danger">@log.Action</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary">@log.Action</span>
+                                            }
+                                        </td>
+                                        <td>@log.Entity</td>
+                                        <td><small class="text-muted">@(log.Details?.Length > 50 ? log.Details.Substring(0, 50) + "..." : log.Details)</small></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-info mb-0">
+                        <i class="bi bi-info-circle"></i> No activity recorded for this user yet.
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>

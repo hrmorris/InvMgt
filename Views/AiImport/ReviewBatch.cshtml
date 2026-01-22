@@ -1,0 +1,272 @@
+@model InvoiceManagement.Models.ViewModels.AiImportBatchViewModel
+@{
+    ViewData["Title"] = "Review Batch Import";
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">
+                <i class="bi bi-files text-primary me-2"></i>Review Batch Import
+            </h2>
+            <p class="text-muted mb-0">
+                Review extracted data from @Model.TotalFiles uploaded documents.
+            </p>
+        </div>
+        <div>
+            <a asp-action="Batch" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Back
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body text-center">
+                    <h3 class="mb-0">@Model.TotalFiles</h3>
+                    <small>Total Files</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center">
+                    <h3 class="mb-0">@Model.SuccessCount</h3>
+                    <small>Successfully Processed</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body text-center">
+                    <h3 class="mb-0">@Model.FailedCount</h3>
+                    <small>Failed</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body text-center">
+                    <h3 class="mb-0">@Model.DocumentType</h3>
+                    <small>Document Type</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (Model.FailedFiles.Any())
+    {
+        <div class="alert alert-warning">
+            <h6><i class="bi bi-exclamation-triangle me-2"></i>Failed Files:</h6>
+            <ul class="mb-0">
+                @foreach (var file in Model.FailedFiles)
+                {
+                    <li>@file</li>
+                }
+            </ul>
+        </div>
+    }
+
+    @if (Model.DocumentType == "Invoice" && Model.ExtractedInvoices.Any())
+    {
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="bi bi-receipt me-2"></i>Extracted Invoices (@Model.ExtractedInvoices.Count)</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>File</th>
+                                <th>Invoice #</th>
+                                <th>Date</th>
+                                <th>Customer/Supplier</th>
+                                <th class="text-end">Amount</th>
+                                <th>Match Status</th>
+                                <th class="text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var invoice in Model.ExtractedInvoices)
+                            {
+                                <tr>
+                                    <td>
+                                        <small class="text-muted">@invoice.OriginalFileName</small>
+                                    </td>
+                                    <td><strong>@invoice.InvoiceNumber</strong></td>
+                                    <td>@invoice.InvoiceDate?.ToString("dd MMM yyyy")</td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(invoice.MatchedSupplierName))
+                                        {
+                                            <span class="text-success">
+                                                <i class="bi bi-building me-1"></i>@invoice.MatchedSupplierName
+                                            </span>
+                                        }
+                                        else if (!string.IsNullOrEmpty(invoice.ExtractedSupplierName))
+                                        {
+                                            <span class="text-warning">
+                                                <i class="bi bi-question-circle me-1"></i>@invoice.ExtractedSupplierName
+                                            </span>
+                                        }
+                                        else if (!string.IsNullOrEmpty(invoice.CustomerName))
+                                        {
+                                            <span>@invoice.CustomerName</span>
+                                        }
+                                    </td>
+                                    <td class="text-end fw-bold">K @invoice.TotalAmount.ToString("N2")</td>
+                                    <td>
+                                        @if (invoice.MatchConfidence == "High")
+                                        {
+                                            <span class="badge bg-success">Matched</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-warning">No Match</span>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        <a asp-action="ReviewInvoice" asp-route-documentId="@invoice.DocumentId" 
+                                           class="btn btn-sm btn-primary">
+                                            <i class="bi bi-pencil me-1"></i>Review
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot class="table-light">
+                            <tr>
+                                <th colspan="4" class="text-end">Total:</th>
+                                <th class="text-end">K @Model.ExtractedInvoices.Sum(i => i.TotalAmount).ToString("N2")</th>
+                                <th colspan="2"></th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (Model.DocumentType == "Payment" && Model.ExtractedPayments.Any())
+    {
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="bi bi-credit-card me-2"></i>Extracted Payments (@Model.ExtractedPayments.Count)</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>File</th>
+                                <th>Date</th>
+                                <th>Payer/Payee</th>
+                                <th>Bank Account</th>
+                                <th class="text-end">Amount</th>
+                                <th>Direction</th>
+                                <th>Match Status</th>
+                                <th class="text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var payment in Model.ExtractedPayments)
+                            {
+                                <tr>
+                                    <td>
+                                        <small class="text-muted">@payment.OriginalFileName</small>
+                                    </td>
+                                    <td>@payment.PaymentDate?.ToString("dd MMM yyyy")</td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(payment.MatchedSupplierName))
+                                        {
+                                            <span class="text-success">
+                                                <i class="bi bi-building me-1"></i>@payment.MatchedSupplierName
+                                            </span>
+                                        }
+                                        else if (!string.IsNullOrEmpty(payment.MatchedCustomerName))
+                                        {
+                                            <span class="text-success">
+                                                <i class="bi bi-person me-1"></i>@payment.MatchedCustomerName
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-warning">
+                                                @(payment.ExtractedPayeeName ?? payment.ExtractedPayerName ?? "Unknown")
+                                            </span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(payment.ExtractedBankAccountNumber))
+                                        {
+                                            <small>@payment.ExtractedBankAccountNumber</small>
+                                        }
+                                        else
+                                        {
+                                            <small class="text-muted">N/A</small>
+                                        }
+                                    </td>
+                                    <td class="text-end fw-bold">K @payment.Amount.ToString("N2")</td>
+                                    <td>
+                                        @if (payment.PaymentDirection == "Outgoing")
+                                        {
+                                            <span class="badge bg-danger">
+                                                <i class="bi bi-arrow-up me-1"></i>Out
+                                            </span>
+                                        }
+                                        else if (payment.PaymentDirection == "Incoming")
+                                        {
+                                            <span class="badge bg-success">
+                                                <i class="bi bi-arrow-down me-1"></i>In
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Unknown</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (payment.MatchConfidence == "High")
+                                        {
+                                            <span class="badge bg-success">
+                                                @payment.MatchedByField
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-warning">No Match</span>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        <a asp-action="ReviewPayment" asp-route-documentId="@payment.DocumentId" 
+                                           class="btn btn-sm btn-primary">
+                                            <i class="bi bi-pencil me-1"></i>Review
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot class="table-light">
+                            <tr>
+                                <th colspan="4" class="text-end">Total:</th>
+                                <th class="text-end">K @Model.ExtractedPayments.Sum(p => p.Amount).ToString("N2")</th>
+                                <th colspan="3"></th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="d-flex justify-content-between">
+        <a asp-action="Batch" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Import More
+        </a>
+        <a asp-action="Documents" class="btn btn-primary">
+            <i class="bi bi-folder2-open me-1"></i>View All Documents
+        </a>
+    </div>
+</div>

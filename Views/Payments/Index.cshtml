@@ -1,0 +1,723 @@
+@model IEnumerable<Payment>
+
+@{
+    ViewData["Title"] = "Payments";
+}
+@functions {
+    public string FormatCurrency(decimal amount)
+    {
+        var settings = ViewData["CurrencySettings"] as CurrencySettings;
+        if (settings != null)
+        {
+            return CurrencyHelper.FormatCurrency(amount, settings);
+        }
+        return $"K {amount:N2}";
+    }
+    public string CurrencySymbol()
+    {
+        return ViewData["CurrencySymbol"]?.ToString() ?? "K";
+    }
+}
+
+@{
+    var totalPayments = Model.Count();
+    var totalAmount = Model.Sum(p => p.Amount);
+    var allocatedAmount = Model.Sum(p => p.AllocatedAmount);
+    var unallocatedAmount = Model.Sum(p => p.UnallocatedAmount);
+    
+    var fullyAllocated = Model.Where(p => p.Status == "Fully Allocated").ToList();
+    var partiallyAllocated = Model.Where(p => p.Status == "Partially Allocated").ToList();
+    var unallocated = Model.Where(p => p.Status == "Unallocated" || p.UnallocatedAmount > 0).ToList();
+    
+    // Group by Payment Method
+    var methodGroups = Model
+        .GroupBy(p => p.PaymentMethod ?? "Unknown")
+        .Select(g => new {
+            Method = g.Key,
+            PaymentCount = g.Count(),
+            TotalAmount = g.Sum(p => p.Amount),
+            Payments = g.OrderByDescending(p => p.PaymentDate).ToList()
+        })
+        .OrderByDescending(m => m.TotalAmount)
+        .ToList();
+    
+    // Group by Supplier
+    var supplierPayments = Model
+        .Where(p => (p.Invoice != null && p.Invoice.InvoiceType == "Supplier") || 
+               (p.PaymentAllocations != null && p.PaymentAllocations.Any(a => a.Invoice?.InvoiceType == "Supplier")))
+        .ToList();
+    
+    var supplierGroups = supplierPayments
+        .GroupBy(p => {
+            if (p.Invoice != null)
+                return p.Invoice.Supplier?.SupplierName ?? p.Invoice.CustomerName ?? "Unknown";
+            var firstAlloc = p.PaymentAllocations?.FirstOrDefault(a => a.Invoice?.InvoiceType == "Supplier");
+            return firstAlloc?.Invoice?.Supplier?.SupplierName ?? firstAlloc?.Invoice?.CustomerName ?? "Unknown";
+        })
+        .Select(g => new {
+            Name = g.Key,
+            PaymentCount = g.Count(),
+            TotalAmount = g.Sum(p => p.Amount),
+            AllocatedAmount = g.Sum(p => p.AllocatedAmount),
+            Payments = g.OrderByDescending(p => p.PaymentDate).ToList()
+        })
+        .OrderByDescending(s => s.TotalAmount)
+        .ToList();
+    
+    // Group by Customer
+    var customerPayments = Model
+        .Where(p => (p.Invoice != null && p.Invoice.InvoiceType == "Customer") ||
+               (p.PaymentAllocations != null && p.PaymentAllocations.Any(a => a.Invoice?.InvoiceType == "Customer")))
+        .ToList();
+    
+    var customerGroups = customerPayments
+        .GroupBy(p => {
+            if (p.Invoice != null)
+                return p.Invoice.CustomerName ?? "Unknown";
+            var firstAlloc = p.PaymentAllocations?.FirstOrDefault(a => a.Invoice?.InvoiceType == "Customer");
+            return firstAlloc?.Invoice?.CustomerName ?? "Unknown";
+        })
+        .Select(g => new {
+            Name = g.Key,
+            PaymentCount = g.Count(),
+            TotalAmount = g.Sum(p => p.Amount),
+            AllocatedAmount = g.Sum(p => p.AllocatedAmount),
+            Payments = g.OrderByDescending(p => p.PaymentDate).ToList()
+        })
+        .OrderByDescending(c => c.TotalAmount)
+        .ToList();
+        
+    // Monthly summary (current year)
+    var currentYear = DateTime.Now.Year;
+    var monthlyTotals = Model
+        .Where(p => p.PaymentDate.Year == currentYear)
+        .GroupBy(p => p.PaymentDate.Month)
+        .Select(g => new { Month = g.Key, Total = g.Sum(p => p.Amount) })
+        .OrderBy(m => m.Month)
+        .ToList();
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-credit-card"></i> Payments</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-action="Create" class="btn btn-success">
+            <i class="bi bi-plus-circle"></i> Record New Payment
+        </a>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle"></i> @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white shadow-sm">
+            <div class="card-body py-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <small class="text-uppercase opacity-75">Total Payments</small>
+                        <h4 class="mb-0">@totalPayments</h4>
+                    </div>
+                    <i class="bi bi-credit-card fs-2 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white shadow-sm">
+            <div class="card-body py-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <small class="text-uppercase opacity-75">Total Amount</small>
+                        <h4 class="mb-0">@FormatCurrency(totalAmount)</h4>
+                    </div>
+                    <i class="bi bi-cash-stack fs-2 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white shadow-sm">
+            <div class="card-body py-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <small class="text-uppercase opacity-75">Allocated</small>
+                        <h4 class="mb-0">@FormatCurrency(allocatedAmount)</h4>
+                    </div>
+                    <i class="bi bi-check-circle fs-2 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-dark shadow-sm">
+            <div class="card-body py-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <small class="text-uppercase opacity-75">Unallocated</small>
+                        <h4 class="mb-0">@FormatCurrency(unallocatedAmount)</h4>
+                    </div>
+                    <i class="bi bi-exclamation-triangle fs-2 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Status Summary Row -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card border-success shadow-sm">
+            <div class="card-body py-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-success"><i class="bi bi-check-circle-fill"></i> Fully Allocated</span>
+                    <span class="badge bg-success fs-6">@fullyAllocated.Count</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-warning shadow-sm">
+            <div class="card-body py-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-warning"><i class="bi bi-pie-chart-fill"></i> Partially Allocated</span>
+                    <span class="badge bg-warning text-dark fs-6">@partiallyAllocated.Count</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-secondary shadow-sm">
+            <div class="card-body py-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-secondary"><i class="bi bi-dash-circle-fill"></i> Unallocated</span>
+                    <span class="badge bg-secondary fs-6">@unallocated.Count</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabs -->
+<ul class="nav nav-tabs mb-3" id="paymentTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="all-tab" data-bs-toggle="tab" data-bs-target="#all-payments" 
+                type="button" role="tab" aria-controls="all-payments" aria-selected="true">
+            <i class="bi bi-list-ul"></i> All Payments <span class="badge bg-secondary">@totalPayments</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="suppliers-tab" data-bs-toggle="tab" data-bs-target="#by-suppliers" 
+                type="button" role="tab" aria-controls="by-suppliers" aria-selected="false">
+            <i class="bi bi-building"></i> By Supplier <span class="badge bg-warning text-dark">@supplierGroups.Count</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="customers-tab" data-bs-toggle="tab" data-bs-target="#by-customers" 
+                type="button" role="tab" aria-controls="by-customers" aria-selected="false">
+            <i class="bi bi-people"></i> By Customer <span class="badge bg-info">@customerGroups.Count</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="methods-tab" data-bs-toggle="tab" data-bs-target="#by-methods" 
+                type="button" role="tab" aria-controls="by-methods" aria-selected="false">
+            <i class="bi bi-wallet2"></i> By Method <span class="badge bg-primary">@methodGroups.Count</span>
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="paymentTabsContent">
+    <!-- All Payments Tab -->
+    <div class="tab-pane fade show active" id="all-payments" role="tabpanel" aria-labelledby="all-tab">
+        <div class="card shadow mb-4">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Payment #</th>
+                                <th>Date</th>
+                                <th>Invoice #</th>
+                                <th>Supplier</th>
+                                <th>Customer</th>
+                                <th>Amount</th>
+                                <th>Allocated</th>
+                                <th>Method</th>
+                                <th>Reference</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model.OrderByDescending(p => p.PaymentDate))
+                            {
+                                string supplierName = "";
+                                string customerName = "";
+
+                                if (item.Invoice != null)
+                                {
+                                    if (item.Invoice.InvoiceType == "Supplier")
+                                    {
+                                        supplierName = item.Invoice.Supplier?.SupplierName ?? item.Invoice.CustomerName ?? "";
+                                    }
+                                    else
+                                    {
+                                        customerName = item.Invoice.CustomerName ?? "";
+                                    }
+                                }
+                                else if (item.PaymentAllocations != null && item.PaymentAllocations.Any())
+                                {
+                                    var firstAllocation = item.PaymentAllocations.FirstOrDefault();
+                                    if (firstAllocation?.Invoice != null)
+                                    {
+                                        if (firstAllocation.Invoice.InvoiceType == "Supplier")
+                                        {
+                                            supplierName = firstAllocation.Invoice.Supplier?.SupplierName ??
+                                            firstAllocation.Invoice.CustomerName ?? "";
+                                        }
+                                        else
+                                        {
+                                            customerName = firstAllocation.Invoice.CustomerName ?? "";
+                                        }
+                                    }
+                                }
+                                
+                                var statusClass = item.Status == "Fully Allocated" ? "bg-success" : 
+                                                  item.Status == "Partially Allocated" ? "bg-warning text-dark" : "bg-secondary";
+                                <tr>
+                                    <td><a asp-action="Details" asp-route-id="@item.Id">@item.PaymentNumber</a></td>
+                                    <td>@item.PaymentDate.ToString("dd/MM/yyyy")</td>
+                                    <td>
+                                        @if (item.Invoice != null)
+                                        {
+                                            <a asp-controller="Invoices" asp-action="Details"
+                                                asp-route-id="@item.InvoiceId">@item.Invoice.InvoiceNumber</a>
+                                        }
+                                        else if (item.PaymentAllocations != null && item.PaymentAllocations.Count > 1)
+                                        {
+                                            <span class="badge bg-info">@item.PaymentAllocations.Count invoices</span>
+                                        }
+                                    </td>
+                                    <td>@supplierName</td>
+                                    <td>@customerName</td>
+                                    <td><strong>@FormatCurrency(item.Amount)</strong></td>
+                                    <td>@FormatCurrency(item.AllocatedAmount)</td>
+                                    <td>@item.PaymentMethod</td>
+                                    <td><small>@item.ReferenceNumber</small></td>
+                                    <td><span class="badge @statusClass">@item.Status</span></td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info"
+                                                title="View">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary"
+                                                title="Edit">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <a asp-action="GenerateReceipt" asp-route-id="@item.Id"
+                                                class="btn btn-sm btn-outline-success" title="Download Receipt">
+                                                <i class="bi bi-file-pdf"></i>
+                                            </a>
+                                            <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger"
+                                                title="Delete">
+                                                <i class="bi bi-trash"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- By Suppliers Tab -->
+    <div class="tab-pane fade" id="by-suppliers" role="tabpanel" aria-labelledby="suppliers-tab">
+        @if (!supplierGroups.Any())
+        {
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> No supplier payments found.
+            </div>
+        }
+        else
+        {
+            <!-- Supplier Summary -->
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="card bg-light">
+                        <div class="card-body py-2">
+                            <strong>Total Supplier Payments:</strong> @supplierPayments.Count |
+                            <strong>Total Amount:</strong> @FormatCurrency(supplierPayments.Sum(p => p.Amount))
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="accordion" id="supplierAccordion">
+                @foreach (var supplier in supplierGroups)
+                {
+                    var accordionId = $"supplier-{Math.Abs(supplier.Name?.GetHashCode() ?? 0)}";
+                    <div class="card border-warning shadow-sm mb-2">
+                        <div class="card-header bg-warning bg-opacity-10" id="heading-@accordionId">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <button class="btn btn-link text-decoration-none collapsed p-0" type="button" 
+                                        data-bs-toggle="collapse" data-bs-target="#collapse-@accordionId">
+                                    <i class="bi bi-building me-2"></i>
+                                    <strong>@supplier.Name</strong>
+                                    <span class="badge bg-warning text-dark ms-2">@supplier.PaymentCount payments</span>
+                                </button>
+                                <div class="text-end">
+                                    <span class="badge bg-success fs-6">@FormatCurrency(supplier.TotalAmount)</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="collapse-@accordionId" class="collapse" data-bs-parent="#supplierAccordion">
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Payment #</th>
+                                                <th>Date</th>
+                                                <th>Invoice #</th>
+                                                <th>Amount</th>
+                                                <th>Method</th>
+                                                <th>Reference</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var payment in supplier.Payments)
+                                            {
+                                                <tr>
+                                                    <td><a asp-action="Details" asp-route-id="@payment.Id">@payment.PaymentNumber</a></td>
+                                                    <td>@payment.PaymentDate.ToString("dd/MM/yyyy")</td>
+                                                    <td>
+                                                        @if (payment.Invoice != null)
+                                                        {
+                                                            <a asp-controller="Invoices" asp-action="Details" asp-route-id="@payment.InvoiceId">@payment.Invoice.InvoiceNumber</a>
+                                                        }
+                                                    </td>
+                                                    <td><strong>@FormatCurrency(payment.Amount)</strong></td>
+                                                    <td>@payment.PaymentMethod</td>
+                                                    <td><small>@payment.ReferenceNumber</small></td>
+                                                    <td>
+                                                        <div class="btn-group btn-group-sm" role="group">
+                                                            <a asp-action="Details" asp-route-id="@payment.Id" class="btn btn-outline-info" title="View">
+                                                                <i class="bi bi-eye"></i>
+                                                            </a>
+                                                            <a asp-action="Edit" asp-route-id="@payment.Id" class="btn btn-outline-primary" title="Edit">
+                                                                <i class="bi bi-pencil"></i>
+                                                            </a>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                        <tfoot class="table-warning">
+                                            <tr>
+                                                <th colspan="3">Total</th>
+                                                <th>@FormatCurrency(supplier.TotalAmount)</th>
+                                                <th colspan="3"></th>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <!-- By Customers Tab -->
+    <div class="tab-pane fade" id="by-customers" role="tabpanel" aria-labelledby="customers-tab">
+        @if (!customerGroups.Any())
+        {
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> No customer payments found.
+            </div>
+        }
+        else
+        {
+            <!-- Customer Summary -->
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="card bg-light">
+                        <div class="card-body py-2">
+                            <strong>Total Customer Payments:</strong> @customerPayments.Count |
+                            <strong>Total Amount:</strong> @FormatCurrency(customerPayments.Sum(p => p.Amount))
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="accordion" id="customerAccordion">
+                @foreach (var customer in customerGroups)
+                {
+                    var accordionId = $"customer-{Math.Abs(customer.Name?.GetHashCode() ?? 0)}";
+                    <div class="card border-info shadow-sm mb-2">
+                        <div class="card-header bg-info bg-opacity-10" id="heading-@accordionId">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <button class="btn btn-link text-decoration-none collapsed p-0" type="button" 
+                                        data-bs-toggle="collapse" data-bs-target="#collapse-@accordionId">
+                                    <i class="bi bi-person me-2"></i>
+                                    <strong>@customer.Name</strong>
+                                    <span class="badge bg-info ms-2">@customer.PaymentCount payments</span>
+                                </button>
+                                <div class="text-end">
+                                    <span class="badge bg-success fs-6">@FormatCurrency(customer.TotalAmount)</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="collapse-@accordionId" class="collapse" data-bs-parent="#customerAccordion">
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Payment #</th>
+                                                <th>Date</th>
+                                                <th>Invoice #</th>
+                                                <th>Amount</th>
+                                                <th>Method</th>
+                                                <th>Reference</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var payment in customer.Payments)
+                                            {
+                                                <tr>
+                                                    <td><a asp-action="Details" asp-route-id="@payment.Id">@payment.PaymentNumber</a></td>
+                                                    <td>@payment.PaymentDate.ToString("dd/MM/yyyy")</td>
+                                                    <td>
+                                                        @if (payment.Invoice != null)
+                                                        {
+                                                            <a asp-controller="Invoices" asp-action="Details" asp-route-id="@payment.InvoiceId">@payment.Invoice.InvoiceNumber</a>
+                                                        }
+                                                    </td>
+                                                    <td><strong>@FormatCurrency(payment.Amount)</strong></td>
+                                                    <td>@payment.PaymentMethod</td>
+                                                    <td><small>@payment.ReferenceNumber</small></td>
+                                                    <td>
+                                                        <div class="btn-group btn-group-sm" role="group">
+                                                            <a asp-action="Details" asp-route-id="@payment.Id" class="btn btn-outline-info" title="View">
+                                                                <i class="bi bi-eye"></i>
+                                                            </a>
+                                                            <a asp-action="Edit" asp-route-id="@payment.Id" class="btn btn-outline-primary" title="Edit">
+                                                                <i class="bi bi-pencil"></i>
+                                                            </a>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                        <tfoot class="table-info">
+                                            <tr>
+                                                <th colspan="3">Total</th>
+                                                <th>@FormatCurrency(customer.TotalAmount)</th>
+                                                <th colspan="3"></th>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <!-- By Payment Method Tab -->
+    <div class="tab-pane fade" id="by-methods" role="tabpanel" aria-labelledby="methods-tab">
+        @if (!methodGroups.Any())
+        {
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> No payments found.
+            </div>
+        }
+        else
+        {
+            <!-- Method Summary Cards -->
+            <div class="row mb-3">
+                @foreach (var method in methodGroups)
+                {
+                    var percentage = totalAmount > 0 ? (method.TotalAmount / totalAmount * 100) : 0;
+                    <div class="col-md-3 mb-2">
+                        <div class="card border-primary shadow-sm h-100">
+                            <div class="card-body py-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <small class="text-muted">@method.Method</small>
+                                        <h5 class="mb-0">@FormatCurrency(method.TotalAmount)</h5>
+                                    </div>
+                                    <div class="text-end">
+                                        <span class="badge bg-primary">@method.PaymentCount</span>
+                                        <br><small class="text-muted">@percentage.ToString("0.0")%</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+            
+            <div class="accordion" id="methodAccordion">
+                @foreach (var method in methodGroups)
+                {
+                    var accordionId = $"method-{Math.Abs(method.Method?.GetHashCode() ?? 0)}";
+                    var iconClass = method.Method?.ToLower() switch {
+                        "cash" => "bi-cash-coin",
+                        "cheque" or "check" => "bi-file-text",
+                        "bank transfer" => "bi-bank",
+                        "credit card" => "bi-credit-card",
+                        _ => "bi-wallet2"
+                    };
+                    
+                    <div class="card border-primary shadow-sm mb-2">
+                        <div class="card-header bg-primary bg-opacity-10" id="heading-@accordionId">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <button class="btn btn-link text-decoration-none collapsed p-0" type="button" 
+                                        data-bs-toggle="collapse" data-bs-target="#collapse-@accordionId">
+                                    <i class="bi @iconClass me-2"></i>
+                                    <strong>@method.Method</strong>
+                                    <span class="badge bg-primary ms-2">@method.PaymentCount payments</span>
+                                </button>
+                                <div class="text-end">
+                                    <span class="badge bg-success fs-6">@FormatCurrency(method.TotalAmount)</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="collapse-@accordionId" class="collapse" data-bs-parent="#methodAccordion">
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Payment #</th>
+                                                <th>Date</th>
+                                                <th>Invoice #</th>
+                                                <th>Supplier/Customer</th>
+                                                <th>Amount</th>
+                                                <th>Reference</th>
+                                                <th>Status</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var payment in method.Payments)
+                                            {
+                                                string entityName = "";
+                                                if (payment.Invoice != null)
+                                                {
+                                                    entityName = payment.Invoice.InvoiceType == "Supplier" 
+                                                        ? (payment.Invoice.Supplier?.SupplierName ?? payment.Invoice.CustomerName ?? "")
+                                                        : (payment.Invoice.CustomerName ?? "");
+                                                }
+                                                
+                                                var statusClass = payment.Status == "Fully Allocated" ? "bg-success" : 
+                                                              payment.Status == "Partially Allocated" ? "bg-warning text-dark" : "bg-secondary";
+                                                <tr>
+                                                    <td><a asp-action="Details" asp-route-id="@payment.Id">@payment.PaymentNumber</a></td>
+                                                    <td>@payment.PaymentDate.ToString("dd/MM/yyyy")</td>
+                                                    <td>
+                                                        @if (payment.Invoice != null)
+                                                        {
+                                                            <a asp-controller="Invoices" asp-action="Details" asp-route-id="@payment.InvoiceId">@payment.Invoice.InvoiceNumber</a>
+                                                        }
+                                                    </td>
+                                                    <td>@entityName</td>
+                                                    <td><strong>@FormatCurrency(payment.Amount)</strong></td>
+                                                    <td><small>@payment.ReferenceNumber</small></td>
+                                                    <td><span class="badge @statusClass">@payment.Status</span></td>
+                                                    <td>
+                                                        <div class="btn-group btn-group-sm" role="group">
+                                                            <a asp-action="Details" asp-route-id="@payment.Id" class="btn btn-outline-info" title="View">
+                                                                <i class="bi bi-eye"></i>
+                                                            </a>
+                                                            <a asp-action="Edit" asp-route-id="@payment.Id" class="btn btn-outline-primary" title="Edit">
+                                                                <i class="bi bi-pencil"></i>
+                                                            </a>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                        <tfoot class="table-primary">
+                                            <tr>
+                                                <th colspan="4">Total</th>
+                                                <th>@FormatCurrency(method.TotalAmount)</th>
+                                                <th colspan="3"></th>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@if (monthlyTotals.Any())
+{
+<!-- Monthly Summary Chart -->
+<div class="card shadow mt-4">
+    <div class="card-header bg-light">
+        <h6 class="mb-0"><i class="bi bi-graph-up"></i> Monthly Payment Summary (@currentYear)</h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered mb-0">
+                <thead class="table-light">
+                    <tr>
+                        @for (int m = 1; m <= 12; m++)
+                        {
+                            <th class="text-center" style="width: 8.33%">@(new DateTime(2000, m, 1).ToString("MMM"))</th>
+                        }
+                        <th class="text-center bg-primary text-white">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        @{
+                            decimal yearTotal = 0;
+                            for (int m = 1; m <= 12; m++)
+                            {
+                                var monthTotal = monthlyTotals.FirstOrDefault(mt => mt.Month == m)?.Total ?? 0;
+                                yearTotal += monthTotal;
+                                var hasValue = monthTotal > 0;
+                                <td class="text-center @(hasValue ? "table-success" : "")">
+                                    @if (hasValue)
+                                    {
+                                        <small>@FormatCurrency(monthTotal)</small>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                            }
+                        }
+                        <td class="text-center bg-primary text-white"><strong>@FormatCurrency(yearTotal)</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+}

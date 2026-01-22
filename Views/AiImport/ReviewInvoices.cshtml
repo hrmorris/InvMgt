@@ -1,0 +1,167 @@
+@model IEnumerable<Invoice>
+
+@{
+    ViewData["Title"] = "Review Extracted Invoices";
+}
+@functions {
+    public string FormatCurrency(decimal amount)
+    {
+        var settings = ViewData["CurrencySettings"] as CurrencySettings;
+        if (settings != null)
+        {
+            return CurrencyHelper.FormatCurrency(amount, settings);
+        }
+        return $"K {amount:N2}";
+    }
+    public string CurrencySymbol()
+    {
+        return ViewData["CurrencySymbol"]?.ToString() ?? "K";
+    }
+}
+
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-check-square"></i> Review Extracted Invoices</h1>
+</div>
+
+<div class="alert alert-warning">
+    <h5><i class="bi bi-exclamation-triangle"></i> Please Review Carefully</h5>
+    <p class="mb-0">The AI has extracted the following invoice data. Please verify accuracy before saving to the database.</p>
+</div>
+
+<form asp-action="SaveInvoices" method="post">
+    <div class="row">
+        @foreach (var invoice in Model)
+        {
+            var index = Model.ToList().IndexOf(invoice);
+            
+            <div class="col-md-6 mb-4">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="m-0">
+                            Invoice: @invoice.InvoiceNumber
+                            @if (invoice.Notes != null && (invoice.Notes.Contains("[AI Confidence: high]") || !invoice.Notes.Contains("Confidence")))
+                            {
+                                <span class="badge bg-success float-end">High Confidence</span>
+                            }
+                            else if (invoice.Notes != null && invoice.Notes.Contains("[AI Confidence: medium]"))
+                            {
+                                <span class="badge bg-warning float-end">Medium Confidence</span>
+                            }
+                            else if (invoice.Notes != null && invoice.Notes.Contains("[AI Confidence: low]"))
+                            {
+                                <span class="badge bg-danger float-end">Low Confidence</span>
+                            }
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        @if (invoice.Notes != null && invoice.Notes.Contains("[Warning:"))
+                        {
+                            <div class="alert alert-warning alert-sm mb-3">
+                                <i class="bi bi-exclamation-triangle"></i> 
+                                <strong>AI Notice:</strong> Please verify carefully - 
+                                @{
+                                    var warningStart = invoice.Notes.IndexOf("[Warning:");
+                                    var warningEnd = invoice.Notes.IndexOf("]", warningStart);
+                                    var warning = invoice.Notes.Substring(warningStart + 10, warningEnd - warningStart - 10);
+                                }
+                                @warning
+                            </div>
+                        }
+                        <dl class="row">
+                            <dt class="col-sm-4">Invoice Number:</dt>
+                            <dd class="col-sm-8"><strong>@invoice.InvoiceNumber</strong></dd>
+
+                            <dt class="col-sm-4">Date:</dt>
+                            <dd class="col-sm-8">@invoice.InvoiceDate.ToString("dd/MM/yyyy")</dd>
+
+                            <dt class="col-sm-4">Due Date:</dt>
+                            <dd class="col-sm-8">@invoice.DueDate.ToString("dd/MM/yyyy")</dd>
+
+                            <dt class="col-sm-4">Customer:</dt>
+                            <dd class="col-sm-8">@invoice.CustomerName</dd>
+
+                            @if (!string.IsNullOrEmpty(invoice.CustomerEmail))
+                            {
+                                <dt class="col-sm-4">Email:</dt>
+                                <dd class="col-sm-8">@invoice.CustomerEmail</dd>
+                            }
+
+                            @if (!string.IsNullOrEmpty(invoice.CustomerPhone))
+                            {
+                                <dt class="col-sm-4">Phone:</dt>
+                                <dd class="col-sm-8">@invoice.CustomerPhone</dd>
+                            }
+
+                            <dt class="col-sm-4">Total Amount:</dt>
+                            <dd class="col-sm-8"><strong class="text-success">@FormatCurrency(invoice.TotalAmount)</strong></dd>
+                        </dl>
+
+                        @if (invoice.InvoiceItems.Any())
+                        {
+                            <hr />
+                            <h6>Line Items (@invoice.InvoiceItems.Count):</h6>
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Description</th>
+                                        <th>Qty</th>
+                                        <th>Price</th>
+                                        <th>Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in invoice.InvoiceItems)
+                                    {
+                                        <tr>
+                                            <td>@item.Description</td>
+                                            <td>@item.Quantity</td>
+                                            <td>@FormatCurrency(item.UnitPrice)</td>
+                                            <td>@FormatCurrency(item.TotalPrice)</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+
+                        @if (!string.IsNullOrEmpty(invoice.Notes))
+                        {
+                            <hr />
+                            <p class="small mb-0"><strong>Notes:</strong> @invoice.Notes</p>
+                        }
+                    </div>
+                    <div class="card-footer">
+                        <div class="btn-group w-100" role="group">
+                            <a asp-action="ViewInvoice" asp-route-index="@index" class="btn btn-info btn-sm">
+                                <i class="bi bi-eye"></i> View
+                            </a>
+                            <a asp-action="EditInvoice" asp-route-index="@index" class="btn btn-primary btn-sm">
+                                <i class="bi bi-pencil"></i> Edit
+                            </a>
+                            <a asp-action="DeleteInvoice" asp-route-index="@index" class="btn btn-danger btn-sm">
+                                <i class="bi bi-trash"></i> Delete
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="text-center mt-4">
+        <button type="submit" class="btn btn-success btn-lg px-5">
+            <i class="bi bi-check-circle"></i> Save All Invoices to Database (@Model.Count())
+        </button>
+        <a asp-action="Invoice" class="btn btn-secondary btn-lg px-4 ms-2">
+            <i class="bi bi-x-circle"></i> Cancel
+        </a>
+    </div>
+</form>
+
+<div class="mt-3 text-muted text-center">
+    <small>
+        <i class="bi bi-info-circle"></i> 
+        You can view details, edit any field, or remove invoices before saving to the database.
+    </small>
+</div>
+

@@ -1,0 +1,270 @@
+@model InvoiceManagement.Models.Requisition
+
+@{
+    ViewData["Title"] = "Create Requisition";
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-file-earmark-plus"></i> Create Purchase Requisition</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-body">
+                <form asp-action="Create" method="post">
+                    @Html.AntiForgeryToken()
+                    <div asp-validation-summary="All" class="alert alert-danger"></div>
+
+                    <h5 class="mb-3"><i class="bi bi-info-circle"></i> Requisition Information</h5>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="RequisitionNumber" class="form-label">
+                                Requisition Number *
+                            </label>
+                            <input asp-for="RequisitionNumber" class="form-control" readonly />
+                            <small class="text-muted">Auto-generated</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="RequisitionDate" class="form-label">
+                                Requisition Date *
+                            </label>
+                            <input asp-for="RequisitionDate" class="form-control" type="date" required />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="RequestedBy" class="form-label">
+                                Requested By (Your Name) *
+                            </label>
+                            <input asp-for="RequestedBy" class="form-control" required placeholder="Your full name" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Department" class="form-label">
+                                Department *
+                            </label>
+                            <input asp-for="Department" class="form-control" required placeholder="e.g., Pharmacy, Maintenance" />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="FacilityType" class="form-label">
+                                Facility Type *
+                            </label>
+                            <select asp-for="FacilityType" class="form-select" required>
+                                <option value="">-- Select Facility Type --</option>
+                                <option value="Health Facility">Health Facility (Outstation)</option>
+                                <option value="Hospital Unit">Hospital Unit</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Purpose" class="form-label">
+                                Purpose *
+                            </label>
+                            <input asp-for="Purpose" class="form-control" required placeholder="Reason for this requisition" />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="CostCode" class="form-label">
+                                Cost Code *
+                            </label>
+                            <input asp-for="CostCode" class="form-control" required placeholder="e.g., CC-001" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="BudgetCode" class="form-label">
+                                Budget Code *
+                            </label>
+                            <input asp-for="BudgetCode" class="form-control" required placeholder="e.g., BGT-2025-Q1" />
+                        </div>
+                    </div>
+
+                    <hr>
+                    <h5 class="mb-3"><i class="bi bi-list-ul"></i> Requisition Items</h5>
+
+                    <div id="items-container">
+                        <div class="card mb-3 item-card">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4 mb-2">
+                                        <label class="form-label">Item Description *</label>
+                                        <input type="text" name="items[0].ItemDescription" class="form-control" required placeholder="Item name" />
+                                    </div>
+                                    <div class="col-md-2 mb-2">
+                                        <label class="form-label">Item Code</label>
+                                        <input type="text" name="items[0].ItemCode" class="form-control" placeholder="Optional" />
+                                    </div>
+                                    <div class="col-md-2 mb-2">
+                                        <label class="form-label">Quantity *</label>
+                                        <input type="number" name="items[0].QuantityRequested" class="form-control" required min="1" value="1" />
+                                    </div>
+                                    <div class="col-md-2 mb-2">
+                                        <label class="form-label">Unit *</label>
+                                        <select name="items[0].Unit" class="form-select" required>
+                                            <option value="Pcs">Pcs</option>
+                                            <option value="Box">Box</option>
+                                            <option value="Carton">Carton</option>
+                                            <option value="Kg">Kg</option>
+                                            <option value="Liter">Liter</option>
+                                            <option value="Set">Set</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2 mb-2">
+                                        <label class="form-label">Est. Unit Price</label>
+                                        <input type="number" name="items[0].EstimatedUnitPrice" class="form-control" step="0.01" min="0" value="0" />
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <label class="form-label">Justification</label>
+                                        <textarea name="items[0].Justification" class="form-control" rows="2" placeholder="Why is this item needed?"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn btn-outline-primary mb-3" onclick="addItem()">
+                        <i class="bi bi-plus-circle"></i> Add Another Item
+                    </button>
+
+                    <hr>
+
+                    <div class="mb-3">
+                        <label asp-for="Notes" class="form-label">
+                            Additional Notes
+                        </label>
+                        <textarea asp-for="Notes" class="form-control" rows="3" placeholder="Any additional information"></textarea>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle"></i> Submit Requisition
+                        </button>
+                        <a asp-action="Index" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow mb-3">
+            <div class="card-header bg-primary text-white">
+                <i class="bi bi-info-circle"></i> Approval Workflow
+            </div>
+            <div class="card-body">
+                <h6>Your requisition will go through:</h6>
+                <ol class="mb-0">
+                    <li><strong>Supervisor</strong> - Initial review</li>
+                    <li><strong>Finance Officer</strong> - Budget & cost check</li>
+                    <li><strong>Final Approver</strong> - Health Manager or Hospital Executive</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="card shadow mb-3">
+            <div class="card-header bg-info text-white">
+                <i class="bi bi-lightbulb"></i> Tips
+            </div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li>Provide detailed item descriptions</li>
+                    <li>Include justification for each item</li>
+                    <li>Ensure cost codes are accurate</li>
+                    <li>Estimate prices as accurately as possible</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card shadow">
+            <div class="card-header bg-warning">
+                <i class="bi bi-exclamation-triangle"></i> Important
+            </div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li>All fields marked with * are required</li>
+                    <li>Ensure budget code is valid</li>
+                    <li>You can add multiple items</li>
+                    <li>Cannot edit after submission</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        let itemCount = 1;
+
+        function addItem() {
+            const container = document.getElementById('items-container');
+            const newItem = document.createElement('div');
+            newItem.className = 'card mb-3 item-card';
+            newItem.innerHTML = `
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <h6>Item ${itemCount + 1}</h6>
+                        <button type="button" class="btn btn-sm btn-danger" onclick="removeItem(this)">
+                            <i class="bi bi-trash"></i> Remove
+                        </button>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-2">
+                            <label class="form-label">Item Description *</label>
+                            <input type="text" name="items[${itemCount}].ItemDescription" class="form-control" required placeholder="Item name" />
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            <label class="form-label">Item Code</label>
+                            <input type="text" name="items[${itemCount}].ItemCode" class="form-control" placeholder="Optional" />
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            <label class="form-label">Quantity *</label>
+                            <input type="number" name="items[${itemCount}].QuantityRequested" class="form-control" required min="1" value="1" />
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            <label class="form-label">Unit *</label>
+                            <select name="items[${itemCount}].Unit" class="form-select" required>
+                                <option value="Pcs">Pcs</option>
+                                <option value="Box">Box</option>
+                                <option value="Carton">Carton</option>
+                                <option value="Kg">Kg</option>
+                                <option value="Liter">Liter</option>
+                                <option value="Set">Set</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            <label class="form-label">Est. Unit Price</label>
+                            <input type="number" name="items[${itemCount}].EstimatedUnitPrice" class="form-control" step="0.01" min="0" value="0" />
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <label class="form-label">Justification</label>
+                            <textarea name="items[${itemCount}].Justification" class="form-control" rows="2" placeholder="Why is this item needed?"></textarea>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(newItem);
+            itemCount++;
+        }
+
+        function removeItem(button) {
+            button.closest('.item-card').remove();
+        }
+    </script>
+}
+

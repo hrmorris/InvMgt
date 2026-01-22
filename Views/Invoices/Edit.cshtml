@@ -1,0 +1,876 @@
+@model Invoice
+
+@{
+    ViewData["Title"] = "Edit Invoice";
+    var availablePayments = ViewBag.AvailablePayments as List<Payment> ?? new List<Payment>();
+    var suppliers = ViewBag.Suppliers as List<Supplier> ?? new List<Supplier>();
+    var isSupplierInvoice = Model.InvoiceType == "Supplier" || Model.SupplierId.HasValue;
+}
+@functions {
+    public string FormatCurrency(decimal amount)
+    {
+        var settings = ViewData["CurrencySettings"] as CurrencySettings;
+        if (settings != null)
+        {
+            return CurrencyHelper.FormatCurrency(amount, settings);
+        }
+        return $"K {amount:N2}";
+    }
+    public string CurrencySymbol()
+    {
+        return ViewData["CurrencySymbol"]?.ToString() ?? "K";
+    }
+}
+
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-pencil-square"></i> Edit Invoice</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-action="Index" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle"></i> @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle"></i> @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> <strong>Edit Mode:</strong> You can modify all invoice details including line
+    items. Totals will be recalculated automatically.
+</div>
+
+@if (Model.Status == "Paid" || Model.Status == "Partially Paid" || Model.PaidAmount > 0)
+{
+    <div class="alert alert-warning d-flex justify-content-between align-items-center">
+        <div>
+            <i class="bi bi-exclamation-triangle"></i>
+            <strong>Payment Status:</strong> This invoice is <span
+                class="badge bg-@(Model.Status == "Paid" ? "success" : "warning")">@Model.Status</span>
+            with @FormatCurrency(Model.PaidAmount) allocated.
+        </div>
+        <form asp-action="MarkUnpaid" method="post" class="d-inline"
+            onsubmit="return confirm('Are you sure you want to mark this invoice as Unpaid? This will remove ALL payment allocations and make them available for reallocation.');">
+            <input type="hidden" name="id" value="@Model.Id" />
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-warning">
+                <i class="bi bi-arrow-counterclockwise"></i> Mark as Unpaid
+            </button>
+        </form>
+    </div>
+}
+
+<form asp-action="Edit" method="post">
+    <input type="hidden" asp-for="Id" />
+    <input type="hidden" asp-for="CreatedDate" />
+    <input type="hidden" asp-for="PaidAmount" />
+    <input type="hidden" asp-for="Status" />
+
+    @if (!ViewData.ModelState.IsValid && ViewData.ModelState[""]?.Errors.Any() == true)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle"></i>
+            <strong>Error:</strong>
+            @foreach (var error in ViewData.ModelState[""].Errors)
+            {
+                <div>@error.ErrorMessage</div>
+            }
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="card shadow">
+        <div class="card-body">
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+            <div class="row">
+                <!-- Invoice Information -->
+                <div class="col-md-6">
+                    <h5 class="mb-3">Invoice Information</h5>
+
+                    <div class="mb-3">
+                        <label asp-for="InvoiceNumber" class="form-label"></label>
+                        <input asp-for="InvoiceNumber" class="form-control" required />
+                        <span asp-validation-for="InvoiceNumber" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="InvoiceDate" class="form-label"></label>
+                        <input asp-for="InvoiceDate" class="form-control" type="date" required />
+                        <span asp-validation-for="InvoiceDate" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="InvoiceType" class="form-label">Invoice Type</label>
+                        <select asp-for="InvoiceType" class="form-select" id="invoiceTypeSelect">
+                            <option value="Supplier">Supplier Invoice (Payable - from supplier to us)</option>
+                            <option value="Customer">Customer Invoice (Receivable - from us to customer)</option>
+                        </select>
+                        <small class="form-text text-muted">Select Supplier if this invoice is FROM a supplier TO your
+                            organization</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="DueDate" class="form-label"></label>
+                        <input asp-for="DueDate" class="form-control" type="date" required />
+                        <span asp-validation-for="DueDate" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Notes" class="form-label"></label>
+                        <textarea asp-for="Notes" class="form-control" rows="3"></textarea>
+                        <span asp-validation-for="Notes" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <!-- Customer/Supplier Information -->
+                <div class="col-md-6">
+                    <h5 class="mb-3" id="partyInfoHeader">@(isSupplierInvoice ? "Supplier" : "Customer") Information
+                    </h5>
+                    <small class="text-muted d-block mb-3" id="partyInfoHint">@(isSupplierInvoice ? "Supplier details                   (who is billing you)" : "Customer details (who you are billing)")</small>
+
+                    <!-- Supplier Selection (shown when Supplier invoice type) -->
+                    <div class="mb-3" id="supplierSelectSection" style="@(isSupplierInvoice ? "" : "display:none")">
+                        <label asp-for="SupplierId" class="form-label">Supplier</label>
+                        <select asp-for="SupplierId" class="form-select" id="supplierSelect"
+                            onchange="updateSupplierInfo()">
+                            <option value="">-- Select Supplier --</option>
+                            @foreach (var supplier in suppliers)
+                            {
+                                if (Model.SupplierId == supplier.Id)
+                                {
+                                    <option value="@supplier.Id" data-name="@supplier.SupplierName"
+                                        data-address="@supplier.Address" data-email="@supplier.Email"
+                                        data-phone="@supplier.Phone" selected>@supplier.SupplierName</option>
+                                }
+                                else
+                                {
+                                    <option value="@supplier.Id" data-name="@supplier.SupplierName"
+                                        data-address="@supplier.Address" data-email="@supplier.Email"
+                                        data-phone="@supplier.Phone">@supplier.SupplierName</option>
+                                }
+                            }
+                        </select>
+                        <small class="form-text text-muted">Or enter manually below if supplier is not in the
+                            list</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="CustomerName" class="form-label" id="customerNameLabel">@(isSupplierInvoice ?
+                                                        "Supplier Name (Manual Entry)" : "Customer Name")</label>
+                        <div class="input-group">
+                            <input asp-for="CustomerName" class="form-control" id="CustomerName" />
+                            <button type="button" class="btn btn-success" id="createSupplierBtn" 
+                                    onclick="createNewSupplier()" title="Create new supplier from entered details"
+                                    style="@(isSupplierInvoice ? "" : "display:none")">
+                                <i class="bi bi-plus-circle"></i> Create Supplier
+                            </button>
+                        </div>
+                        <span asp-validation-for="CustomerName" class="text-danger"></span>
+                        <small class="form-text text-muted" id="createSupplierHint" style="@(isSupplierInvoice ? "" : "display:none")">
+                            Click "Create Supplier" to add this as a new supplier to your supplier list
+                        </small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="CustomerAddress" class="form-label"
+                            id="customerAddressLabel">@(isSupplierInvoice ? "Supplier Address" : "Customer                   Address")</label>
+                        <textarea asp-for="CustomerAddress" class="form-control" rows="2"
+                            id="CustomerAddress"></textarea>
+                        <span asp-validation-for="CustomerAddress" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="CustomerEmail" class="form-label" id="customerEmailLabel">@(isSupplierInvoice ?
+                                                        "Supplier Email" : "Customer Email")</label>
+                        <input asp-for="CustomerEmail" class="form-control" type="email" id="CustomerEmail" />
+                        <span asp-validation-for="CustomerEmail" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="CustomerPhone" class="form-label" id="customerPhoneLabel">@(isSupplierInvoice ?
+                                                        "Supplier Phone" : "Customer Phone")</label>
+                        <input asp-for="CustomerPhone" class="form-control" id="CustomerPhone" />
+                        <span asp-validation-for="CustomerPhone" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Line Items -->
+            <hr class="my-4" />
+            <h5 class="mb-3">Invoice Items</h5>
+
+            <div id="invoiceItems">
+                @if (Model.InvoiceItems != null && Model.InvoiceItems.Any())
+                {
+                    for (int i = 0; i < Model.InvoiceItems.Count; i++)
+                    {
+                        <div class="row mb-3 invoice-item">
+                            <input type="hidden" name="items[@i].Id" value="@Model.InvoiceItems.ElementAt(i).Id" />
+                            <input type="hidden" name="items[@i].InvoiceId"
+                                value="@Model.InvoiceItems.ElementAt(i).InvoiceId" />
+                            <div class="col-md-5">
+                                <label class="form-label">Description</label>
+                                <input type="text" name="items[@i].Description"
+                                    value="@Model.InvoiceItems.ElementAt(i).Description" class="form-control item-description"
+                                    required />
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Quantity</label>
+                                <input type="number" name="items[@i].Quantity" value="@Model.InvoiceItems.ElementAt(i).Quantity"
+                                    class="form-control item-quantity" min="1" onchange="calculateLineTotal(this)" required />
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Unit Price</label>
+                                <input type="number" name="items[@i].UnitPrice"
+                                    value="@Model.InvoiceItems.ElementAt(i).UnitPrice" class="form-control item-price"
+                                    step="0.0001" min="0" onchange="calculateLineTotal(this)" required />
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Total</label>
+                                <input type="text" value="@Model.InvoiceItems.ElementAt(i).TotalPrice.ToString("N2")"
+                                    class="form-control line-total" readonly />
+                            </div>
+                            <div class="col-md-1 d-flex align-items-end">
+                                <button type="button" class="btn btn-danger btn-sm w-100" onclick="removeItem(this)">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+
+            <button type="button" class="btn btn-secondary mb-3" onclick="addNewItem()">
+                <i class="bi bi-plus-circle"></i> Add Item
+            </button>
+
+            <!-- Summary -->
+            <div class="row mt-4">
+                <div class="col-md-8"></div>
+                <div class="col-md-4">
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h6>Invoice Summary</h6>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Subtotal:</span>
+                                <span id="displaySubtotal">@FormatCurrency(Model.SubTotal)</span>
+                            </div>
+
+                            <!-- GST Toggle and Custom Rate -->
+                            <div class="mb-2">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="gstEnabled" name="GSTEnabled"
+                                        value="true" @(Model.GSTEnabled ? "checked" : "")
+                                        onchange="updateGSTSettings()">
+                                    <input type="hidden" name="GSTEnabled" value="false" id="gstEnabledHidden"
+                                        @(Model.GSTEnabled ? "disabled" : "")>
+                                    <label class="form-check-label" for="gstEnabled">Include GST</label>
+                                </div>
+                            </div>
+                            <div id="gstRateSection" class="mb-2" style="@(Model.GSTEnabled ? "" : "display:none")">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text">GST Rate</span>
+                                    <input type="number" class="form-control" id="gstRateInput" name="GSTRate"
+                                        value="@Model.GSTRate" min="0" max="100" step="0.1"
+                                        onchange="calculateGrandTotal()">
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2" id="gstRow"
+                                style="@(Model.GSTEnabled ? "" : "display:none")">
+                                <span>GST (<span id="gstRateDisplay">@Model.GSTRate</span>%):</span>
+                                <span id="displayGST">@FormatCurrency(Model.GSTAmount)</span>
+                            </div>
+                            <hr />
+                            <div class="d-flex justify-content-between mb-3">
+                                <span><strong>Total Amount:</strong></span>
+                                <strong id="displayTotal">@FormatCurrency(Model.TotalAmount)</strong>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Paid Amount:</span>
+                                <strong class="text-success">@FormatCurrency(Model.PaidAmount)</strong>
+                            </div>
+                            <hr />
+                            <div class="d-flex justify-content-between">
+                                <span><strong>Balance:</strong></span>
+                                <strong class="text-danger"
+                                    id="displayBalance">@FormatCurrency(Model.BalanceAmount)</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-footer">
+            <button type="submit" class="btn btn-primary btn-lg" id="saveButton"
+                onclick="console.log('Save button clicked!');">
+                <i class="bi bi-check-circle"></i> Save Changes
+            </button>
+            <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-secondary btn-lg">
+                <i class="bi bi-x-circle"></i> Cancel
+            </a>
+        </div>
+    </div>
+</form>
+
+<!-- Payment Allocations Section -->
+@if (Model.BalanceAmount > 0)
+{
+    <div class="card shadow mt-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="m-0"><i class="bi bi-cash-coin"></i> Payment Allocations</h5>
+        </div>
+        <div class="card-body">
+            @* Show error/success messages prominently in the allocation section *@
+            @if (TempData["ErrorMessage"] != null)
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="bi bi-exclamation-triangle"></i> <strong>Allocation Error:</strong> @TempData["ErrorMessage"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+            @if (TempData["SuccessMessage"] != null)
+            {
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="bi bi-check-circle"></i> @TempData["SuccessMessage"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+            @if (Model.PaymentAllocations != null && Model.PaymentAllocations.Any())
+            {
+                <h6 class="mb-3"><i class="bi bi-link-45deg"></i> Current Payment Allocations</h6>
+                <div class="alert alert-info mb-3">
+                    <i class="bi bi-info-circle"></i> <strong>Tip:</strong> You can unallocate any payment to make it available
+                    for other invoices.
+                </div>
+                <div class="table-responsive mb-4">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Payment #</th>
+                                <th>Payment Date</th>
+                                <th>Payment Method</th>
+                                <th>Amount Allocated</th>
+                                <th>Allocation Date</th>
+                                <th>Notes</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var allocation in Model.PaymentAllocations)
+                            {
+                                <tr>
+                                    <td>
+                                        <a asp-controller="Payments" asp-action="Details" asp-route-id="@allocation.PaymentId"
+                                            class="text-decoration-none">
+                                            <i class="bi bi-receipt"></i> <strong>@allocation.Payment?.PaymentNumber</strong>
+                                        </a>
+                                    </td>
+                                    <td>@allocation.Payment?.PaymentDate.ToString("dd/MM/yyyy")</td>
+                                    <td>
+                                        <span class="badge bg-secondary">@allocation.Payment?.PaymentMethod</span>
+                                    </td>
+                                    <td><strong class="text-success">@FormatCurrency(allocation.AllocatedAmount)</strong></td>
+                                    <td>@allocation.AllocationDate.ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td>@(allocation.Notes ?? "-")</td>
+                                    <td>
+                                        <form asp-controller="Invoices" asp-action="RemovePaymentAllocation" method="post"
+                                            class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="allocationId" value="@allocation.Id" />
+                                            <input type="hidden" name="invoiceId" value="@Model.Id" />
+                                            <button type="submit" class="btn btn-sm btn-warning"
+                                                onclick="return confirm('Unallocate this payment? This will make the payment available for other invoices and update this invoice balance.')">
+                                                <i class="bi bi-arrow-counterclockwise"></i> Unallocate
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot class="table-light">
+                            <tr>
+                                <td colspan="3"><strong>Total Allocated to this Invoice:</strong></td>
+                                <td colspan="4"><strong class="text-success">@FormatCurrency(Model.PaidAmount)</strong></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            }
+
+            @if (availablePayments.Any())
+            {
+                <h6 class="mb-3">
+                    <i class="bi bi-plus-circle"></i> Allocate Payment to This Invoice
+                </h6>
+                <form asp-controller="Invoices" asp-action="AllocatePayment" method="post" id="allocationForm">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="invoiceId" value="@Model.Id" />
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="paymentId" class="form-label">Select Payment</label>
+                            <select name="paymentId" id="paymentId" class="form-select" required onchange="updatePaymentInfo()">
+                                <option value="">-- Select a Payment --</option>
+                                @foreach (var payment in availablePayments)
+                                {
+                                    <option value="@payment.Id" data-amount="@payment.Amount"
+                                        data-unallocated="@payment.UnallocatedAmount"
+                                        data-date="@payment.PaymentDate.ToString("dd/MM/yyyy")" data-method="@payment.PaymentMethod"
+                                        data-number="@payment.PaymentNumber">
+                                        @payment.PaymentNumber - @payment.PaymentDate.ToString("dd/MM/yyyy") (Unallocated:
+                                        @FormatCurrency(payment.UnallocatedAmount))
+                                    </option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="amount" class="form-label">Amount to Allocate</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" name="amount" id="amount" class="form-control" step="0.01" min="0.01"
+                                    value="@Math.Round(Model.BalanceAmount, 2)" required />
+                            </div>
+                            <small class="form-text text-muted">
+                                Max: @FormatCurrency(Model.BalanceAmount) (invoice balance)
+                            </small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3" id="paymentInfo" style="display: none;">
+                        <div class="alert alert-secondary">
+                            <strong>Payment Details:</strong><br />
+                            <span id="paymentDetails"></span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes (Optional)</label>
+                        <textarea name="notes" id="notes" class="form-control" rows="2"
+                    placeholder="Add any notes about this allocation"></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-success btn-lg">
+                        <i class="bi bi-plus-circle"></i> Allocate Payment to Invoice
+                    </button>
+                </form>
+            }
+            else
+            {
+                <div class="alert alert-warning">
+                    <i class="bi bi-info-circle"></i> No available payments to allocate. All payments are either fully allocated
+                    or there are no unallocated payments in the system.
+                </div>
+            }
+        </div>
+    </div>
+}
+else if (Model.BalanceAmount <= 0)
+{
+    <div class="alert alert-success mt-4">
+        <i class="bi bi-check-circle-fill"></i> <strong>Invoice Fully Paid!</strong> This invoice has been fully paid.
+    </div>
+}
+
+@section Scripts {
+    <script>
+        let itemCounter = @(Model.InvoiceItems?.Count ?? 0);
+        const paidAmount = @Model.PaidAmount;
+
+        function addNewItem() {
+            const itemsContainer = document.getElementById('invoiceItems');
+            console.log('Adding item with index:', itemCounter);
+            const newItem = `
+                                                                <div class="row mb-3 invoice-item">
+                                                                    <input type="hidden" name="items[${itemCounter}].Id" value="0" />
+                                                                    <input type="hidden" name="items[${itemCounter}].InvoiceId" value="@Model.Id" />
+                                                                    <div class="col-md-5">
+                                                                        <label class="form-label">Description</label>
+                                                                        <input type="text" name="items[${itemCounter}].Description" class="form-control item-description" required />
+                                                                    </div>
+                                                                    <div class="col-md-2">
+                                                                        <label class="form-label">Quantity</label>
+                                                                        <input type="number" name="items[${itemCounter}].Quantity" class="form-control item-quantity" min="1" value="1" onchange="calculateLineTotal(this)" required />
+                                                                    </div>
+                                                                    <div class="col-md-2">
+                                                                        <label class="form-label">Unit Price</label>
+                                                                        <input type="number" name="items[${itemCounter}].UnitPrice" class="form-control item-price" step="0.0001" min="0" value="0" onchange="calculateLineTotal(this)" required />
+                                                                    </div>
+                                                                    <div class="col-md-2">
+                                                                        <label class="form-label">Total</label>
+                                                                        <input type="text" class="form-control line-total" value="0.00" readonly />
+                                                                    </div>
+                                                                    <div class="col-md-1 d-flex align-items-end">
+                                                                        <button type="button" class="btn btn-danger btn-sm w-100" onclick="removeItem(this)">
+                                                                            <i class="bi bi-trash"></i>
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            `;
+            itemsContainer.insertAdjacentHTML('beforeend', newItem);
+            itemCounter++;
+            console.log('Item added, new counter:', itemCounter);
+            console.log('Total items now:', document.querySelectorAll('.invoice-item').length);
+            calculateGrandTotal();
+        }
+
+        function removeItem(button) {
+            if (document.querySelectorAll('.invoice-item').length > 1) {
+                button.closest('.invoice-item').remove();
+                reindexItems(); // Reindex items after removal
+                calculateGrandTotal();
+            } else {
+                alert('Cannot remove the last item. An invoice must have at least one item.');
+            }
+        }
+
+        function reindexItems() {
+            // Reindex all items to ensure sequential naming for model binding
+            const items = document.querySelectorAll('.invoice-item');
+            items.forEach((item, index) => {
+                // Update hidden fields
+                const hiddenId = item.querySelector('input[name*=".Id"]');
+                const hiddenInvoiceId = item.querySelector('input[name*=".InvoiceId"]');
+                const descInput = item.querySelector('.item-description');
+                const qtyInput = item.querySelector('.item-quantity');
+                const priceInput = item.querySelector('.item-price');
+
+                if (hiddenId) hiddenId.name = `items[${index}].Id`;
+                if (hiddenInvoiceId) hiddenInvoiceId.name = `items[${index}].InvoiceId`;
+                if (descInput) descInput.name = `items[${index}].Description`;
+                if (qtyInput) qtyInput.name = `items[${index}].Quantity`;
+                if (priceInput) priceInput.name = `items[${index}].UnitPrice`;
+            });
+            itemCounter = items.length;
+        }
+
+        function calculateLineTotal(element) {
+            const row = element.closest('.invoice-item');
+            const quantity = parseFloat(row.querySelector('.item-quantity')?.value || 0);
+            const price = parseFloat(row.querySelector('.item-price')?.value || 0);
+            const total = quantity * price;
+            const totalField = row.querySelector('.line-total');
+            if (totalField) {
+                totalField.value = total.toFixed(2);
+            }
+            calculateGrandTotal();
+        }
+
+        function calculateGrandTotal() {
+            let subtotal = 0;
+            document.querySelectorAll('.invoice-item').forEach(row => {
+                const quantity = parseFloat(row.querySelector('.item-quantity')?.value || 0);
+                const price = parseFloat(row.querySelector('.item-price')?.value || 0);
+                subtotal += quantity * price;
+            });
+
+            // Calculate GST and total based on settings
+            const gstEnabled = document.getElementById('gstEnabled').checked;
+            const gstRateInput = parseFloat(document.getElementById('gstRateInput').value) || 0;
+            const gstRate = gstEnabled ? (gstRateInput / 100) : 0;
+            const gstAmount = subtotal * gstRate;
+            const totalAmount = subtotal + gstAmount;
+
+            // Update display
+            document.getElementById('displaySubtotal').textContent = '@ViewBag.CurrencySymbol' + subtotal.toFixed(2);
+            document.getElementById('displayGST').textContent = '@ViewBag.CurrencySymbol' + gstAmount.toFixed(2);
+            document.getElementById('gstRateDisplay').textContent = gstRateInput.toFixed(1);
+            document.getElementById('displayTotal').textContent = '@ViewBag.CurrencySymbol' + totalAmount.toFixed(2);
+            const balance = totalAmount - paidAmount;
+            document.getElementById('displayBalance').textContent = '@ViewBag.CurrencySymbol' + balance.toFixed(2);
+        }
+
+        function updateGSTSettings() {
+            const gstEnabled = document.getElementById('gstEnabled').checked;
+            const gstRateSection = document.getElementById('gstRateSection');
+            const gstRow = document.getElementById('gstRow');
+            const gstEnabledHidden = document.getElementById('gstEnabledHidden');
+
+            if (gstEnabled) {
+                gstRateSection.style.display = 'block';
+                gstRow.style.display = 'flex';
+                if (gstEnabledHidden) gstEnabledHidden.disabled = true;
+            } else {
+                gstRateSection.style.display = 'none';
+                gstRow.style.display = 'none';
+                if (gstEnabledHidden) gstEnabledHidden.disabled = false;
+            }
+
+            calculateGrandTotal();
+        }
+
+        // Add event listeners to existing items
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.item-quantity, .item-price').forEach(input => {
+                input.addEventListener('change', function () {
+                    calculateLineTotal(this);
+                });
+            });
+            calculateGrandTotal();
+        });
+
+        // Payment allocation functions
+        function updatePaymentInfo() {
+            const select = document.getElementById('paymentId');
+            const infoDiv = document.getElementById('paymentInfo');
+            const detailsSpan = document.getElementById('paymentDetails');
+            const amountInput = document.getElementById('amount');
+
+            if (select.value) {
+                const selectedOption = select.options[select.selectedIndex];
+                const unallocated = parseFloat(selectedOption.getAttribute('data-unallocated'));
+                const totalAmount = parseFloat(selectedOption.getAttribute('data-amount'));
+                const date = selectedOption.getAttribute('data-date');
+                const method = selectedOption.getAttribute('data-method');
+                const number = selectedOption.getAttribute('data-number');
+                const invoiceBalance = Math.round(@Model.BalanceAmount * 100) / 100; // Round to 2 decimals
+
+                // Suggest the smaller of unallocated payment or invoice balance (rounded)
+                const suggested = Math.round(Math.min(unallocated, invoiceBalance) * 100) / 100;
+                amountInput.value = suggested.toFixed(2);
+
+                detailsSpan.innerHTML = `
+                                                                    <strong>Payment Number:</strong> ${number}<br />
+                                                                    <strong>Date:</strong> ${date}<br />
+                                                                    <strong>Method:</strong> ${method}<br />
+                                                                    <strong>Total Payment:</strong> $${totalAmount.toFixed(2)}<br />
+                                                                    <strong>Unallocated:</strong> $${unallocated.toFixed(2)}<br />
+                                                                    <strong>Invoice Balance:</strong> $${invoiceBalance.toFixed(2)}<br />
+                                                                    <strong>Suggested Amount:</strong> $${suggested.toFixed(2)}
+                                                                `;
+                infoDiv.style.display = 'block';
+            } else {
+                infoDiv.style.display = 'none';
+                amountInput.value = (Math.round(@Model.BalanceAmount * 100) / 100).toFixed(2);
+            }
+        }
+
+        function validateAllocationAmount() {
+            // Server-side validation handles the actual limits
+            // This is just for user feedback
+            const amountInput = document.getElementById('amount');
+            const amount = parseFloat(amountInput.value);
+
+            if (amount <= 0) {
+                alert('Amount must be greater than zero');
+                amountInput.value = '0.01';
+            }
+        }
+
+        // Supplier auto-fill function
+        function updateSupplierInfo() {
+            const select = document.getElementById('supplierSelect');
+            if (select && select.value) {
+                const selectedOption = select.options[select.selectedIndex];
+                const nameInput = document.getElementById('CustomerName');
+                const addressInput = document.getElementById('CustomerAddress');
+                const emailInput = document.getElementById('CustomerEmail');
+                const phoneInput = document.getElementById('CustomerPhone');
+
+                if (nameInput) nameInput.value = selectedOption.getAttribute('data-name') || '';
+                if (addressInput) addressInput.value = selectedOption.getAttribute('data-address') || '';
+                if (emailInput) emailInput.value = selectedOption.getAttribute('data-email') || '';
+                if (phoneInput) phoneInput.value = selectedOption.getAttribute('data-phone') || '';
+            }
+        }
+
+        // Create new supplier from manual entry fields
+        async function createNewSupplier() {
+            const nameInput = document.getElementById('CustomerName');
+            const addressInput = document.getElementById('CustomerAddress');
+            const emailInput = document.getElementById('CustomerEmail');
+            const phoneInput = document.getElementById('CustomerPhone');
+            const supplierSelect = document.getElementById('supplierSelect');
+
+            const supplierName = nameInput?.value?.trim();
+            if (!supplierName) {
+                alert('Please enter a supplier name first');
+                nameInput?.focus();
+                return;
+            }
+
+            // Confirm creation
+            if (!confirm(`Create new supplier "${supplierName}"?`)) {
+                return;
+            }
+
+            const createBtn = document.getElementById('createSupplierBtn');
+            const originalHtml = createBtn.innerHTML;
+            createBtn.disabled = true;
+            createBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Creating...';
+
+            try {
+                const response = await fetch('@Url.Action("CreateSupplierFromInvoice", "Invoices")', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value
+                    },
+                    body: JSON.stringify({
+                        supplierName: supplierName,
+                        address: addressInput?.value || '',
+                        email: emailInput?.value || '',
+                        phone: phoneInput?.value || ''
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Add new option to supplier dropdown
+                    const newOption = document.createElement('option');
+                    newOption.value = result.supplierId;
+                    newOption.text = result.supplierName;
+                    newOption.setAttribute('data-name', supplierName);
+                    newOption.setAttribute('data-address', addressInput?.value || '');
+                    newOption.setAttribute('data-email', emailInput?.value || '');
+                    newOption.setAttribute('data-phone', phoneInput?.value || '');
+                    newOption.selected = true;
+                    supplierSelect.appendChild(newOption);
+
+                    // Update hidden SupplierId field
+                    supplierSelect.value = result.supplierId;
+
+                    // Show success message
+                    alert(result.message);
+
+                    // Change button to indicate success
+                    createBtn.innerHTML = '<i class="bi bi-check-circle"></i> Created!';
+                    createBtn.classList.remove('btn-success');
+                    createBtn.classList.add('btn-outline-success');
+                    setTimeout(() => {
+                        createBtn.innerHTML = originalHtml;
+                        createBtn.classList.remove('btn-outline-success');
+                        createBtn.classList.add('btn-success');
+                        createBtn.disabled = false;
+                    }, 2000);
+                } else {
+                    if (result.existingId) {
+                        // Supplier already exists, select it
+                        if (confirm(result.message + '\n\nWould you like to select the existing supplier?')) {
+                            supplierSelect.value = result.existingId;
+                            updateSupplierInfo();
+                        }
+                    } else {
+                        alert('Error: ' + result.message);
+                    }
+                    createBtn.innerHTML = originalHtml;
+                    createBtn.disabled = false;
+                }
+            } catch (error) {
+                console.error('Error creating supplier:', error);
+                alert('Error creating supplier. Please try again.');
+                createBtn.innerHTML = originalHtml;
+                createBtn.disabled = false;
+            }
+        }
+
+        // Handle Invoice Type change
+        function updateInvoiceType() {
+            const invoiceTypeSelect = document.getElementById('invoiceTypeSelect');
+            const isSupplier = invoiceTypeSelect.value === 'Supplier';
+
+            // Update header and hint text
+            const header = document.getElementById('partyInfoHeader');
+            const hint = document.getElementById('partyInfoHint');
+            if (header) header.textContent = isSupplier ? 'Supplier Information' : 'Customer Information';
+            if (hint) hint.textContent = isSupplier ? 'Supplier details (who is billing you)' : 'Customer details (who you are billing)';
+
+            // Show/hide supplier dropdown section
+            const supplierSection = document.getElementById('supplierSelectSection');
+            if (supplierSection) {
+                supplierSection.style.display = isSupplier ? 'block' : 'none';
+            }
+
+            // Show/hide Create Supplier button and hint
+            const createSupplierBtn = document.getElementById('createSupplierBtn');
+            const createSupplierHint = document.getElementById('createSupplierHint');
+            if (createSupplierBtn) createSupplierBtn.style.display = isSupplier ? '' : 'none';
+            if (createSupplierHint) createSupplierHint.style.display = isSupplier ? '' : 'none';
+
+            // Update labels
+            const nameLabel = document.getElementById('customerNameLabel');
+            const addressLabel = document.getElementById('customerAddressLabel');
+            const emailLabel = document.getElementById('customerEmailLabel');
+            const phoneLabel = document.getElementById('customerPhoneLabel');
+
+            if (nameLabel) nameLabel.textContent = isSupplier ? 'Supplier Name (Manual Entry)' : 'Customer Name';
+            if (addressLabel) addressLabel.textContent = isSupplier ? 'Supplier Address' : 'Customer Address';
+            if (emailLabel) emailLabel.textContent = isSupplier ? 'Supplier Email' : 'Customer Email';
+            if (phoneLabel) phoneLabel.textContent = isSupplier ? 'Supplier Phone' : 'Customer Phone';
+
+            // Clear supplier selection when switching to Customer type
+            if (!isSupplier) {
+                const supplierSelect = document.getElementById('supplierSelect');
+                if (supplierSelect) supplierSelect.value = '';
+            }
+        }
+
+        // Attach supplier select change event
+        document.addEventListener('DOMContentLoaded', function () {
+            const supplierSelect = document.getElementById('supplierSelect');
+            if (supplierSelect) {
+                supplierSelect.addEventListener('change', updateSupplierInfo);
+            }
+
+            // Attach invoice type change event
+            const invoiceTypeSelect = document.getElementById('invoiceTypeSelect');
+            if (invoiceTypeSelect) {
+                invoiceTypeSelect.addEventListener('change', updateInvoiceType);
+            }
+
+            // Add form submission debugging
+            const form = document.querySelector('form[action*="Edit"]');
+            if (form) {
+                form.addEventListener('submit', function (e) {
+                    // Reindex items before submit to ensure proper model binding
+                    reindexItems();
+
+                    // Update hidden field based on checkbox state for proper model binding
+                    const gstEnabled = document.getElementById('gstEnabled').checked;
+                    const gstEnabledHidden = document.getElementById('gstEnabledHidden');
+                    if (gstEnabledHidden) {
+                        gstEnabledHidden.disabled = gstEnabled;
+                    }
+
+                    const items = document.querySelectorAll('.invoice-item');
+                    console.log('Form submitting with ' + items.length + ' items');
+                    console.log('GST Enabled:', gstEnabled);
+
+                    // Log each item for debugging
+                    items.forEach((item, index) => {
+                        const desc = item.querySelector('.item-description')?.value;
+                        const qty = item.querySelector('.item-quantity')?.value;
+                        const price = item.querySelector('.item-price')?.value;
+                        console.log(`Item ${index}: desc="${desc}", qty: ${qty}, price: ${price}`);
+                    });
+
+                    // Check if any items have values
+                    const itemsWithValues = Array.from(items).filter(item => {
+                        const desc = item.querySelector('.item-description')?.value?.trim();
+                        return desc && desc.length > 0;
+                    });
+
+                    console.log('Items with description: ' + itemsWithValues.length);
+                });
+            }
+        });
+    </script>
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+}

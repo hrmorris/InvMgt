@@ -1,0 +1,331 @@
+@model InvoiceManagement.Models.ViewModels.SupplierOutstandingViewModel
+@using InvoiceManagement.Models
+@using InvoiceManagement.Helpers
+
+@{
+    ViewData["Title"] = "Outstanding by Supplier";
+}
+
+@functions {
+    public string FormatCurrency(decimal amount)
+    {
+        var settings = ViewData["CurrencySettings"] as CurrencySettings;
+        if (settings != null)
+        {
+            return CurrencyHelper.FormatCurrency(amount, settings);
+        }
+        return $"K {amount:N2}";
+    }
+    public string CurrencySymbol()
+    {
+        return ViewData["CurrencySymbol"]?.ToString() ?? "K";
+    }
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2 text-primary"><i class="bi bi-building"></i> Outstanding Invoices by Supplier</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-action="Index" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to All Invoices
+        </a>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white shadow">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-uppercase mb-1 opacity-75">Total Outstanding</h6>
+                        <h3 class="mb-0">@FormatCurrency(Model.TotalOutstanding)</h3>
+                    </div>
+                    <i class="bi bi-cash-stack fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-danger text-white shadow">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-uppercase mb-1 opacity-75">Overdue Amount</h6>
+                        <h3 class="mb-0">@FormatCurrency(Model.TotalOverdue)</h3>
+                    </div>
+                    <i class="bi bi-exclamation-triangle fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white shadow">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-uppercase mb-1 opacity-75">Total Invoices</h6>
+                        <h3 class="mb-0">@Model.TotalInvoices</h3>
+                    </div>
+                    <i class="bi bi-file-earmark-text fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-dark shadow">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-uppercase mb-1 opacity-75">Suppliers</h6>
+                        <h3 class="mb-0">@Model.TotalSuppliers</h3>
+                    </div>
+                    <i class="bi bi-building fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (!Model.Suppliers.Any())
+{
+    <div class="alert alert-success">
+        <h5><i class="bi bi-check-circle"></i> No Outstanding Invoices</h5>
+        <p class="mb-0">Great news! You don't have any outstanding supplier invoices at this time.</p>
+    </div>
+}
+else
+{
+    <!-- Supplier Accordion -->
+    <div class="accordion" id="supplierAccordion">
+        @foreach (var supplier in Model.Suppliers)
+        {
+            var accordionId = $"supplier-{supplier.SupplierId ?? 0}-{supplier.SupplierName.GetHashCode()}";
+            var hasOverdue = supplier.OverdueCount > 0;
+            var cardClass = hasOverdue ? "border-danger" : "border-primary";
+            var headerClass = hasOverdue ? "bg-danger bg-opacity-10" : "";
+            
+            <div class="card @cardClass shadow-sm mb-3">
+                <div class="card-header @headerClass" id="heading-@accordionId">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center flex-grow-1">
+                            <button class="btn btn-link text-decoration-none text-dark p-0 me-3" type="button" 
+                                    data-bs-toggle="collapse" data-bs-target="#collapse-@accordionId" 
+                                    aria-expanded="false" aria-controls="collapse-@accordionId">
+                                <i class="bi bi-chevron-down fs-5"></i>
+                            </button>
+                            <div>
+                                <h5 class="mb-0">
+                                    <i class="bi bi-building me-2"></i>
+                                    @supplier.SupplierName
+                                    @if (!string.IsNullOrEmpty(supplier.SupplierCode))
+                                    {
+                                        <small class="text-muted">(@supplier.SupplierCode)</small>
+                                    }
+                                </h5>
+                                @if (!string.IsNullOrEmpty(supplier.ContactPerson))
+                                {
+                                    <small class="text-muted">
+                                        <i class="bi bi-person"></i> @supplier.ContactPerson
+                                        @if (!string.IsNullOrEmpty(supplier.Phone))
+                                        {
+                                            <span class="ms-2"><i class="bi bi-telephone"></i> @supplier.Phone</span>
+                                        }
+                                    </small>
+                                }
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <div class="d-flex gap-3">
+                                <div class="text-center">
+                                    <small class="d-block text-muted">Invoices</small>
+                                    <span class="badge bg-secondary fs-6">@supplier.InvoiceCount</span>
+                                </div>
+                                @if (supplier.OverdueCount > 0)
+                                {
+                                    <div class="text-center">
+                                        <small class="d-block text-muted">Overdue</small>
+                                        <span class="badge bg-danger fs-6">@supplier.OverdueCount</span>
+                                    </div>
+                                }
+                                <div class="text-center">
+                                    <small class="d-block text-muted">Outstanding</small>
+                                    <strong class="@(hasOverdue ? "text-danger" : "text-primary") fs-5">
+                                        @FormatCurrency(supplier.OutstandingAmount)
+                                    </strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="collapse-@accordionId" class="accordion-collapse collapse" 
+                     aria-labelledby="heading-@accordionId" data-bs-parent="#supplierAccordion">
+                    <div class="card-body">
+                        <!-- Supplier Summary Row -->
+                        <div class="row mb-3 p-3 bg-light rounded">
+                            <div class="col-md-2">
+                                <small class="text-muted d-block">Total Invoiced</small>
+                                <strong>@FormatCurrency(supplier.TotalAmount)</strong>
+                            </div>
+                            <div class="col-md-2">
+                                <small class="text-muted d-block">Paid</small>
+                                <strong class="text-success">@FormatCurrency(supplier.PaidAmount)</strong>
+                            </div>
+                            <div class="col-md-2">
+                                <small class="text-muted d-block">Outstanding</small>
+                                <strong class="text-primary">@FormatCurrency(supplier.OutstandingAmount)</strong>
+                            </div>
+                            <div class="col-md-2">
+                                <small class="text-muted d-block">Overdue Amount</small>
+                                <strong class="@(supplier.OverdueAmount > 0 ? "text-danger" : "")">
+                                    @FormatCurrency(supplier.OverdueAmount)
+                                </strong>
+                            </div>
+                            <div class="col-md-2">
+                                <small class="text-muted d-block">Oldest Invoice</small>
+                                <strong>@(supplier.OldestInvoiceDate?.ToString("dd/MM/yyyy") ?? "-")</strong>
+                            </div>
+                            <div class="col-md-2">
+                                <small class="text-muted d-block">Max Days Overdue</small>
+                                <strong class="@(supplier.MaxDaysOverdue > 0 ? "text-danger" : "")">
+                                    @(supplier.MaxDaysOverdue > 0 ? $"{supplier.MaxDaysOverdue} days" : "-")
+                                </strong>
+                            </div>
+                        </div>
+
+                        <!-- Invoice Table -->
+                        <div class="table-responsive">
+                            <table class="table table-hover table-sm mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Invoice #</th>
+                                        <th>Date</th>
+                                        <th>Due Date</th>
+                                        <th>Days</th>
+                                        <th class="text-end">Total</th>
+                                        <th class="text-end">Paid</th>
+                                        <th class="text-end">Balance</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var invoice in supplier.Invoices)
+                                    {
+                                        var isOverdue = invoice.DueDate < DateTime.Now;
+                                        var daysOverdue = isOverdue ? (DateTime.Now - invoice.DueDate).Days : 0;
+                                        var rowClass = isOverdue ? "table-danger" : "";
+                                        
+                                        <tr class="@rowClass">
+                                            <td>
+                                                <a asp-action="Details" asp-route-id="@invoice.Id" class="fw-bold">
+                                                    @invoice.InvoiceNumber
+                                                </a>
+                                            </td>
+                                            <td>@invoice.InvoiceDate.ToString("dd/MM/yyyy")</td>
+                                            <td>@invoice.DueDate.ToString("dd/MM/yyyy")</td>
+                                            <td>
+                                                @if (isOverdue)
+                                                {
+                                                    <span class="text-danger fw-bold">@daysOverdue days overdue</span>
+                                                }
+                                                else
+                                                {
+                                                    var daysUntilDue = (invoice.DueDate - DateTime.Now).Days;
+                                                    <span class="text-muted">Due in @daysUntilDue days</span>
+                                                }
+                                            </td>
+                                            <td class="text-end">@FormatCurrency(invoice.TotalAmount)</td>
+                                            <td class="text-end text-success">@FormatCurrency(invoice.PaidAmount)</td>
+                                            <td class="text-end fw-bold @(isOverdue ? "text-danger" : "text-primary")">
+                                                @FormatCurrency(invoice.BalanceAmount)
+                                            </td>
+                                            <td>
+                                                @{
+                                                    var statusClass = invoice.Status switch
+                                                    {
+                                                        "Overdue" => "status-overdue",
+                                                        "Partial" => "status-partial",
+                                                        "Unpaid" => "status-unpaid",
+                                                        _ => "status-unpaid"
+                                                    };
+                                                }
+                                                <span class="status-badge @statusClass">@invoice.Status</span>
+                                            </td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm" role="group">
+                                                    <a asp-action="Details" asp-route-id="@invoice.Id" 
+                                                       class="btn btn-outline-primary" title="View">
+                                                        <i class="bi bi-eye"></i>
+                                                    </a>
+                                                    <a asp-controller="Payments" asp-action="Create" 
+                                                       asp-route-invoiceId="@invoice.Id" 
+                                                       class="btn btn-outline-success" title="Add Payment">
+                                                        <i class="bi bi-credit-card"></i>
+                                                    </a>
+                                                    <a asp-action="GeneratePdf" asp-route-id="@invoice.Id" 
+                                                       class="btn btn-outline-info" title="Download PDF">
+                                                        <i class="bi bi-file-pdf"></i>
+                                                    </a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                                <tfoot class="table-secondary">
+                                    <tr>
+                                        <td colspan="4" class="text-end"><strong>Supplier Total:</strong></td>
+                                        <td class="text-end"><strong>@FormatCurrency(supplier.TotalAmount)</strong></td>
+                                        <td class="text-end text-success"><strong>@FormatCurrency(supplier.PaidAmount)</strong></td>
+                                        <td class="text-end @(hasOverdue ? "text-danger" : "text-primary")">
+                                            <strong>@FormatCurrency(supplier.OutstandingAmount)</strong>
+                                        </td>
+                                        <td colspan="2"></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Grand Total Card -->
+    <div class="card bg-dark text-white shadow mt-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h4 class="mb-0"><i class="bi bi-calculator"></i> Grand Total Outstanding</h4>
+                </div>
+                <div class="col-md-6 text-end">
+                    <h3 class="mb-0">@FormatCurrency(Model.TotalOutstanding)</h3>
+                    @if (Model.TotalOverdue > 0)
+                    {
+                        <small class="text-danger">
+                            <i class="bi bi-exclamation-triangle"></i> 
+                            @FormatCurrency(Model.TotalOverdue) overdue (@Model.OverdueInvoiceCount invoices)
+                        </small>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        // Auto-rotate chevron icon when accordion is toggled
+        document.querySelectorAll('.accordion-collapse').forEach(function(collapse) {
+            collapse.addEventListener('show.bs.collapse', function() {
+                var btn = document.querySelector('[data-bs-target="#' + this.id + '"] i');
+                if (btn) btn.classList.replace('bi-chevron-down', 'bi-chevron-up');
+            });
+            collapse.addEventListener('hide.bs.collapse', function() {
+                var btn = document.querySelector('[data-bs-target="#' + this.id + '"] i');
+                if (btn) btn.classList.replace('bi-chevron-up', 'bi-chevron-down');
+            });
+        });
+    </script>
+}

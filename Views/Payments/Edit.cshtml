@@ -1,0 +1,240 @@
+@model Payment
+
+@{
+    ViewData["Title"] = "Edit Payment";
+}
+@functions {
+    public string FormatCurrency(decimal amount)
+    {
+        var settings = ViewData["CurrencySettings"] as CurrencySettings;
+        if (settings != null)
+        {
+            return CurrencyHelper.FormatCurrency(amount, settings);
+        }
+        return $"K {amount:N2}";
+    }
+    public string CurrencySymbol()
+    {
+        return ViewData["CurrencySymbol"]?.ToString() ?? "K";
+    }
+}
+
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-pencil"></i> Edit Payment</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-action="Index" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>
+
+<div class="card shadow">
+    <div class="card-body">
+        <form asp-action="Edit" method="post">
+            <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="CreatedDate" />
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label asp-for="PaymentNumber" class="form-label"></label>
+                        <input asp-for="PaymentNumber" class="form-control" readonly />
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="InvoiceId" class="form-label">Invoice</label>
+                        <select asp-for="InvoiceId" class="form-select" asp-items="ViewBag.Invoices">
+                            <option value="">Select Invoice</option>
+                        </select>
+                        <span asp-validation-for="InvoiceId" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="PaymentDate" class="form-label"></label>
+                        <input asp-for="PaymentDate" class="form-control" type="date" />
+                        <span asp-validation-for="PaymentDate" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Amount" class="form-label"></label>
+                        <input asp-for="Amount" class="form-control" type="number" step="0.01" />
+                        <span asp-validation-for="Amount" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label asp-for="PaymentMethod" class="form-label"></label>
+                        <select asp-for="PaymentMethod" class="form-select">
+                            <option value="">Select Method</option>
+                            <option value="Cash">Cash</option>
+                            <option value="Check">Check</option>
+                            <option value="Credit Card">Credit Card</option>
+                            <option value="Bank Transfer">Bank Transfer</option>
+                            <option value="PayPal">PayPal</option>
+                            <option value="Other">Other</option>
+                        </select>
+                        <span asp-validation-for="PaymentMethod" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="ReferenceNumber" class="form-label"></label>
+                        <input asp-for="ReferenceNumber" class="form-control" />
+                        <span asp-validation-for="ReferenceNumber" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Notes" class="form-label"></label>
+                        <textarea asp-for="Notes" class="form-control" rows="3"></textarea>
+                        <span asp-validation-for="Notes" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Purpose" class="form-label">Purpose</label>
+                        <input asp-for="Purpose" class="form-control" placeholder="Payment purpose..." />
+                        <span asp-validation-for="Purpose" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BSP Bank Details Section -->
+            @if (!string.IsNullOrEmpty(Model.TransferTo) || !string.IsNullOrEmpty(Model.BankAccountNumber) || 
+                 !string.IsNullOrEmpty(Model.PayerBankAccountNumber))
+            {
+                <hr class="my-4" />
+                <h5 class="mb-3">
+                    <i class="bi bi-bank"></i> Bank Statement Details
+                    @if (!string.IsNullOrEmpty(Model.AccountType))
+                    {
+                        <span class="badge @(Model.AccountType == "Internal" ? "bg-success" : "bg-warning text-dark") ms-2">
+                            @Model.AccountType
+                        </span>
+                    }
+                </h5>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-danger mb-3"><i class="bi bi-arrow-up-right"></i> Payee (Supplier)</h6>
+                        <div class="mb-2">
+                            <label asp-for="TransferTo" class="form-label">Transfer To</label>
+                            <input asp-for="TransferTo" class="form-control bg-light" readonly />
+                        </div>
+                        <div class="mb-2">
+                            <label asp-for="PayeeName" class="form-label">Account Name</label>
+                            <input asp-for="PayeeName" class="form-control" />
+                        </div>
+                        <div class="row">
+                            <div class="col-5">
+                                <label asp-for="PayeeBranchNumber" class="form-label">Branch No</label>
+                                <input asp-for="PayeeBranchNumber" class="form-control font-monospace" />
+                            </div>
+                            <div class="col-7">
+                                <label asp-for="PayeeAccountNumber" class="form-label">Account No</label>
+                                <input asp-for="PayeeAccountNumber" class="form-control font-monospace" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-success mb-3"><i class="bi bi-arrow-down-left"></i> Payer (Our Company)</h6>
+                        <div class="mb-2">
+                            <label asp-for="PayerName" class="form-label">Company Name</label>
+                            <input asp-for="PayerName" class="form-control" />
+                        </div>
+                        <div class="mb-2">
+                            <label asp-for="PayerBankAccountNumber" class="form-label">Full Account (Transfer From)</label>
+                            <input asp-for="PayerBankAccountNumber" class="form-control font-monospace bg-light" readonly />
+                        </div>
+                        <div class="row">
+                            <div class="col-5">
+                                <label asp-for="PayerBranchNumber" class="form-label">Branch No</label>
+                                <input asp-for="PayerBranchNumber" class="form-control font-monospace" />
+                            </div>
+                            <div class="col-7">
+                                <label asp-for="PayerAccountNumber" class="form-label">Account No</label>
+                                <input asp-for="PayerAccountNumber" class="form-control font-monospace" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <input type="hidden" asp-for="AccountType" />
+                <input type="hidden" asp-for="Currency" />
+                <input type="hidden" asp-for="BankName" />
+                <input type="hidden" asp-for="BankAccountNumber" />
+            }
+
+            @if (Model.PaymentAllocations != null && Model.PaymentAllocations.Any())
+            {
+                <hr class="my-4" />
+                <h5 class="mb-3"><i class="bi bi-link-45deg"></i> Current Allocations</h5>
+                
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Invoice</th>
+                                <th>Amount Allocated</th>
+                                <th>Allocation Date</th>
+                                <th>Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var allocation in Model.PaymentAllocations)
+                            {
+                                <tr>
+                                    <td>
+                                        <a asp-controller="Invoices" asp-action="Details" asp-route-id="@allocation.InvoiceId">
+                                            @allocation.Invoice?.InvoiceNumber
+                                        </a>
+                                    </td>
+                                    <td>@FormatCurrency(allocation.AllocatedAmount)</td>
+                                    <td>@allocation.AllocationDate.ToString("dd/MM/yyyy")</td>
+                                    <td>@(allocation.Notes ?? "-")</td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-info">
+                                <td><strong>Totals:</strong></td>
+                                <td><strong>@FormatCurrency(Model.AllocatedAmount)</strong></td>
+                                <td colspan="2">
+                                    <span class="badge @(Model.UnallocatedAmount > 0 ? "bg-warning text-dark" : "bg-success")">
+                                        Unallocated: @FormatCurrency(Model.UnallocatedAmount)
+                                    </span>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> To modify allocations, use the <strong>Manage Allocations</strong> feature from the payment details page.
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> This payment has no allocations yet. You can allocate it to invoices after saving, or leave the invoice field empty to allocate later.
+                </div>
+            }
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="bi bi-save"></i> Save Changes
+                </button>
+                @if (Model.UnallocatedAmount > 0)
+                {
+                    <a asp-action="ManageAllocations" asp-route-id="@Model.Id" class="btn btn-success btn-lg">
+                        <i class="bi bi-link-45deg"></i> Manage Allocations
+                    </a>
+                }
+                <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-secondary btn-lg">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
+

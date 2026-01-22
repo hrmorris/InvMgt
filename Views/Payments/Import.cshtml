@@ -1,0 +1,61 @@
+@{
+    ViewData["Title"] = "Import Payments";
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-upload"></i> Import Payments</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-action="Index" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-body">
+                <form asp-action="Import" method="post" enctype="multipart/form-data">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+                    
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Select File</label>
+                        <input type="file" class="form-control" id="file" name="file" accept=".csv,.xlsx,.xls" required />
+                        <div class="form-text">Supported formats: CSV, Excel (.xlsx, .xls)</div>
+                    </div>
+
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="bi bi-upload"></i> Import Payments
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow">
+            <div class="card-header bg-info text-white">
+                <h6 class="m-0"><i class="bi bi-info-circle"></i> File Format</h6>
+            </div>
+            <div class="card-body">
+                <p><strong>CSV/Excel columns required:</strong></p>
+                <ul class="small">
+                    <li>PaymentNumber</li>
+                    <li>InvoiceId</li>
+                    <li>PaymentDate (yyyy-MM-dd)</li>
+                    <li>Amount</li>
+                    <li>PaymentMethod</li>
+                    <li>ReferenceNumber (optional)</li>
+                    <li>Notes (optional)</li>
+                </ul>
+                <hr />
+                <p class="small"><strong>Example CSV:</strong></p>
+                <pre class="small bg-light p-2">PaymentNumber,InvoiceId,PaymentDate,Amount,PaymentMethod
+PAY-001,1,2025-01-15,500.00,Bank Transfer</pre>
+            </div>
+        </div>
+    </div>
+</div>
+

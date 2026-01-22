@@ -1,0 +1,379 @@
+@using InvoiceManagement.Controllers
+@model AdminAnalytics
+@{
+    ViewData["Title"] = "Analytics Dashboard";
+}
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">
+                <i class="bi bi-graph-up me-2"></i>Analytics Dashboard
+            </h1>
+            <p class="text-muted mb-0">Business insights and performance metrics</p>
+        </div>
+        <a href="@Url.Action("Index")" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Back to Admin
+        </a>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100 bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <p class="text-white-50 mb-1">Invoices This Month</p>
+                            <h2 class="mb-0">@Model.TotalInvoicesThisMonth</h2>
+                            <small>@ViewBag.CurrencySymbol@Model.TotalInvoiceAmountThisMonth.ToString("N0")</small>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-receipt fs-1 opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100 bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <p class="text-white-50 mb-1">Payments This Month</p>
+                            <h2 class="mb-0">@Model.TotalPaymentsThisMonth</h2>
+                            <small>@ViewBag.CurrencySymbol@Model.TotalPaymentAmountThisMonth.ToString("N0")</small>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-cash-stack fs-1 opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100 bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <p class="text-white-50 mb-1">Active Users</p>
+                            <h2 class="mb-0">@Model.ActiveUsersThisMonth</h2>
+                            <small>Logged in this month</small>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-people fs-1 opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100 bg-warning text-dark">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <p class="text-dark-50 mb-1">New Users</p>
+                            <h2 class="mb-0">@Model.NewUsersThisMonth</h2>
+                            <small>Registered this month</small>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-person-plus fs-1 opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Year-to-Date Summary -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0">
+                    <h5 class="mb-0"><i class="bi bi-receipt me-2"></i>Invoices Year-to-Date</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <h3 class="text-primary">@Model.TotalInvoicesThisYear</h3>
+                            <small class="text-muted">Total Invoices</small>
+                        </div>
+                        <div class="col-6">
+                            <h3 class="text-primary">
+                                @ViewBag.CurrencySymbol@Model.TotalInvoiceAmountThisYear.ToString("N0")</h3>
+                            <small class="text-muted">Total Value</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0">
+                    <h5 class="mb-0"><i class="bi bi-cash me-2"></i>Payments Year-to-Date</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <h3 class="text-success">@Model.TotalPaymentsThisYear</h3>
+                            <small class="text-muted">Total Payments</small>
+                        </div>
+                        <div class="col-6">
+                            <h3 class="text-success">
+                                @ViewBag.CurrencySymbol@Model.TotalPaymentAmountThisYear.ToString("N0")</h3>
+                            <small class="text-muted">Total Value</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row g-4 mb-4">
+        <!-- Monthly Invoice Trend -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent border-0">
+                    <h5 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Invoice Trend (12 Months)</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="invoiceChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+        <!-- Monthly Payment Trend -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent border-0">
+                    <h5 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Payment Trend (12 Months)</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="paymentChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Invoice Status & Top Suppliers -->
+    <div class="row g-4 mb-4">
+        <!-- Invoice Status Distribution -->
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent border-0">
+                    <h5 class="mb-0"><i class="bi bi-pie-chart me-2"></i>Invoice Status</h5>
+                </div>
+                <div class="card-body">
+                    @foreach (var status in Model.InvoiceStatusDistribution)
+                    {
+                        var statusClass = status.Key switch
+                        {
+                            "Paid" => "bg-success",
+                            "Unpaid" => "bg-warning",
+                            "Overdue" => "bg-danger",
+                            "Partially Paid" => "bg-info",
+                            _ => "bg-secondary"
+                        };
+                        var total = Model.InvoiceStatusDistribution.Values.Sum();
+                        var percentage = total > 0 ? (status.Value * 100.0 / total) : 0;
+
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>
+                                <span class="badge @statusClass me-2">@status.Value</span>
+                                @status.Key
+                            </span>
+                            <span class="text-muted">@percentage.ToString("F0")%</span>
+                        </div>
+                        <div class="progress mb-3" style="height: 6px;">
+                            <div class="progress-bar @statusClass" style="width: @percentage%"></div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Suppliers -->
+        <div class="col-md-8">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent border-0">
+                    <h5 class="mb-0"><i class="bi bi-building me-2"></i>Top 10 Suppliers by Invoice Value</h5>
+                </div>
+                <div class="card-body">
+                    @if (Model.TopSuppliers.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Supplier</th>
+                                        <th class="text-center">Invoices</th>
+                                        <th class="text-end">Total Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @{
+                                        var rank = 1;
+                                    }
+                                    @foreach (var supplier in Model.TopSuppliers)
+                                    {
+                                        <tr>
+                                            <td><span class="badge bg-secondary">@rank</span></td>
+                                            <td>@supplier.SupplierName</td>
+                                            <td class="text-center">@supplier.InvoiceCount</td>
+                                            <td class="text-end fw-bold">
+                                                @ViewBag.CurrencySymbol@supplier.TotalAmount.ToString("N2")</td>
+                                        </tr>
+                                        rank++;
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted text-center py-4">No supplier data available</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Methods Distribution -->
+    <div class="row g-4">
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0">
+                    <h5 class="mb-0"><i class="bi bi-credit-card me-2"></i>Payment Methods</h5>
+                </div>
+                <div class="card-body">
+                    @if (Model.PaymentMethodDistribution.Any())
+                    {
+                        var totalPayments = Model.PaymentMethodDistribution.Values.Sum();
+                        @foreach (var method in Model.PaymentMethodDistribution.OrderByDescending(m => m.Value))
+                        {
+                            var percentage = totalPayments > 0 ? (method.Value * 100 / totalPayments) : 0;
+                            var iconClass = method.Key switch
+                            {
+                                "Bank Transfer" => "bi-bank",
+                                "EFT" => "bi-arrow-left-right",
+                                "Check" => "bi-receipt-cutoff",
+                                "Cash" => "bi-cash",
+                                "Credit Card" => "bi-credit-card",
+                                _ => "bi-wallet2"
+                            };
+
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="rounded-circle bg-light p-2 me-3">
+                                    <i class="bi @iconClass text-primary"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span>@method.Key</span>
+                                        <span class="fw-bold">@ViewBag.CurrencySymbol@method.Value.ToString("N0")</span>
+                                    </div>
+                                    <div class="progress" style="height: 5px;">
+                                        <div class="progress-bar" style="width: @percentage%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p class="text-muted text-center py-4">No payment data available</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0">
+                    <h5 class="mb-0"><i class="bi bi-lightning me-2"></i>Quick Links</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <a href="@Url.Action("Index", "Invoices")" class="btn btn-outline-primary w-100">
+                                <i class="bi bi-receipt me-1"></i> View Invoices
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="@Url.Action("Index", "Payments")" class="btn btn-outline-success w-100">
+                                <i class="bi bi-cash me-1"></i> View Payments
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="@Url.Action("Index", "Reports")" class="btn btn-outline-info w-100">
+                                <i class="bi bi-file-earmark-bar-graph me-1"></i> Reports
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="@Url.Action("SystemHealth")" class="btn btn-outline-secondary w-100">
+                                <i class="bi bi-heart-pulse me-1"></i> System Health
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Invoice Chart
+        const invoiceCtx = document.getElementById('invoiceChart').getContext('2d');
+        new Chart(invoiceCtx, {
+            type: 'bar',
+            data: {
+                labels: [@Html.Raw(string.Join(",", Model.MonthlyInvoiceTrends.Select(t => $"'{t.Month}'")))],
+                datasets: [{
+                    label: 'Invoice Count',
+                    data: [@string.Join(",", Model.MonthlyInvoiceTrends.Select(t => t.Count))],
+                    backgroundColor: 'rgba(13, 110, 253, 0.6)',
+                    borderColor: 'rgba(13, 110, 253, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+
+        // Payment Chart
+        const paymentCtx = document.getElementById('paymentChart').getContext('2d');
+        new Chart(paymentCtx, {
+            type: 'bar',
+            data: {
+                labels: [@Html.Raw(string.Join(",", Model.MonthlyPaymentTrends.Select(t => $"'{t.Month}'")))],
+                datasets: [{
+                    label: 'Payment Count',
+                    data: [@string.Join(",", Model.MonthlyPaymentTrends.Select(t => t.Count))],
+                    backgroundColor: 'rgba(25, 135, 84, 0.6)',
+                    borderColor: 'rgba(25, 135, 84, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    </script>
+}

@@ -1,0 +1,429 @@
+@{
+    ViewData["Title"] = "Dashboard";
+    var fullName = ViewBag.FullName as string ?? "User";
+    var role = ViewBag.UserRole as string ?? "User";
+}
+
+@functions {
+    public string FormatCurrency(decimal amount)
+    {
+        var settings = ViewData["CurrencySettings"] as CurrencySettings;
+        if (settings != null)
+        {
+            return CurrencyHelper.FormatCurrency(amount, settings);
+        }
+        return $"K {amount:N2}";
+    }
+}
+
+<!-- Welcome Header -->
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3">
+    <div>
+        <h1 class="h2"><i class="bi bi-speedometer2"></i> Welcome back, @fullName!</h1>
+        <p class="text-muted"><i class="bi bi-person-badge"></i> Role: <strong>@role</strong> | <i class="bi bi-calendar3"></i> @DateTime.Now.ToString("dddd, dd MMMM yyyy")</p>
+    </div>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a asp-controller="Invoices" asp-action="Create" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> New Invoice
+            </a>
+            <a asp-controller="Payments" asp-action="Create" class="btn btn-success">
+                <i class="bi bi-plus-circle"></i> New Payment
+            </a>
+            <a asp-controller="Requisitions" asp-action="Create" class="btn btn-info">
+                <i class="bi bi-plus-circle"></i> New Requisition
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Cards Row 1 -->
+<div class="row">
+    <!-- Total Invoices -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Total Invoices
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">@ViewBag.TotalInvoices</div>
+                        <small class="text-muted">
+                            <span class="text-success">@ViewBag.PaidInvoices paid</span> | 
+                            <span class="text-danger">@ViewBag.UnpaidInvoices unpaid</span>
+                        </small>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-file-earmark-text fa-3x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer d-flex align-items-center justify-content-between">
+                <a asp-controller="Invoices" asp-action="Index" class="small text-primary stretched-link">View All</a>
+                <i class="bi bi-arrow-right-short text-primary"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Total Amount -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Total Amount
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">@FormatCurrency((decimal)ViewBag.TotalAmount)</div>
+                        <small class="text-muted">Revenue generated</small>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-currency-dollar fa-3x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer d-flex align-items-center justify-content-between">
+                <a asp-controller="Reports" asp-action="Index" class="small text-success stretched-link">View Reports</a>
+                <i class="bi bi-arrow-right-short text-success"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Total Paid -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Total Paid
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">@FormatCurrency((decimal)ViewBag.TotalPaid)</div>
+                        <small class="text-muted">@ViewBag.TotalPayments payments</small>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-check-circle fa-3x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer d-flex align-items-center justify-content-between">
+                <a asp-controller="Payments" asp-action="Index" class="small text-info stretched-link">View Payments</a>
+                <i class="bi bi-arrow-right-short text-info"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Outstanding Balance -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                            Outstanding Balance
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">@FormatCurrency((decimal)ViewBag.TotalBalance)</div>
+                        <small class="text-muted">@ViewBag.PartiallyPaidInvoices partially paid</small>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-exclamation-triangle fa-3x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer d-flex align-items-center justify-content-between">
+                <a asp-controller="Invoices" asp-action="Index" class="small text-warning stretched-link">View Outstanding</a>
+                <i class="bi bi-arrow-right-short text-warning"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Cards Row 2 -->
+<div class="row">
+    <!-- Unallocated Payments -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-secondary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">
+                            Unallocated Payments
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">@ViewBag.UnallocatedPayments</div>
+                        <small class="text-muted">@FormatCurrency((decimal)ViewBag.UnallocatedAmount) available</small>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-wallet2 fa-3x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer d-flex align-items-center justify-content-between">
+                <a asp-controller="Payments" asp-action="Index" class="small text-secondary stretched-link">Manage Allocations</a>
+                <i class="bi bi-arrow-right-short text-secondary"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Requisitions -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Requisitions
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">@ViewBag.TotalRequisitions</div>
+                        <small class="text-muted">@ViewBag.PendingRequisitions pending approval</small>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-clipboard-check fa-3x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer d-flex align-items-center justify-content-between">
+                <a asp-controller="Requisitions" asp-action="Index" class="small text-primary stretched-link">View Requisitions</a>
+                <i class="bi bi-arrow-right-short text-primary"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Purchase Orders -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Purchase Orders
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">@ViewBag.TotalPurchaseOrders</div>
+                        <small class="text-muted">@ViewBag.PendingPurchaseOrders pending</small>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-cart-check fa-3x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer d-flex align-items-center justify-content-between">
+                <a asp-controller="PurchaseOrders" asp-action="Index" class="small text-success stretched-link">View Orders</a>
+                <i class="bi bi-arrow-right-short text-success"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Import -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2 bg-gradient-info">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-white text-uppercase mb-1">
+                            Smart Import
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-white">AI-Powered</div>
+                        <small class="text-white">Gemini 2.5 Pro</small>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-robot fa-3x text-white"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer d-flex align-items-center justify-content-between bg-white">
+                <a asp-controller="AiImport" asp-action="Invoice" class="small text-info stretched-link">Import Documents</a>
+                <i class="bi bi-arrow-right-short text-info"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Alerts -->
+@if (ViewBag.OverdueInvoices > 0)
+{
+    <div class="alert alert-danger shadow-sm">
+        <h5><i class="bi bi-exclamation-triangle-fill"></i> Attention Required</h5>
+        <p class="mb-0">You have <strong>@ViewBag.OverdueInvoices</strong> overdue invoice(s). Please review and take action.</p>
+    </div>
+}
+
+@if (ViewBag.PendingRequisitions > 0)
+{
+    <div class="alert alert-warning shadow-sm">
+        <h5><i class="bi bi-clock-history"></i> Pending Approvals</h5>
+        <p class="mb-0">You have <strong>@ViewBag.PendingRequisitions</strong> requisition(s) awaiting approval. <a asp-controller="Requisitions" asp-action="PendingApprovals" class="alert-link">Review now</a></p>
+    </div>
+}
+
+<!-- Recent Data -->
+<div class="row">
+    <!-- Recent Invoices -->
+    <div class="col-md-6 mb-4">
+        <div class="card shadow">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between bg-primary text-white">
+                <h6 class="m-0 font-weight-bold"><i class="bi bi-file-earmark-text"></i> Recent Invoices</h6>
+                <a asp-controller="Invoices" asp-action="Index" class="btn btn-sm btn-light">View All</a>
+            </div>
+            <div class="card-body">
+                @if (ViewBag.RecentInvoices != null && ((IEnumerable<Invoice>)ViewBag.RecentInvoices).Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Invoice #</th>
+                                    <th>Customer</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var invoice in ViewBag.RecentInvoices)
+                                {
+                                    <tr>
+                                        <td><a asp-controller="Invoices" asp-action="Details" asp-route-id="@invoice.Id">@invoice.InvoiceNumber</a></td>
+                                        <td>@invoice.CustomerName</td>
+                                        <td><strong>@FormatCurrency(invoice.TotalAmount)</strong></td>
+                                        <td>
+                                            @{
+                                                var statusClass = invoice.Status switch
+                                                {
+                                                    "Paid" => "bg-success",
+                                                    "Partially Paid" => "bg-warning text-dark",
+                                                    "Unpaid" => "bg-secondary",
+                                                    "Overdue" => "bg-danger",
+                                                    _ => "bg-secondary"
+                                                };
+                                            }
+                                            <span class="badge @statusClass">@invoice.Status</span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted text-center py-3">No invoices yet. <a asp-controller="Invoices" asp-action="Create">Create your first invoice</a></p>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Payments -->
+    <div class="col-md-6 mb-4">
+        <div class="card shadow">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between bg-success text-white">
+                <h6 class="m-0 font-weight-bold"><i class="bi bi-cash-coin"></i> Recent Payments</h6>
+                <a asp-controller="Payments" asp-action="Index" class="btn btn-sm btn-light">View All</a>
+            </div>
+            <div class="card-body">
+                @if (ViewBag.RecentPayments != null && ((IEnumerable<Payment>)ViewBag.RecentPayments).Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Payment #</th>
+                                    <th>Date</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var payment in ViewBag.RecentPayments)
+                                {
+                                    <tr>
+                                        <td><a asp-controller="Payments" asp-action="Details" asp-route-id="@payment.Id">@payment.PaymentNumber</a></td>
+                                        <td>@payment.PaymentDate.ToString("dd/MM/yyyy")</td>
+                                        <td><strong>@FormatCurrency(payment.Amount)</strong></td>
+                                        <td>
+                                            @{
+                                                var statusClass = payment.Status switch
+                                                {
+                                                    "Fully Allocated" => "bg-success",
+                                                    "Partially Allocated" => "bg-warning text-dark",
+                                                    "Unallocated" => "bg-secondary",
+                                                    _ => "bg-secondary"
+                                                };
+                                            }
+                                            <span class="badge @statusClass">@payment.Status</span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted text-center py-3">No payments yet. <a asp-controller="Payments" asp-action="Create">Record your first payment</a></p>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3 bg-dark text-white">
+                <h6 class="m-0 font-weight-bold"><i class="bi bi-lightning-fill"></i> Quick Actions</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <a asp-controller="AiImport" asp-action="Invoice" class="btn btn-outline-primary btn-block w-100">
+                            <i class="bi bi-file-earmark-arrow-up"></i><br />
+                            <small>AI Import Invoice</small>
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a asp-controller="AiImport" asp-action="Payment" class="btn btn-outline-success btn-block w-100">
+                            <i class="bi bi-cash-stack"></i><br />
+                            <small>AI Import Payment</small>
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a asp-controller="Invoices" asp-action="Import" class="btn btn-outline-info btn-block w-100">
+                            <i class="bi bi-file-spreadsheet"></i><br />
+                            <small>Bulk Import CSV/Excel</small>
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a asp-controller="Reports" asp-action="Index" class="btn btn-outline-warning btn-block w-100">
+                            <i class="bi bi-bar-chart-line"></i><br />
+                            <small>Generate Reports</small>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .border-left-primary {
+        border-left: 0.25rem solid #4e73df !important;
+    }
+    .border-left-success {
+        border-left: 0.25rem solid #1cc88a !important;
+    }
+    .border-left-info {
+        border-left: 0.25rem solid #36b9cc !important;
+    }
+    .border-left-warning {
+        border-left: 0.25rem solid #f6c23e !important;
+    }
+    .border-left-secondary {
+        border-left: 0.25rem solid #858796 !important;
+    }
+    .bg-gradient-info {
+        background: linear-gradient(180deg, #36b9cc 10%, #258391 100%);
+    }
+    .card-footer {
+        background-color: #f8f9fc;
+    }
+</style>

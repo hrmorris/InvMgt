@@ -1,0 +1,129 @@
+@model Payment
+
+@{
+    ViewData["Title"] = "Edit Imported Payment";
+    var index = ViewBag.Index;
+    var unpaidInvoices = ViewBag.UnpaidInvoices as List<Invoice>;
+}
+@functions {
+    public string FormatCurrency(decimal amount)
+    {
+        var settings = ViewData["CurrencySettings"] as CurrencySettings;
+        if (settings != null)
+        {
+            return CurrencyHelper.FormatCurrency(amount, settings);
+        }
+        return $"K {amount:N2}";
+    }
+    public string CurrencySymbol()
+    {
+        return ViewData["CurrencySymbol"]?.ToString() ?? "K";
+    }
+}
+
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-pencil-square"></i> Edit Imported Payment</h1>
+</div>
+
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> <strong>AI Import:</strong> This payment was extracted by Gemini 2.5 Pro. You can edit any field before saving to the database.
+</div>
+
+<form asp-action="UpdatePayment" asp-route-index="@index" method="post">
+    <div class="card shadow">
+        <div class="card-body">
+            <div class="row">
+                <!-- Payment Information -->
+                <div class="col-md-6">
+                    <h5 class="mb-3">Payment Information</h5>
+                    
+                    <div class="mb-3">
+                        <label asp-for="PaymentNumber" class="form-label"></label>
+                        <input asp-for="PaymentNumber" class="form-control" required />
+                        <span asp-validation-for="PaymentNumber" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="PaymentDate" class="form-label"></label>
+                        <input asp-for="PaymentDate" class="form-control" type="date" required />
+                        <span asp-validation-for="PaymentDate" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Amount" class="form-label"></label>
+                        <input asp-for="Amount" class="form-control" type="number" step="0.01" min="0" required />
+                        <span asp-validation-for="Amount" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="PaymentMethod" class="form-label"></label>
+                        <select asp-for="PaymentMethod" class="form-select" required>
+                            <option value="">-- Select Method --</option>
+                            <option value="Cash">Cash</option>
+                            <option value="Check">Check</option>
+                            <option value="Credit Card">Credit Card</option>
+                            <option value="Bank Transfer">Bank Transfer</option>
+                            <option value="PayPal">PayPal</option>
+                            <option value="Other">Other</option>
+                        </select>
+                        <span asp-validation-for="PaymentMethod" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <!-- Additional Information -->
+                <div class="col-md-6">
+                    <h5 class="mb-3">Additional Information</h5>
+                    
+                    <div class="mb-3">
+                        <label asp-for="ReferenceNumber" class="form-label"></label>
+                        <input asp-for="ReferenceNumber" class="form-control" />
+                        <span asp-validation-for="ReferenceNumber" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="InvoiceId" class="form-label">
+                            <strong>Match to Invoice <span class="text-muted">(Optional)</span></strong>
+                        </label>
+                        <select asp-for="InvoiceId" class="form-select">
+                            <option value="">-- No Invoice (Allocate Later) --</option>
+                            @if (unpaidInvoices != null)
+                            {
+                                foreach (var invoice in unpaidInvoices)
+                                {
+                                    <option value="@invoice.Id">
+                                        @invoice.InvoiceNumber - @invoice.CustomerName (@FormatCurrency(invoice.BalanceAmount) due)
+                                    </option>
+                                }
+                            }
+                        </select>
+                        <small class="form-text text-muted">
+                            <i class="bi bi-info-circle"></i> Leave blank to save as unallocated payment. You can allocate it to one or more invoices later from the Payments section.
+                        </small>
+                        <span asp-validation-for="InvoiceId" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Notes" class="form-label"></label>
+                        <textarea asp-for="Notes" class="form-control" rows="4"></textarea>
+                        <span asp-validation-for="Notes" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-footer">
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="bi bi-check-circle"></i> Update Payment
+            </button>
+            <a asp-action="ReviewPayments" class="btn btn-secondary btn-lg">
+                <i class="bi bi-arrow-left"></i> Back to Review
+            </a>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+}
+

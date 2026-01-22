@@ -1,0 +1,167 @@
+@model InvoiceManagement.Models.Customer
+
+@{
+    ViewData["Title"] = "Add New Customer";
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-person-plus"></i> Add New Customer</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-action="Customers" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Customers
+        </a>
+    </div>
+</div>
+
+<div class="card shadow">
+    <div class="card-body">
+        <form asp-action="CreateCustomer" method="post">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5 class="text-primary mb-3"><i class="bi bi-info-circle"></i> Basic Information</h5>
+                    
+                    <div class="mb-3">
+                        <label asp-for="CustomerCode" class="form-label">Customer Code</label>
+                        <input asp-for="CustomerCode" class="form-control" placeholder="e.g., CUST001" />
+                        <span asp-validation-for="CustomerCode" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="CustomerName" class="form-label">Customer Name <span class="text-danger">*</span></label>
+                        <input asp-for="CustomerName" class="form-control" required />
+                        <span asp-validation-for="CustomerName" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Industry" class="form-label">Industry/Business Type</label>
+                        <input asp-for="Industry" class="form-control" placeholder="e.g., Retail, Manufacturing" />
+                        <span asp-validation-for="Industry" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Address" class="form-label">Address</label>
+                        <textarea asp-for="Address" class="form-control" rows="3"></textarea>
+                        <span asp-validation-for="Address" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <h5 class="text-primary mb-3"><i class="bi bi-person"></i> Contact Information</h5>
+                    
+                    <div class="mb-3">
+                        <label asp-for="ContactPerson" class="form-label">Contact Person</label>
+                        <input asp-for="ContactPerson" class="form-control" />
+                        <span asp-validation-for="ContactPerson" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Email" class="form-label">Email</label>
+                        <input asp-for="Email" class="form-control" type="email" />
+                        <span asp-validation-for="Email" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Phone" class="form-label">Phone</label>
+                        <input asp-for="Phone" class="form-control" />
+                        <span asp-validation-for="Phone" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Mobile" class="form-label">Mobile</label>
+                        <input asp-for="Mobile" class="form-control" />
+                        <span asp-validation-for="Mobile" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <hr />
+
+            <div class="row">
+                <div class="col-md-6">
+                    <h5 class="text-primary mb-3"><i class="bi bi-file-earmark-text"></i> Legal & Tax Information</h5>
+                    
+                    <div class="mb-3">
+                        <label asp-for="TIN" class="form-label">Tax Identification Number (TIN)</label>
+                        <input asp-for="TIN" class="form-control" />
+                        <span asp-validation-for="TIN" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="RegistrationNumber" class="form-label">Registration Number</label>
+                        <input asp-for="RegistrationNumber" class="form-control" />
+                        <span asp-validation-for="RegistrationNumber" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <h5 class="text-primary mb-3"><i class="bi bi-bank"></i> Banking Information</h5>
+                    
+                    <div class="mb-3">
+                        <label asp-for="BankName" class="form-label">Bank Name</label>
+                        <input asp-for="BankName" class="form-control" />
+                        <span asp-validation-for="BankName" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="BankAccountNumber" class="form-label">Bank Account Number</label>
+                        <input asp-for="BankAccountNumber" class="form-control" />
+                        <span asp-validation-for="BankAccountNumber" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <hr />
+
+            <div class="row">
+                <div class="col-md-6">
+                    <h5 class="text-primary mb-3"><i class="bi bi-gear"></i> Account Settings</h5>
+                    
+                    <div class="mb-3">
+                        <label asp-for="PaymentTermsDays" class="form-label">Payment Terms (Days)</label>
+                        <input asp-for="PaymentTermsDays" class="form-control" type="number" min="0" />
+                        <span asp-validation-for="PaymentTermsDays" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="CreditLimit" class="form-label">Credit Limit</label>
+                        <input asp-for="CreditLimit" class="form-control" type="number" step="0.01" min="0" />
+                        <span asp-validation-for="CreditLimit" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Status" class="form-label">Status</label>
+                        <select asp-for="Status" class="form-select">
+                            <option value="Active">Active</option>
+                            <option value="OnHold">On Hold</option>
+                            <option value="Inactive">Inactive</option>
+                        </select>
+                        <span asp-validation-for="Status" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <h5 class="text-primary mb-3"><i class="bi bi-sticky"></i> Notes</h5>
+                    
+                    <div class="mb-3">
+                        <label asp-for="Notes" class="form-label">Notes</label>
+                        <textarea asp-for="Notes" class="form-control" rows="5"></textarea>
+                        <span asp-validation-for="Notes" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Create Customer
+                </button>
+                <a asp-action="Customers" class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

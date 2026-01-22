@@ -1,0 +1,53 @@
+@{
+    ViewData["Title"] = "Generate Payment Report";
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-credit-card"></i> Generate Payment Report</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-action="Index" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Reports
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card shadow">
+            <div class="card-body">
+                <form asp-action="GeneratePaymentReport" method="post">
+                    <div class="mb-3">
+                        <label for="startDate" class="form-label">Start Date (Optional)</label>
+                        <input type="date" class="form-control" id="startDate" name="startDate" />
+                        <div class="form-text">Leave empty to include all payments from the beginning.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="endDate" class="form-label">End Date (Optional)</label>
+                        <input type="date" class="form-control" id="endDate" name="endDate" />
+                        <div class="form-text">Leave empty to include all payments up to today.</div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> The report will include:
+                        <ul class="mb-0 mt-2">
+                            <li>Payment numbers and dates</li>
+                            <li>Associated invoice numbers</li>
+                            <li>Payment amounts</li>
+                            <li>Payment methods</li>
+                            <li>Reference numbers</li>
+                            <li>Total payments summary</li>
+                        </ul>
+                    </div>
+
+                    <div class="mt-4 text-center">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="bi bi-file-pdf"></i> Generate PDF Report
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+

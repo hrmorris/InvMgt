@@ -1,0 +1,99 @@
+@{
+    ViewData["Title"] = "Reports";
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-graph-up"></i> Reports</h1>
+</div>
+
+<!-- List Reports Section -->
+<div class="mb-4">
+    <h5 class="text-muted mb-3"><i class="bi bi-table me-2"></i>List Reports</h5>
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card shadow h-100 border-primary">
+                <div class="card-body text-center">
+                    <i class="bi bi-file-earmark-text text-primary" style="font-size: 48px;"></i>
+                    <h5 class="card-title mt-3">Supplier Invoice List</h5>
+                    <p class="card-text">View all supplier invoices with filtering by date, supplier, and status.
+                        Includes summary totals.</p>
+                    <a asp-action="SupplierInvoiceList" class="btn btn-primary">
+                        <i class="bi bi-list-ul me-1"></i> View Invoice List
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card shadow h-100 border-success">
+                <div class="card-body text-center">
+                    <i class="bi bi-credit-card text-success" style="font-size: 48px;"></i>
+                    <h5 class="card-title mt-3">Payments List</h5>
+                    <p class="card-text">View all payments with filtering by date, payment method, and status. Track
+                        allocated and unallocated amounts.</p>
+                    <a asp-action="PaymentsList" class="btn btn-success">
+                        <i class="bi bi-list-ul me-1"></i> View Payments List
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- PDF Reports Section -->
+<div class="mb-4">
+    <h5 class="text-muted mb-3"><i class="bi bi-file-pdf me-2"></i>PDF Reports</h5>
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-file-earmark-pdf text-danger" style="font-size: 48px;"></i>
+                    <h5 class="card-title mt-3">Invoice Report (PDF)</h5>
+                    <p class="card-text">Generate a comprehensive PDF report of all invoices with filtering options.</p>
+                    <a asp-action="InvoiceReport" class="btn btn-outline-danger">
+                        <i class="bi bi-file-pdf me-1"></i> Generate Invoice Report
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-file-earmark-pdf text-danger" style="font-size: 48px;"></i>
+                    <h5 class="card-title mt-3">Payment Report (PDF)</h5>
+                    <p class="card-text">Generate a detailed PDF report of all payments received with date range
+                        filtering.</p>
+                    <a asp-action="PaymentReport" class="btn btn-outline-danger">
+                        <i class="bi bi-file-pdf me-1"></i> Generate Payment Report
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card shadow">
+            <div class="card-header bg-info text-white">
+                <h6 class="m-0"><i class="bi bi-info-circle"></i> Report Information</h6>
+            </div>
+            <div class="card-body">
+                <h5>Available Reports</h5>
+                <ul>
+                    <li><strong>Supplier Invoice List:</strong> Interactive table view of all supplier invoices with
+                        real-time filtering and summary statistics.</li>
+                    <li><strong>Payments List:</strong> Interactive table view of all payments with filtering by payment
+                        method, status, and date range.</li>
+                    <li><strong>Invoice Report (PDF):</strong> Download a PDF of all invoices with customer information,
+                        amounts, and payment status.</li>
+                    <li><strong>Payment Report (PDF):</strong> Download a PDF of all payments with invoice references,
+                        payment methods, and amounts.</li>
+                </ul>
+                <p class="mb-0"><small class="text-muted">List reports provide interactive filtering. PDF reports can be
+                        downloaded directly to your device.</small></p>
+            </div>
+        </div>
+    </div>
+</div>

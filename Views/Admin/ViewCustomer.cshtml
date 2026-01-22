@@ -1,0 +1,158 @@
+@model InvoiceManagement.Models.Customer
+
+@{
+    ViewData["Title"] = "Customer Details";
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-person"></i> Customer Details</h1>
+    <div class="btn-toolbar mb-2 mb-md-0 gap-2">
+        <a asp-action="EditCustomer" asp-route-id="@Model.Id" class="btn btn-primary">
+            <i class="bi bi-pencil"></i> Edit
+        </a>
+        <a asp-action="Customers" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Customers
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-info-circle"></i> Basic Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <dl>
+                            <dt>Customer Code</dt>
+                            <dd>@(Model.CustomerCode ?? "-")</dd>
+                            
+                            <dt>Customer Name</dt>
+                            <dd><strong>@Model.CustomerName</strong></dd>
+                            
+                            <dt>Industry/Business Type</dt>
+                            <dd>@(Model.Industry ?? "-")</dd>
+                            
+                            <dt>Address</dt>
+                            <dd>@(Model.Address ?? "-")</dd>
+                        </dl>
+                    </div>
+                    <div class="col-md-6">
+                        <dl>
+                            <dt>Contact Person</dt>
+                            <dd>@(Model.ContactPerson ?? "-")</dd>
+                            
+                            <dt>Email</dt>
+                            <dd>
+                                @if (!string.IsNullOrEmpty(Model.Email))
+                                {
+                                    <a href="mailto:@Model.Email">@Model.Email</a>
+                                }
+                                else
+                                {
+                                    @("-")
+                                }
+                            </dd>
+                            
+                            <dt>Phone</dt>
+                            <dd>@(Model.Phone ?? "-")</dd>
+                            
+                            <dt>Mobile</dt>
+                            <dd>@(Model.Mobile ?? "-")</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-file-earmark-text"></i> Legal & Banking Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <dl>
+                            <dt>Tax Identification Number (TIN)</dt>
+                            <dd>@(Model.TIN ?? "-")</dd>
+                            
+                            <dt>Registration Number</dt>
+                            <dd>@(Model.RegistrationNumber ?? "-")</dd>
+                        </dl>
+                    </div>
+                    <div class="col-md-6">
+                        <dl>
+                            <dt>Bank Name</dt>
+                            <dd>@(Model.BankName ?? "-")</dd>
+                            
+                            <dt>Bank Account Number</dt>
+                            <dd>@(Model.BankAccountNumber ?? "-")</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(Model.Notes))
+        {
+            <div class="card shadow mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-sticky"></i> Notes</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">@Model.Notes</p>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-gear"></i> Account Settings</h5>
+            </div>
+            <div class="card-body">
+                <dl>
+                    <dt>Status</dt>
+                    <dd>
+                        @if (Model.Status == "Active")
+                        {
+                            <span class="badge bg-success fs-6">Active</span>
+                        }
+                        else if (Model.Status == "OnHold")
+                        {
+                            <span class="badge bg-warning fs-6">On Hold</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary fs-6">Inactive</span>
+                        }
+                    </dd>
+                    
+                    <dt>Payment Terms</dt>
+                    <dd>Net @Model.PaymentTermsDays days</dd>
+                    
+                    <dt>Credit Limit</dt>
+                    <dd>K @Model.CreditLimit.ToString("N2")</dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="card shadow">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-clock-history"></i> Record Information</h5>
+            </div>
+            <div class="card-body">
+                <dl>
+                    <dt>Created Date</dt>
+                    <dd>@Model.CreatedDate.ToString("dd/MM/yyyy HH:mm")</dd>
+                    
+                    <dt>Last Modified</dt>
+                    <dd>@(Model.ModifiedDate?.ToString("dd/MM/yyyy HH:mm") ?? "Never")</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>

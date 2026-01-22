@@ -1,0 +1,391 @@
+@model InvoiceManagement.Models.Requisition
+
+@{
+    ViewData["Title"] = "Requisition Details";
+    var userRole = Context.Session.GetString("UserRole");
+    var isAdmin = userRole == "Admin" || userRole == "SystemAdmin";
+}
+@functions {
+    public string FormatCurrency(decimal amount)
+    {
+        var settings = ViewData["CurrencySettings"] as CurrencySettings;
+        if (settings != null)
+        {
+            return CurrencyHelper.FormatCurrency(amount, settings);
+        }
+        return $"K {amount:N2}";
+    }
+    public string CurrencySymbol()
+    {
+        return ViewData["CurrencySymbol"]?.ToString() ?? "K";
+    }
+}
+
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-file-earmark-text"></i> Requisition Details</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            @if (isAdmin || Model.Status == "Draft" || Model.Status == "Pending_Supervisor" || Model.Status ==
+                        "Rejected")
+            {
+                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">
+                    <i class="bi bi-pencil"></i> Edit
+                </a>
+            }
+            @if (Model.Status == "Approved")
+            {
+                <a asp-controller="PurchaseOrders" asp-action="CreateFromRequisition" asp-route-requisitionId="@Model.Id"
+                    class="btn btn-success">
+                    <i class="bi bi-cart-plus"></i> Create Purchase Order
+                </a>
+            }
+            <a asp-action="DownloadPdf" asp-route-id="@Model.Id" class="btn btn-info">
+                <i class="bi bi-file-pdf"></i> Download PDF
+            </a>
+            @if (isAdmin || Model.Status == "Draft" || Model.Status == "Rejected" || Model.Status ==
+                        "Pending_Supervisor")
+            {
+                <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-danger">
+                    <i class="bi bi-trash"></i> Delete
+                </a>
+            }
+        </div>
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle"></i> @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow mb-3">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Requisition Information</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-4">Requisition Number</dt>
+                    <dd class="col-sm-8"><strong>@Model.RequisitionNumber</strong></dd>
+
+                    <dt class="col-sm-4">Date</dt>
+                    <dd class="col-sm-8">@Model.RequisitionDate.ToString("dd/MM/yyyy")</dd>
+
+                    <dt class="col-sm-4">Requested By</dt>
+                    <dd class="col-sm-8">@Model.RequestedBy</dd>
+
+                    <dt class="col-sm-4">Department</dt>
+                    <dd class="col-sm-8">@Model.Department</dd>
+
+                    <dt class="col-sm-4">Facility Type</dt>
+                    <dd class="col-sm-8">@Model.FacilityType</dd>
+
+                    <dt class="col-sm-4">Purpose</dt>
+                    <dd class="col-sm-8">@Model.Purpose</dd>
+
+                    <dt class="col-sm-4">Cost Code</dt>
+                    <dd class="col-sm-8">@Model.CostCode</dd>
+
+                    <dt class="col-sm-4">Budget Code</dt>
+                    <dd class="col-sm-8">@Model.BudgetCode</dd>
+
+                    <dt class="col-sm-4">Estimated Amount</dt>
+                    <dd class="col-sm-8"><strong>@FormatCurrency(Model.EstimatedAmount)</strong></dd>
+
+                    <dt class="col-sm-4">Status</dt>
+                    <dd class="col-sm-8">
+                        @if (Model.Status == "Approved")
+                        {
+                            <span class="badge bg-success fs-6">@Model.Status</span>
+                        }
+                        else if (Model.Status == "Rejected")
+                        {
+                            <span class="badge bg-danger fs-6">@Model.Status</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-warning fs-6">@Model.Status.Replace("_", " ")</span>
+                        }
+                    </dd>
+
+                    @if (!string.IsNullOrEmpty(Model.Notes))
+                    {
+                        <dt class="col-sm-4">Notes</dt>
+                        <dd class="col-sm-8">@Model.Notes</dd>
+                    }
+                </dl>
+            </div>
+        </div>
+
+        <div class="card shadow mb-3">
+            <div class="card-header">
+                <h5 class="mb-0">Requisition Items</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Item Description</th>
+                                <th>Code</th>
+                                <th>Quantity</th>
+                                <th>Unit</th>
+                                <th>Est. Price</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model.RequisitionItems)
+                            {
+                                <tr>
+                                    <td>
+                                        @item.ItemDescription
+                                        @if (!string.IsNullOrEmpty(item.Justification))
+                                        {
+                                            <br />
+
+                                            <small class="text-muted">@item.Justification</small>
+                                        }
+                                    </td>
+                                    <td>@item.ItemCode</td>
+                                    <td>@item.QuantityRequested</td>
+                                    <td>@item.Unit</td>
+                                    <td>@FormatCurrency(item.EstimatedUnitPrice)</td>
+                                    <td><strong>@FormatCurrency(item.EstimatedTotal)</strong></td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th colspan="5" class="text-end">Total Estimated Amount:</th>
+                                <th>@FormatCurrency(Model.EstimatedAmount)</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        @if (Model.Status != "Draft" && Model.Status != "Pending_Supervisor")
+        {
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="mb-0">Approval History</h5>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(Model.SupervisorName))
+                    {
+                        <div class="mb-3">
+                            <h6><i class="bi bi-check-circle text-success"></i> Supervisor Approval</h6>
+                            <dl class="row mb-0">
+                                <dt class="col-sm-3">Approved By</dt>
+                                <dd class="col-sm-9">@Model.SupervisorName</dd>
+
+                                <dt class="col-sm-3">Date</dt>
+                                <dd class="col-sm-9">@Model.SupervisorApprovalDate?.ToString("yyyy-MM-dd HH:mm")</dd>
+
+                                @if (!string.IsNullOrEmpty(Model.SupervisorComments))
+                                {
+                                    <dt class="col-sm-3">Comments</dt>
+                                    <dd class="col-sm-9">@Model.SupervisorComments</dd>
+                                }
+                            </dl>
+                        </div>
+                        <hr />
+                    }
+
+                    @if (!string.IsNullOrEmpty(Model.FinanceOfficerName))
+                    {
+                        <div class="mb-3">
+                            <h6><i class="bi bi-check-circle text-success"></i> Finance Screening</h6>
+                            <dl class="row mb-0">
+                                <dt class="col-sm-3">Screened By</dt>
+                                <dd class="col-sm-9">@Model.FinanceOfficerName</dd>
+
+                                <dt class="col-sm-3">Date</dt>
+                                <dd class="col-sm-9">@Model.FinanceApprovalDate?.ToString("yyyy-MM-dd HH:mm")</dd>
+
+                                <dt class="col-sm-3">Budget</dt>
+                                <dd class="col-sm-9">
+                                    @if (Model.BudgetApproved == true)
+                                    {
+                                        <span class="badge bg-success">Approved</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger">Not Approved</span>
+                                    }
+                                </dd>
+
+                                <dt class="col-sm-3">Need</dt>
+                                <dd class="col-sm-9">
+                                    @if (Model.NeedApproved == true)
+                                    {
+                                        <span class="badge bg-success">Approved</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger">Not Approved</span>
+                                    }
+                                </dd>
+
+                                <dt class="col-sm-3">Cost Code</dt>
+                                <dd class="col-sm-9">
+                                    @if (Model.CostCodeApproved == true)
+                                    {
+                                        <span class="badge bg-success">Approved</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger">Not Approved</span>
+                                    }
+                                </dd>
+
+                                @if (!string.IsNullOrEmpty(Model.FinanceComments))
+                                {
+                                    <dt class="col-sm-3">Comments</dt>
+                                    <dd class="col-sm-9">@Model.FinanceComments</dd>
+                                }
+                            </dl>
+                        </div>
+                        <hr />
+                    }
+
+                    @if (!string.IsNullOrEmpty(Model.FinalApproverName))
+                    {
+                        <div class="mb-0">
+                            <h6><i class="bi bi-check-circle text-success"></i> Final Approval</h6>
+                            <dl class="row mb-0">
+                                <dt class="col-sm-3">Approved By</dt>
+                                <dd class="col-sm-9">@Model.FinalApproverName</dd>
+
+                                <dt class="col-sm-3">Date</dt>
+                                <dd class="col-sm-9">@Model.FinalApprovalDate?.ToString("yyyy-MM-dd HH:mm")</dd>
+
+                                @if (!string.IsNullOrEmpty(Model.FinalApproverComments))
+                                {
+                                    <dt class="col-sm-3">Comments</dt>
+                                    <dd class="col-sm-9">@Model.FinalApproverComments</dd>
+                                }
+                            </dl>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(Model.RejectionReason))
+                    {
+                        <div class="alert alert-danger mb-0">
+                            <h6><i class="bi bi-x-circle"></i> Rejection Reason</h6>
+                            <p class="mb-0">@Model.RejectionReason</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="col-md-4">
+        @if (Model.Status.StartsWith("Pending"))
+        {
+            <div class="card shadow mb-3 border-warning">
+                <div class="card-header bg-warning">
+                    <h5 class="mb-0"><i class="bi bi-hourglass-split"></i> Pending Action</h5>
+                </div>
+                <div class="card-body">
+                    @if (Model.Status == "Pending_Supervisor")
+                    {
+                        <p>Waiting for <strong>Supervisor</strong> approval.</p>
+                        <a asp-action="Approve" asp-route-id="@Model.Id" class="btn btn-warning w-100">
+                            <i class="bi bi-pencil"></i> Review & Approve
+                        </a>
+                    }
+                    else if (Model.Status == "Pending_Finance")
+                    {
+                        <p>Waiting for <strong>Finance Officer</strong> screening.</p>
+                        <a asp-action="Approve" asp-route-id="@Model.Id" class="btn btn-warning w-100">
+                            <i class="bi bi-pencil"></i> Screen Requisition
+                        </a>
+                    }
+                    else if (Model.Status == "Pending_FinalApproval")
+                    {
+                        <p>Waiting for <strong>Final Approver</strong> (Health Manager/Executive).</p>
+                        <a asp-action="Approve" asp-route-id="@Model.Id" class="btn btn-warning w-100">
+                            <i class="bi bi-pencil"></i> Final Approval
+                        </a>
+                    }
+                </div>
+            </div>
+        }
+
+        <div class="card shadow mb-3">
+            <div class="card-header bg-info text-white">
+                <i class="bi bi-info-circle"></i> Requisition Status
+            </div>
+            <div class="card-body">
+                <dl class="mb-0">
+                    <dt>Created Date</dt>
+                    <dd>@Model.CreatedDate.ToString("yyyy-MM-dd HH:mm")</dd>
+
+                    @if (Model.ModifiedDate.HasValue)
+                    {
+                        <dt>Last Modified</dt>
+                        <dd>@Model.ModifiedDate.Value.ToString("yyyy-MM-dd HH:mm")</dd>
+                    }
+
+                    @if (Model.PurchaseOrders.Any())
+                    {
+                        <dt>Purchase Orders</dt>
+                        <dd>
+                            @foreach (var po in Model.PurchaseOrders)
+                            {
+                                <a asp-controller="PurchaseOrders" asp-action="Details" asp-route-id="@po.Id"
+                                    class="badge bg-primary">
+                                    @po.PONumber
+                                </a>
+                            }
+                        </dd>
+                    }
+                </dl>
+            </div>
+        </div>
+
+        <div class="card shadow">
+            <div class="card-header bg-secondary text-white">
+                <i class="bi bi-diagram-3"></i> Workflow Progress
+            </div>
+            <div class="card-body">
+                <div class="list-group list-group-flush">
+                    <div
+                        class="list-group-item @(Model.Status == "Pending_Supervisor" || !string.IsNullOrEmpty(Model.SupervisorName) ? "list-group-item-success" : "")">
+                        <i
+                            class="bi @(string.IsNullOrEmpty(Model.SupervisorName) ? "bi-circle" : "bi-check-circle-fill")"></i>
+                        Supervisor Review
+                    </div>
+                    <div
+                        class="list-group-item @(Model.Status == "Pending_Finance" || !string.IsNullOrEmpty(Model.FinanceOfficerName) ? "list-group-item-success" : "")">
+                        <i
+                            class="bi @(string.IsNullOrEmpty(Model.FinanceOfficerName) ? "bi-circle" : "bi-check-circle-fill")"></i>
+                        Finance Screening
+                    </div>
+                    <div
+                        class="list-group-item @(Model.Status == "Pending_FinalApproval" || !string.IsNullOrEmpty(Model.FinalApproverName) ? "list-group-item-success" : "")">
+                        <i
+                            class="bi @(string.IsNullOrEmpty(Model.FinalApproverName) ? "bi-circle" : "bi-check-circle-fill")"></i>
+                        Final Approval
+                    </div>
+                    <div class="list-group-item @(Model.Status == "Approved" ? "list-group-item-success" : "")">
+                        <i class="bi @(Model.Status == "Approved" ? "bi-check-circle-fill" : "bi-circle")"></i>
+                        Approved
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

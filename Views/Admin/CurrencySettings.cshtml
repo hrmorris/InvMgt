@@ -1,0 +1,312 @@
+@{
+    ViewData["Title"] = "Currency Settings";
+    var allCurrencies = ViewBag.AllCurrencies as List<InvoiceManagement.Models.Currency> ?? new List<InvoiceManagement.Models.Currency>();
+    var allRegions = ViewBag.AllRegions as List<string> ?? new List<string>();
+    var currentCode = ViewBag.CurrencyCode as string ?? "PGK";
+    var currentSymbol = ViewBag.CurrencySymbol as string ?? "K";
+    var currentName = ViewBag.CurrencyName as string ?? "Papua New Guinean Kina";
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-currency-exchange"></i> Currency Settings</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-action="Settings" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Settings
+        </a>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle"></i> @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle"></i> @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- Current Currency Display -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3 bg-primary text-white">
+        <h5 class="m-0"><i class="bi bi-star-fill"></i> Current Currency</h5>
+    </div>
+    <div class="card-body">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h3 class="mb-2">
+                    <span class="badge bg-success" style="font-size: 1.5rem;">@currentSymbol</span>
+                    <strong>@currentName</strong>
+                </h3>
+                <p class="text-muted mb-0">
+                    <strong>Code:</strong> @currentCode | 
+                    <strong>Symbol:</strong> @currentSymbol | 
+                    <strong>Format Example:</strong> 
+                    @if (ViewBag.CurrencyPosition == "before")
+                    {
+                        <text>@currentSymbol 1@ViewBag.ThousandsSeparator@(000)@ViewBag.DecimalSeparator@(50)</text>
+                    }
+                    else
+                    {
+                        <text>1@ViewBag.ThousandsSeparator@(000)@ViewBag.DecimalSeparator@(50) @currentSymbol</text>
+                    }
+                </p>
+            </div>
+            <div class="col-md-4 text-end">
+                <button type="button" class="btn btn-lg btn-primary" data-bs-toggle="modal" data-bs-target="#changeCurrencyModal">
+                    <i class="bi bi-arrow-repeat"></i> Change Currency
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Currency Formatting Settings -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3 bg-success text-white">
+        <h5 class="m-0"><i class="bi bi-gear-fill"></i> Currency Formatting</h5>
+    </div>
+    <div class="card-body">
+        <form asp-action="UpdateCurrencyFormat" method="post">
+            @Html.AntiForgeryToken()
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label"><i class="bi bi-arrow-left-right"></i> Symbol Position</label>
+                    <select name="currencyPosition" class="form-select" required>
+                        <option value="before" selected="@(ViewBag.CurrencyPosition == "before")">Before Amount (@currentSymbol 100.00)</option>
+                        <option value="after" selected="@(ViewBag.CurrencyPosition == "after")">After Amount (100.00 @currentSymbol)</option>
+                    </select>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label class="form-label"><i class="bi bi-123"></i> Decimal Places</label>
+                    <select name="decimalPlaces" class="form-select" required>
+                        <option value="0" selected="@(ViewBag.DecimalPlaces == "0")">No Decimals (100)</option>
+                        <option value="1" selected="@(ViewBag.DecimalPlaces == "1")">1 Decimal (100.0)</option>
+                        <option value="2" selected="@(ViewBag.DecimalPlaces == "2")">2 Decimals (100.00)</option>
+                        <option value="3" selected="@(ViewBag.DecimalPlaces == "3")">3 Decimals (100.000)</option>
+                    </select>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label class="form-label"><i class="bi bi-dot"></i> Thousands Separator</label>
+                    <select name="thousandsSeparator" class="form-select" required>
+                        <option value="," selected="@(ViewBag.ThousandsSeparator == ",")">Comma (1,000)</option>
+                        <option value="." selected="@(ViewBag.ThousandsSeparator == ".")">Period (1.000)</option>
+                        <option value=" " selected="@(ViewBag.ThousandsSeparator == " ")">Space (1 000)</option>
+                        <option value="" selected="@(string.IsNullOrEmpty(ViewBag.ThousandsSeparator))">None (1000)</option>
+                    </select>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label class="form-label"><i class="bi bi-dot"></i> Decimal Separator</label>
+                    <select name="decimalSeparator" class="form-select" required>
+                        <option value="." selected="@(ViewBag.DecimalSeparator == ".")">Period (100.50)</option>
+                        <option value="," selected="@(ViewBag.DecimalSeparator == ",")">Comma (100,50)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> <strong>Preview:</strong> 
+                <span id="formatPreview" class="fw-bold"></span>
+            </div>
+
+            <button type="submit" class="btn btn-success btn-lg">
+                <i class="bi bi-check-circle"></i> Save Formatting
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Change Currency Modal -->
+<div class="modal fade" id="changeCurrencyModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-globe"></i> Select Currency</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Search Box -->
+                <div class="mb-3">
+                    <input type="text" id="currencySearch" class="form-control form-control-lg" placeholder="Search currencies by name, code, or region...">
+                </div>
+
+                <!-- Region Filter -->
+                <div class="mb-3">
+                    <label class="form-label"><i class="bi bi-funnel"></i> Filter by Region:</label>
+                    <select id="regionFilter" class="form-select">
+                        <option value="">All Regions (@allCurrencies.Count currencies)</option>
+                        @foreach (var region in allRegions)
+                        {
+                            var count = allCurrencies.Count(c => c.Region == region);
+                            <option value="@region">@region (@count)</option>
+                        }
+                    </select>
+                </div>
+
+                <!-- Currency Grid -->
+                <form asp-action="UpdateCurrency" method="post" id="currencyForm">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="currencyCode" id="selectedCurrencyCode" />
+                    
+                    <div class="row" id="currencyGrid">
+                        @foreach (var currency in allCurrencies.OrderBy(c => c.Name))
+                        {
+                            var isSelected = currency.Code == currentCode;
+                            <div class="col-md-6 col-lg-4 mb-3 currency-item" data-code="@currency.Code" data-name="@currency.Name" data-region="@currency.Region">
+                                <div class="card h-100 currency-card @(isSelected ? "border-primary" : "")" style="cursor: pointer;" onclick="selectCurrency('@currency.Code', '@currency.Symbol', '@currency.Name')">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <h5 class="card-title mb-1">
+                                                    @if (isSelected)
+                                                    {
+                                                        <i class="bi bi-check-circle-fill text-primary"></i>
+                                                    }
+                                                    <strong>@currency.Code</strong>
+                                                </h5>
+                                                <p class="card-text mb-0">@currency.Name</p>
+                                                <small class="text-muted">@currency.Region</small>
+                                            </div>
+                                            <div>
+                                                <span class="badge bg-secondary" style="font-size: 1.2rem;">@currency.Symbol</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <div id="noResults" class="alert alert-warning" style="display: none;">
+                        <i class="bi bi-search"></i> No currencies found matching your search.
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitCurrencyChange()">
+                    <i class="bi bi-check-circle"></i> Change Currency
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .currency-card {
+        transition: all 0.3s;
+    }
+    .currency-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        border-color: #0d6efd !important;
+    }
+    .currency-card.selected {
+        border-color: #0d6efd !important;
+        background-color: #e7f1ff;
+    }
+</style>
+
+@section Scripts {
+    <script>
+        let selectedCode = '@currentCode';
+
+        function selectCurrency(code, symbol, name) {
+            selectedCode = code;
+            document.getElementById('selectedCurrencyCode').value = code;
+            
+            // Update UI
+            document.querySelectorAll('.currency-card').forEach(card => {
+                card.classList.remove('selected', 'border-primary');
+            });
+            
+            const selectedCard = document.querySelector(`[data-code="${code}"] .currency-card`);
+            if (selectedCard) {
+                selectedCard.classList.add('selected', 'border-primary');
+            }
+        }
+
+        function submitCurrencyChange() {
+            if (selectedCode) {
+                document.getElementById('currencyForm').submit();
+            } else {
+                alert('Please select a currency');
+            }
+        }
+
+        // Search functionality
+        document.getElementById('currencySearch').addEventListener('input', function(e) {
+            filterCurrencies();
+        });
+
+        // Region filter
+        document.getElementById('regionFilter').addEventListener('change', function(e) {
+            filterCurrencies();
+        });
+
+        function filterCurrencies() {
+            const searchTerm = document.getElementById('currencySearch').value.toLowerCase();
+            const regionFilter = document.getElementById('regionFilter').value;
+            const items = document.querySelectorAll('.currency-item');
+            let visibleCount = 0;
+
+            items.forEach(item => {
+                const code = item.dataset.code.toLowerCase();
+                const name = item.dataset.name.toLowerCase();
+                const region = item.dataset.region;
+                
+                const matchesSearch = code.includes(searchTerm) || name.includes(searchTerm) || region.toLowerCase().includes(searchTerm);
+                const matchesRegion = !regionFilter || region === regionFilter;
+                
+                if (matchesSearch && matchesRegion) {
+                    item.style.display = '';
+                    visibleCount++;
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+
+            document.getElementById('noResults').style.display = visibleCount === 0 ? 'block' : 'none';
+        }
+
+        // Format preview
+        function updateFormatPreview() {
+            const position = document.querySelector('[name="currencyPosition"]').value;
+            const decimals = parseInt(document.querySelector('[name="decimalPlaces"]').value);
+            const thousands = document.querySelector('[name="thousandsSeparator"]').value;
+            const decimal = document.querySelector('[name="decimalSeparator"]').value;
+            
+            const symbol = '@currentSymbol';
+            const amount = 1234567;
+            const decimalPart = decimals > 0 ? decimal + '89'.padEnd(decimals, '0') : '';
+            
+            let formatted = amount.toString();
+            if (thousands) {
+                formatted = formatted.replace(/\B(?=(\d{3})+(?!\d))/g, thousands);
+            }
+            formatted += decimalPart;
+            
+            const preview = position === 'before' ? `${symbol} ${formatted}` : `${formatted} ${symbol}`;
+            document.getElementById('formatPreview').textContent = preview;
+        }
+
+        // Update preview on change
+        document.querySelectorAll('select[name^="currency"], select[name^="decimal"], select[name^="thousands"]').forEach(select => {
+            select.addEventListener('change', updateFormatPreview);
+        });
+
+        // Initial preview
+        updateFormatPreview();
+    </script>
+}
+

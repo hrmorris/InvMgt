@@ -1,0 +1,496 @@
+@model IEnumerable<Invoice>
+
+@{
+    ViewData["Title"] = "Invoices";
+    var activeTab = ViewBag.ActiveTab ?? "all";
+}
+@functions {
+    public string FormatCurrency(decimal amount)
+    {
+        var settings = ViewData["CurrencySettings"] as CurrencySettings;
+        if (settings != null)
+        {
+            return CurrencyHelper.FormatCurrency(amount, settings);
+        }
+        return $"K {amount:N2}";
+    }
+    public string CurrencySymbol()
+    {
+        return ViewData["CurrencySymbol"]?.ToString() ?? "K";
+    }
+}
+
+@{
+    var supplierInvoices = Model.Where(i => i.InvoiceType == "Supplier" || i.SupplierId.HasValue).ToList();
+    var customerInvoices = Model.Where(i => i.InvoiceType == "Customer" && !i.SupplierId.HasValue).ToList();
+    
+    var supplierGroups = supplierInvoices
+        .GroupBy(i => i.Supplier?.SupplierName ?? i.CustomerName)
+        .Select(g => new {
+            Name = g.Key,
+            InvoiceCount = g.Count(),
+            TotalAmount = g.Sum(i => i.TotalAmount),
+            PaidAmount = g.Sum(i => i.PaidAmount),
+            BalanceAmount = g.Sum(i => i.BalanceAmount),
+            OverdueCount = g.Count(i => i.DueDate < DateTime.Now && i.Status != "Paid"),
+            Invoices = g.OrderByDescending(i => i.InvoiceDate).ToList()
+        })
+        .OrderByDescending(s => s.BalanceAmount)
+        .ToList();
+        
+    var customerGroups = customerInvoices
+        .GroupBy(i => i.CustomerName)
+        .Select(g => new {
+            Name = g.Key,
+            InvoiceCount = g.Count(),
+            TotalAmount = g.Sum(i => i.TotalAmount),
+            PaidAmount = g.Sum(i => i.PaidAmount),
+            BalanceAmount = g.Sum(i => i.BalanceAmount),
+            OverdueCount = g.Count(i => i.DueDate < DateTime.Now && i.Status != "Paid"),
+            Invoices = g.OrderByDescending(i => i.InvoiceDate).ToList()
+        })
+        .OrderByDescending(s => s.BalanceAmount)
+        .ToList();
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-file-earmark-text"></i> Invoices</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-action="Create" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Create New Invoice
+        </a>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle"></i> @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white shadow-sm">
+            <div class="card-body py-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <small class="text-uppercase opacity-75">Total Invoices</small>
+                        <h4 class="mb-0">@Model.Count()</h4>
+                    </div>
+                    <i class="bi bi-file-earmark-text fs-2 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-dark shadow-sm">
+            <div class="card-body py-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <small class="text-uppercase opacity-75">Supplier Invoices</small>
+                        <h4 class="mb-0">@supplierInvoices.Count</h4>
+                    </div>
+                    <i class="bi bi-building fs-2 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white shadow-sm">
+            <div class="card-body py-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <small class="text-uppercase opacity-75">Customer Invoices</small>
+                        <h4 class="mb-0">@customerInvoices.Count</h4>
+                    </div>
+                    <i class="bi bi-people fs-2 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-danger text-white shadow-sm">
+            <div class="card-body py-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <small class="text-uppercase opacity-75">Outstanding</small>
+                        <h4 class="mb-0">@FormatCurrency(Model.Sum(i => i.BalanceAmount))</h4>
+                    </div>
+                    <i class="bi bi-cash-stack fs-2 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabs -->
+<ul class="nav nav-tabs mb-3" id="invoiceTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="all-tab" data-bs-toggle="tab" data-bs-target="#all-invoices" 
+                type="button" role="tab" aria-controls="all-invoices" aria-selected="true">
+            <i class="bi bi-list-ul"></i> All Invoices <span class="badge bg-secondary">@Model.Count()</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="suppliers-tab" data-bs-toggle="tab" data-bs-target="#by-suppliers" 
+                type="button" role="tab" aria-controls="by-suppliers" aria-selected="false">
+            <i class="bi bi-building"></i> By Supplier <span class="badge bg-warning text-dark">@supplierGroups.Count</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="customers-tab" data-bs-toggle="tab" data-bs-target="#by-customers" 
+                type="button" role="tab" aria-controls="by-customers" aria-selected="false">
+            <i class="bi bi-people"></i> By Customer <span class="badge bg-info">@customerGroups.Count</span>
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="invoiceTabsContent">
+    <!-- All Invoices Tab -->
+    <div class="tab-pane fade show active" id="all-invoices" role="tabpanel" aria-labelledby="all-tab">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <form asp-action="Index" method="get" class="row g-3">
+                    <div class="col-md-10">
+                        <input type="text" class="form-control" name="searchTerm" placeholder="Search by invoice number, customer name, or email..." value="@ViewBag.SearchTerm" />
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-search"></i> Search
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Invoice #</th>
+                                <th>Type</th>
+                                <th>Date</th>
+                                <th>Due Date</th>
+                                <th>Supplier/Customer</th>
+                                <th>Total Amount</th>
+                                <th>Paid Amount</th>
+                                <th>Balance</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model)
+                            {
+                                var isSupplierInvoice = item.InvoiceType == "Supplier" || item.SupplierId.HasValue;
+                                <tr>
+                                    <td><a asp-action="Details" asp-route-id="@item.Id">@item.InvoiceNumber</a></td>
+                                    <td>
+                                        @if (isSupplierInvoice)
+                                        {
+                                            <span class="badge bg-warning text-dark" title="Accounts Payable">Supplier</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-info" title="Accounts Receivable">Customer</span>
+                                        }
+                                    </td>
+                                    <td>@item.InvoiceDate.ToString("dd/MM/yyyy")</td>
+                                    <td>@item.DueDate.ToString("dd/MM/yyyy")</td>
+                                    <td>@item.CustomerName</td>
+                                    <td>@FormatCurrency(item.TotalAmount)</td>
+                                    <td>@FormatCurrency(item.PaidAmount)</td>
+                                    <td><strong>@FormatCurrency(item.BalanceAmount)</strong></td>
+                                    <td><span class="status-badge status-@item.Status.ToLower()">@item.Status</span></td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary" title="Edit">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <a asp-action="GeneratePdf" asp-route-id="@item.Id" class="btn btn-sm btn-outline-success" title="Download PDF">
+                                                <i class="bi bi-file-pdf"></i>
+                                            </a>
+                                            <a asp-controller="Payments" asp-action="Create" asp-route-invoiceId="@item.Id" class="btn btn-sm btn-outline-info" title="Add Payment">
+                                                <i class="bi bi-credit-card"></i>
+                                            </a>
+                                            <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger" title="Delete">
+                                                <i class="bi bi-trash"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- By Suppliers Tab -->
+    <div class="tab-pane fade" id="by-suppliers" role="tabpanel" aria-labelledby="suppliers-tab">
+        @if (!supplierGroups.Any())
+        {
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> No supplier invoices found.
+            </div>
+        }
+        else
+        {
+            <div class="accordion" id="supplierAccordion">
+                @foreach (var supplier in supplierGroups)
+                {
+                    var accordionId = $"supplier-{supplier.Name.GetHashCode()}";
+                    var hasOutstanding = supplier.BalanceAmount > 0;
+                    var hasOverdue = supplier.OverdueCount > 0;
+                    var cardClass = hasOverdue ? "border-danger" : hasOutstanding ? "border-warning" : "border-success";
+                    
+                    <div class="card @cardClass shadow-sm mb-2">
+                        <div class="card-header py-2" id="heading-@accordionId">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center">
+                                    <button class="btn btn-link text-decoration-none text-dark p-0 me-3" type="button" 
+                                            data-bs-toggle="collapse" data-bs-target="#collapse-@accordionId">
+                                        <i class="bi bi-chevron-down"></i>
+                                    </button>
+                                    <div>
+                                        <h6 class="mb-0">
+                                            <i class="bi bi-building me-2 text-warning"></i>
+                                            @supplier.Name
+                                        </h6>
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-3 align-items-center">
+                                    <div class="text-center">
+                                        <small class="text-muted d-block">Invoices</small>
+                                        <span class="badge bg-secondary">@supplier.InvoiceCount</span>
+                                    </div>
+                                    @if (supplier.OverdueCount > 0)
+                                    {
+                                        <div class="text-center">
+                                            <small class="text-muted d-block">Overdue</small>
+                                            <span class="badge bg-danger">@supplier.OverdueCount</span>
+                                        </div>
+                                    }
+                                    <div class="text-center">
+                                        <small class="text-muted d-block">Total</small>
+                                        <strong>@FormatCurrency(supplier.TotalAmount)</strong>
+                                    </div>
+                                    <div class="text-center">
+                                        <small class="text-muted d-block">Outstanding</small>
+                                        <strong class="@(hasOverdue ? "text-danger" : hasOutstanding ? "text-warning" : "text-success")">
+                                            @FormatCurrency(supplier.BalanceAmount)
+                                        </strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="collapse-@accordionId" class="collapse" data-bs-parent="#supplierAccordion">
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Invoice #</th>
+                                                <th>Date</th>
+                                                <th>Due Date</th>
+                                                <th class="text-end">Total</th>
+                                                <th class="text-end">Paid</th>
+                                                <th class="text-end">Balance</th>
+                                                <th>Status</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var invoice in supplier.Invoices)
+                                            {
+                                                var isOverdue = invoice.DueDate < DateTime.Now && invoice.Status != "Paid";
+                                                <tr class="@(isOverdue ? "table-danger" : "")">
+                                                    <td><a asp-action="Details" asp-route-id="@invoice.Id">@invoice.InvoiceNumber</a></td>
+                                                    <td>@invoice.InvoiceDate.ToString("dd/MM/yyyy")</td>
+                                                    <td>@invoice.DueDate.ToString("dd/MM/yyyy")</td>
+                                                    <td class="text-end">@FormatCurrency(invoice.TotalAmount)</td>
+                                                    <td class="text-end">@FormatCurrency(invoice.PaidAmount)</td>
+                                                    <td class="text-end"><strong>@FormatCurrency(invoice.BalanceAmount)</strong></td>
+                                                    <td><span class="status-badge status-@invoice.Status.ToLower()">@invoice.Status</span></td>
+                                                    <td>
+                                                        <div class="btn-group btn-group-sm">
+                                                            <a asp-action="Details" asp-route-id="@invoice.Id" class="btn btn-outline-primary" title="View">
+                                                                <i class="bi bi-eye"></i>
+                                                            </a>
+                                                            <a asp-controller="Payments" asp-action="Create" asp-route-invoiceId="@invoice.Id" class="btn btn-outline-success" title="Pay">
+                                                                <i class="bi bi-credit-card"></i>
+                                                            </a>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+            
+            <!-- Supplier Totals -->
+            <div class="card bg-warning bg-opacity-10 border-warning mt-3">
+                <div class="card-body py-2">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <strong><i class="bi bi-building"></i> Total Supplier Invoices: @supplierInvoices.Count</strong>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <span class="me-4">Total: <strong>@FormatCurrency(supplierInvoices.Sum(i => i.TotalAmount))</strong></span>
+                            <span>Outstanding: <strong class="text-danger">@FormatCurrency(supplierInvoices.Sum(i => i.BalanceAmount))</strong></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- By Customers Tab -->
+    <div class="tab-pane fade" id="by-customers" role="tabpanel" aria-labelledby="customers-tab">
+        @if (!customerGroups.Any())
+        {
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> No customer invoices found.
+            </div>
+        }
+        else
+        {
+            <div class="accordion" id="customerAccordion">
+                @foreach (var customer in customerGroups)
+                {
+                    var accordionId = $"customer-{customer.Name.GetHashCode()}";
+                    var hasOutstanding = customer.BalanceAmount > 0;
+                    var hasOverdue = customer.OverdueCount > 0;
+                    var cardClass = hasOverdue ? "border-danger" : hasOutstanding ? "border-warning" : "border-success";
+                    
+                    <div class="card @cardClass shadow-sm mb-2">
+                        <div class="card-header py-2" id="heading-@accordionId">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center">
+                                    <button class="btn btn-link text-decoration-none text-dark p-0 me-3" type="button" 
+                                            data-bs-toggle="collapse" data-bs-target="#collapse-@accordionId">
+                                        <i class="bi bi-chevron-down"></i>
+                                    </button>
+                                    <div>
+                                        <h6 class="mb-0">
+                                            <i class="bi bi-person me-2 text-info"></i>
+                                            @customer.Name
+                                        </h6>
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-3 align-items-center">
+                                    <div class="text-center">
+                                        <small class="text-muted d-block">Invoices</small>
+                                        <span class="badge bg-secondary">@customer.InvoiceCount</span>
+                                    </div>
+                                    @if (customer.OverdueCount > 0)
+                                    {
+                                        <div class="text-center">
+                                            <small class="text-muted d-block">Overdue</small>
+                                            <span class="badge bg-danger">@customer.OverdueCount</span>
+                                        </div>
+                                    }
+                                    <div class="text-center">
+                                        <small class="text-muted d-block">Total</small>
+                                        <strong>@FormatCurrency(customer.TotalAmount)</strong>
+                                    </div>
+                                    <div class="text-center">
+                                        <small class="text-muted d-block">Outstanding</small>
+                                        <strong class="@(hasOverdue ? "text-danger" : hasOutstanding ? "text-warning" : "text-success")">
+                                            @FormatCurrency(customer.BalanceAmount)
+                                        </strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="collapse-@accordionId" class="collapse" data-bs-parent="#customerAccordion">
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Invoice #</th>
+                                                <th>Date</th>
+                                                <th>Due Date</th>
+                                                <th class="text-end">Total</th>
+                                                <th class="text-end">Paid</th>
+                                                <th class="text-end">Balance</th>
+                                                <th>Status</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var invoice in customer.Invoices)
+                                            {
+                                                var isOverdue = invoice.DueDate < DateTime.Now && invoice.Status != "Paid";
+                                                <tr class="@(isOverdue ? "table-danger" : "")">
+                                                    <td><a asp-action="Details" asp-route-id="@invoice.Id">@invoice.InvoiceNumber</a></td>
+                                                    <td>@invoice.InvoiceDate.ToString("dd/MM/yyyy")</td>
+                                                    <td>@invoice.DueDate.ToString("dd/MM/yyyy")</td>
+                                                    <td class="text-end">@FormatCurrency(invoice.TotalAmount)</td>
+                                                    <td class="text-end">@FormatCurrency(invoice.PaidAmount)</td>
+                                                    <td class="text-end"><strong>@FormatCurrency(invoice.BalanceAmount)</strong></td>
+                                                    <td><span class="status-badge status-@invoice.Status.ToLower()">@invoice.Status</span></td>
+                                                    <td>
+                                                        <div class="btn-group btn-group-sm">
+                                                            <a asp-action="Details" asp-route-id="@invoice.Id" class="btn btn-outline-primary" title="View">
+                                                                <i class="bi bi-eye"></i>
+                                                            </a>
+                                                            <a asp-controller="Payments" asp-action="Create" asp-route-invoiceId="@invoice.Id" class="btn btn-outline-success" title="Pay">
+                                                                <i class="bi bi-credit-card"></i>
+                                                            </a>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+            
+            <!-- Customer Totals -->
+            <div class="card bg-info bg-opacity-10 border-info mt-3">
+                <div class="card-body py-2">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <strong><i class="bi bi-people"></i> Total Customer Invoices: @customerInvoices.Count</strong>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <span class="me-4">Total: <strong>@FormatCurrency(customerInvoices.Sum(i => i.TotalAmount))</strong></span>
+                            <span>Outstanding: <strong class="text-danger">@FormatCurrency(customerInvoices.Sum(i => i.BalanceAmount))</strong></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Toggle chevron icon on accordion
+        document.querySelectorAll('.accordion-collapse, .collapse').forEach(function(collapse) {
+            collapse.addEventListener('show.bs.collapse', function() {
+                var btn = document.querySelector('[data-bs-target="#' + this.id + '"] i');
+                if (btn) btn.classList.replace('bi-chevron-down', 'bi-chevron-up');
+            });
+            collapse.addEventListener('hide.bs.collapse', function() {
+                var btn = document.querySelector('[data-bs-target="#' + this.id + '"] i');
+                if (btn) btn.classList.replace('bi-chevron-up', 'bi-chevron-down');
+            });
+        });
+    </script>
+}
+

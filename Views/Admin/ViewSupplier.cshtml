@@ -1,0 +1,190 @@
+@model InvoiceManagement.Models.Supplier
+
+@{
+    ViewData["Title"] = "Supplier Details";
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-building"></i> Supplier Details</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a asp-action="EditSupplier" asp-route-id="@Model.Id" class="btn btn-primary">
+                <i class="bi bi-pencil"></i> Edit
+            </a>
+        </div>
+        <a asp-action="Suppliers" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="m-0"><i class="bi bi-info-circle"></i> Supplier Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="text-muted small">Supplier Code</label>
+                        <p class="fw-bold">@Model.SupplierCode</p>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="text-muted small">Supplier Name</label>
+                        <p class="fw-bold">@Model.SupplierName</p>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="text-muted small">Status</label>
+                        <p>
+                            @if (Model.Status == "Active")
+                            {
+                                <span class="badge bg-success">Active</span>
+                            }
+                            else if (Model.Status == "OnHold")
+                            {
+                                <span class="badge bg-warning">On Hold</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Inactive</span>
+                            }
+                        </p>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(Model.TIN))
+                {
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label class="text-muted small">Tax Identification Number (TIN)</label>
+                            <p class="fw-bold">@Model.TIN</p>
+                        </div>
+                    </div>
+                }
+
+                <hr />
+
+                <h6 class="text-primary mb-3"><i class="bi bi-person"></i> Contact Information</h6>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="text-muted small">Contact Person</label>
+                        <p>@(string.IsNullOrEmpty(Model.ContactPerson) ? "-" : Model.ContactPerson)</p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small">Email</label>
+                        <p>
+                            @if (!string.IsNullOrEmpty(Model.Email))
+                            {
+                                <a href="mailto:@Model.Email">@Model.Email</a>
+                            }
+                            else
+                            {
+                                @:-
+                            }
+                        </p>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="text-muted small">Phone</label>
+                        <p>
+                            @if (!string.IsNullOrEmpty(Model.Phone))
+                            {
+                                <a href="tel:@Model.Phone">@Model.Phone</a>
+                            }
+                            else
+                            {
+                                @:-
+                            }
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small">Mobile</label>
+                        <p>
+                            @if (!string.IsNullOrEmpty(Model.Mobile))
+                            {
+                                <a href="tel:@Model.Mobile">@Model.Mobile</a>
+                            }
+                            else
+                            {
+                                @:-
+                            }
+                        </p>
+                    </div>
+                </div>
+
+                <hr />
+
+                <h6 class="text-primary mb-3"><i class="bi bi-geo-alt"></i> Address</h6>
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <label class="text-muted small">Address</label>
+                        <p>@(string.IsNullOrEmpty(Model.Address) ? "-" : Model.Address)</p>
+                    </div>
+                </div>
+
+                <hr />
+
+                <h6 class="text-primary mb-3"><i class="bi bi-credit-card"></i> Payment Information</h6>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="text-muted small">Payment Terms</label>
+                        <p>Net @Model.PaymentTermsDays days</p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small">Bank Account Number</label>
+                        <p>@(string.IsNullOrEmpty(Model.BankAccountNumber) ? "-" : Model.BankAccountNumber)</p>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(Model.Notes))
+                {
+                    <hr />
+                    <h6 class="text-primary mb-3"><i class="bi bi-sticky"></i> Notes</h6>
+                    <p>@Model.Notes</p>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="m-0"><i class="bi bi-clock-history"></i> Audit Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="text-muted small">Created Date</label>
+                    <p>@Model.CreatedDate.ToString("dd/MM/yyyy HH:mm")</p>
+                </div>
+                @if (Model.ModifiedDate.HasValue)
+                {
+                    <div class="mb-3">
+                        <label class="text-muted small">Last Modified</label>
+                        <p>@Model.ModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="card shadow">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="m-0"><i class="bi bi-lightning"></i> Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a asp-action="EditSupplier" asp-route-id="@Model.Id" class="btn btn-outline-primary">
+                        <i class="bi bi-pencil"></i> Edit Supplier
+                    </a>
+                    <a asp-controller="Invoices" asp-action="Create" class="btn btn-outline-success">
+                        <i class="bi bi-file-earmark-plus"></i> Create Invoice for Supplier
+                    </a>
+                    <a asp-action="Suppliers" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Suppliers
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

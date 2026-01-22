@@ -1,0 +1,83 @@
+@model InvoiceManagement.Models.Customer
+
+@{
+    ViewData["Title"] = "Delete Customer";
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2 text-danger"><i class="bi bi-trash"></i> Delete Customer</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-action="Customers" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Customers
+        </a>
+    </div>
+</div>
+
+<div class="alert alert-danger">
+    <h5><i class="bi bi-exclamation-triangle"></i> Warning!</h5>
+    <p class="mb-0">You are about to delete this customer. This action cannot be undone.</p>
+</div>
+
+<div class="card shadow">
+    <div class="card-header bg-danger text-white">
+        <h5 class="mb-0">Customer to be deleted</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <dl>
+                    <dt>Customer Code</dt>
+                    <dd>@(Model.CustomerCode ?? "-")</dd>
+                    
+                    <dt>Customer Name</dt>
+                    <dd><strong>@Model.CustomerName</strong></dd>
+                    
+                    <dt>Contact Person</dt>
+                    <dd>@(Model.ContactPerson ?? "-")</dd>
+                    
+                    <dt>Email</dt>
+                    <dd>@(Model.Email ?? "-")</dd>
+                </dl>
+            </div>
+            <div class="col-md-6">
+                <dl>
+                    <dt>Phone</dt>
+                    <dd>@(Model.Phone ?? "-")</dd>
+                    
+                    <dt>Status</dt>
+                    <dd>
+                        @if (Model.Status == "Active")
+                        {
+                            <span class="badge bg-success">Active</span>
+                        }
+                        else if (Model.Status == "OnHold")
+                        {
+                            <span class="badge bg-warning">On Hold</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">Inactive</span>
+                        }
+                    </dd>
+                    
+                    <dt>Created Date</dt>
+                    <dd>@Model.CreatedDate.ToString("dd/MM/yyyy")</dd>
+                </dl>
+            </div>
+        </div>
+
+        <hr />
+
+        <form asp-action="DeleteCustomer" method="post">
+            <input type="hidden" asp-for="Id" />
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-danger">
+                    <i class="bi bi-trash"></i> Yes, Delete Customer
+                </button>
+                <a asp-action="Customers" class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>

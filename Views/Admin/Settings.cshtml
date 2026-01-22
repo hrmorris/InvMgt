@@ -1,0 +1,279 @@
+@model IEnumerable<SystemSetting>
+
+@{
+    ViewData["Title"] = "System Settings";
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-gear-fill"></i> System Settings</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-action="CurrencySettings" class="btn btn-success me-2">
+            <i class="bi bi-currency-exchange"></i> Currency Settings
+        </a>
+        <form asp-action="InitializeDefaultSettings" method="post" class="me-2">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-outline-primary" onclick="return confirm('Initialize default settings? This will not overwrite existing settings.')">
+                <i class="bi bi-arrow-clockwise"></i> Initialize Defaults
+            </button>
+        </form>
+        <a asp-action="CreateSetting" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Add New Setting
+        </a>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle"></i> @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle"></i> @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> <strong>System Settings:</strong> Configure application-wide settings. Changes take effect immediately.
+</div>
+
+@if (Model.Any())
+{
+    var grouped = Model.GroupBy(s => s.Category).OrderBy(g => g.Key);
+    
+    <div class="row">
+        <div class="col-md-12">
+            <div class="accordion" id="settingsAccordion">
+                @{
+                    int index = 0;
+                }
+                @foreach (var category in grouped)
+                {
+                    var categoryId = $"category{index}";
+                    var isFirst = index == 0;
+                    
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="heading@(index)">
+                            <button class="accordion-button @(isFirst ? "" : "collapsed")" type="button" data-bs-toggle="collapse" data-bs-target="#@categoryId" aria-expanded="@(isFirst ? "true" : "false")" aria-controls="@categoryId">
+                                <i class="bi bi-@(GetCategoryIcon(category.Key)) me-2"></i>
+                                <strong>@category.Key Settings</strong>
+                                <span class="badge bg-primary ms-2">@category.Count()</span>
+                            </button>
+                        </h2>
+                        <div id="@categoryId" class="accordion-collapse collapse @(isFirst ? "show" : "")" aria-labelledby="heading@(index)" data-bs-parent="#settingsAccordion">
+                            <div class="accordion-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th style="width: 25%">Setting Key</th>
+                                                <th style="width: 30%">Value</th>
+                                                <th style="width: 30%">Description</th>
+                                                <th style="width: 10%">Modified</th>
+                                                <th style="width: 5%">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var setting in category.OrderBy(s => s.SettingKey))
+                                            {
+                                                <tr>
+                                                    <td>
+                                                        <strong>@setting.SettingKey</strong>
+                                                        @if (!string.IsNullOrEmpty(setting.ModifiedBy))
+                                                        {
+                                                            <br /><small class="text-muted">by @setting.ModifiedBy</small>
+                                                        }
+                                                    </td>
+                                                    <td>
+                                                        <form asp-action="EditSetting" method="post" class="setting-form">
+                                                            @Html.AntiForgeryToken()
+                                                            <input type="hidden" name="key" value="@setting.SettingKey" />
+                                                            <div class="input-group input-group-sm">
+                                                                @if (setting.SettingKey == "CurrencyCode")
+                                                                {
+                                                                    <!-- Currency Dropdown -->
+                                                                    <select name="value" class="form-select form-select-sm" onchange="updateCurrencyInfo(this)">
+                                                                        @foreach (var currency in InvoiceManagement.Models.Currency.GetAllCurrencies().OrderBy(c => c.Name))
+                                                                        {
+                                                                            <option value="@currency.Code" 
+                                                                                    data-symbol="@currency.Symbol" 
+                                                                                    data-name="@currency.Name"
+                                                                                    selected="@(setting.SettingValue == currency.Code)">
+                                                                                @currency.Code - @currency.Name (@currency.Symbol)
+                                                                            </option>
+                                                                        }
+                                                                    </select>
+                                                                }
+                                                                else if (setting.SettingKey == "CurrencyPosition")
+                                                                {
+                                                                    <select name="value" class="form-select form-select-sm">
+                                                                        <option value="before" selected="@(setting.SettingValue == "before")">Before Amount</option>
+                                                                        <option value="after" selected="@(setting.SettingValue == "after")">After Amount</option>
+                                                                    </select>
+                                                                }
+                                                                else if (setting.SettingKey == "DecimalPlaces")
+                                                                {
+                                                                    <select name="value" class="form-select form-select-sm">
+                                                                        <option value="0" selected="@(setting.SettingValue == "0")">0 Decimals</option>
+                                                                        <option value="1" selected="@(setting.SettingValue == "1")">1 Decimal</option>
+                                                                        <option value="2" selected="@(setting.SettingValue == "2")">2 Decimals</option>
+                                                                        <option value="3" selected="@(setting.SettingValue == "3")">3 Decimals</option>
+                                                                    </select>
+                                                                }
+                                                                else if (setting.SettingKey == "ThousandsSeparator")
+                                                                {
+                                                                    <select name="value" class="form-select form-select-sm">
+                                                                        <option value="," selected="@(setting.SettingValue == ",")">Comma (1,000)</option>
+                                                                        <option value="." selected="@(setting.SettingValue == ".")">Period (1.000)</option>
+                                                                        <option value=" " selected="@(setting.SettingValue == " ")">Space (1 000)</option>
+                                                                        <option value="" selected="@(string.IsNullOrEmpty(setting.SettingValue))">None (1000)</option>
+                                                                    </select>
+                                                                }
+                                                                else if (setting.SettingKey == "DecimalSeparator")
+                                                                {
+                                                                    <select name="value" class="form-select form-select-sm">
+                                                                        <option value="." selected="@(setting.SettingValue == ".")">Period (100.50)</option>
+                                                                        <option value="," selected="@(setting.SettingValue == ",")">Comma (100,50)</option>
+                                                                    </select>
+                                                                }
+                                                                else if (IsBoolean(setting.SettingValue))
+                                                                {
+                                                                    <select name="value" class="form-select form-select-sm">
+                                                                        <option value="true" selected="@(setting.SettingValue == "true")">Enabled</option>
+                                                                        <option value="false" selected="@(setting.SettingValue == "false")">Disabled</option>
+                                                                    </select>
+                                                                }
+                                                                else if (IsNumber(setting.SettingValue))
+                                                                {
+                                                                    <input type="number" name="value" value="@setting.SettingValue" class="form-control form-control-sm" />
+                                                                }
+                                                                else
+                                                                {
+                                                                    <input type="text" name="value" value="@setting.SettingValue" class="form-control form-control-sm" />
+                                                                }
+                                                                <button type="submit" class="btn btn-sm btn-primary">
+                                                                    <i class="bi bi-check2"></i>
+                                                                </button>
+                                                            </div>
+                                                        </form>
+                                                    </td>
+                                                    <td>
+                                                        <small class="text-muted">@(string.IsNullOrEmpty(setting.Description) ? "No description" : setting.Description)</small>
+                                                    </td>
+                                                    <td>
+                                                        <small class="text-muted">
+                                                            @setting.ModifiedDate.ToString("dd/MM/yyyy")<br />
+                                                            @setting.ModifiedDate.ToString("HH:mm")
+                                                        </small>
+                                                    </td>
+                                                    <td>
+                                                        <form asp-action="DeleteSetting" asp-route-id="@setting.Id" method="post" class="d-inline">
+                                                            @Html.AntiForgeryToken()
+                                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this setting?')" title="Delete">
+                                                                <i class="bi bi-trash"></i>
+                                                            </button>
+                                                        </form>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    index++;
+                }
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card shadow text-center p-5">
+        <div class="card-body">
+            <i class="bi bi-gear-fill text-muted" style="font-size: 4rem;"></i>
+            <h4 class="mt-3">No Settings Configured</h4>
+            <p class="text-muted">Initialize default settings or create custom settings for your application.</p>
+            <form asp-action="InitializeDefaultSettings" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="bi bi-arrow-clockwise"></i> Initialize Default Settings
+                </button>
+            </form>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        function updateCurrencyInfo(selectElement) {
+            const selectedOption = selectElement.options[selectElement.selectedIndex];
+            const symbol = selectedOption.dataset.symbol;
+            const name = selectedOption.dataset.name;
+            const code = selectedOption.value;
+            
+            // Show info alert
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-info alert-dismissible fade show mt-2';
+            alertDiv.innerHTML = `
+                <i class="bi bi-info-circle"></i> 
+                <strong>Currency Selected:</strong> ${name} (${code}) - Symbol: <strong>${symbol}</strong>
+                <br><small>Click the checkmark to save this currency. The symbol and name will be automatically updated.</small>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            // Insert after the form
+            const form = selectElement.closest('form');
+            const existingAlert = form.parentElement.querySelector('.alert-info');
+            if (existingAlert) {
+                existingAlert.remove();
+            }
+            form.parentElement.appendChild(alertDiv);
+        }
+
+        // Auto-dismiss alerts after 5 seconds
+        setTimeout(function() {
+            const alerts = document.querySelectorAll('.alert:not(.alert-info)');
+            alerts.forEach(alert => {
+                const bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            });
+        }, 5000);
+    </script>
+}
+
+@functions {
+    string GetCategoryIcon(string category)
+    {
+        return category switch
+        {
+            "General" => "gear",
+            "Company" => "building",
+            "Invoice" => "receipt",
+            "Payment" => "credit-card",
+            "Procurement" => "cart",
+            "Email" => "envelope",
+            "Notification" => "bell",
+            "Security" => "shield-lock",
+            "API" => "plug",
+            "Finance" => "cash-stack",
+            _ => "gear"
+        };
+    }
+
+    bool IsBoolean(string? value)
+    {
+        return value == "true" || value == "false";
+    }
+
+    bool IsNumber(string? value)
+    {
+        return int.TryParse(value, out _) || decimal.TryParse(value, out _);
+    }
+}

@@ -1,0 +1,106 @@
+@model Payment
+
+@{
+    ViewData["Title"] = "Delete Imported Payment";
+    var index = ViewBag.Index;
+}
+@functions {
+    public string FormatCurrency(decimal amount)
+    {
+        var settings = ViewData["CurrencySettings"] as CurrencySettings;
+        if (settings != null)
+        {
+            return CurrencyHelper.FormatCurrency(amount, settings);
+        }
+        return $"K {amount:N2}";
+    }
+    public string CurrencySymbol()
+    {
+        return ViewData["CurrencySymbol"]?.ToString() ?? "K";
+    }
+}
+
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-trash"></i> Delete Imported Payment</h1>
+</div>
+
+<div class="alert alert-danger">
+    <h5><i class="bi bi-exclamation-triangle"></i> Confirm Deletion</h5>
+    <p class="mb-0">Are you sure you want to remove this payment from the import batch? This will NOT affect the database, only the current import session.</p>
+</div>
+
+<div class="card shadow border-danger">
+    <div class="card-header bg-danger text-white">
+        <h4 class="m-0">Payment: @Model.PaymentNumber</h4>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <!-- Payment Information -->
+            <div class="col-md-6">
+                <h5 class="mb-3">Payment Information</h5>
+                <dl class="row">
+                    <dt class="col-sm-5">Payment Number:</dt>
+                    <dd class="col-sm-7"><strong>@Model.PaymentNumber</strong></dd>
+
+                    <dt class="col-sm-5">Payment Date:</dt>
+                    <dd class="col-sm-7">@Model.PaymentDate.ToString("dd/MM/yyyy")</dd>
+
+                    <dt class="col-sm-5">Amount:</dt>
+                    <dd class="col-sm-7"><strong class="text-danger fs-5">@FormatCurrency(Model.Amount)</strong></dd>
+
+                    <dt class="col-sm-5">Payment Method:</dt>
+                    <dd class="col-sm-7">
+                        <span class="badge bg-secondary">@Model.PaymentMethod</span>
+                    </dd>
+                </dl>
+            </div>
+
+            <!-- Additional Information -->
+            <div class="col-md-6">
+                <h5 class="mb-3">Additional Information</h5>
+                <dl class="row">
+                    @if (!string.IsNullOrEmpty(Model.ReferenceNumber))
+                    {
+                        <dt class="col-sm-5">Reference Number:</dt>
+                        <dd class="col-sm-7">@Model.ReferenceNumber</dd>
+                    }
+
+                    @if (Model.InvoiceId > 0)
+                    {
+                        <dt class="col-sm-5">Invoice ID:</dt>
+                        <dd class="col-sm-7">
+                            <span class="badge bg-info">#@Model.InvoiceId</span>
+                        </dd>
+                    }
+                    else
+                    {
+                        <dt class="col-sm-5">Invoice:</dt>
+                        <dd class="col-sm-7">
+                            <span class="badge bg-warning text-dark">Not Matched</span>
+                        </dd>
+                    }
+                </dl>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(Model.Notes))
+        {
+            <hr />
+            <h5 class="mb-3">Notes</h5>
+            <p class="text-muted">@Model.Notes</p>
+        }
+    </div>
+    <div class="card-footer">
+        <form asp-action="DeletePayment" asp-route-index="@index" method="post">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-danger btn-lg">
+                <i class="bi bi-trash"></i> Yes, Delete This Payment
+            </button>
+            <a asp-action="ReviewPayments" class="btn btn-secondary btn-lg">
+                <i class="bi bi-x-circle"></i> No, Keep It
+            </a>
+        </form>
+    </div>
+</div>
+

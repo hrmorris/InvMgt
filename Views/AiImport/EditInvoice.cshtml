@@ -1,0 +1,206 @@
+@model Invoice
+
+@{
+    ViewData["Title"] = "Edit Imported Invoice";
+    var index = ViewBag.Index;
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-pencil-square"></i> Edit Imported Invoice</h1>
+</div>
+
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> <strong>AI Import:</strong> This invoice was extracted by Gemini 2.5 Pro. You can edit any field before saving to the database.
+</div>
+
+<form asp-action="UpdateInvoice" asp-route-index="@index" method="post">
+    <div class="card shadow">
+        <div class="card-body">
+            <div class="row">
+                <!-- Invoice Information -->
+                <div class="col-md-6">
+                    <h5 class="mb-3">Invoice Information</h5>
+                    
+                    <div class="mb-3">
+                        <label asp-for="InvoiceNumber" class="form-label"></label>
+                        <input asp-for="InvoiceNumber" class="form-control" required />
+                        <span asp-validation-for="InvoiceNumber" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="InvoiceDate" class="form-label"></label>
+                        <input asp-for="InvoiceDate" class="form-control" type="date" required />
+                        <span asp-validation-for="InvoiceDate" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="DueDate" class="form-label"></label>
+                        <input asp-for="DueDate" class="form-control" type="date" required />
+                        <span asp-validation-for="DueDate" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Notes" class="form-label"></label>
+                        <textarea asp-for="Notes" class="form-control" rows="3"></textarea>
+                        <span asp-validation-for="Notes" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <!-- Customer Information -->
+                <div class="col-md-6">
+                    <h5 class="mb-3">Customer Information</h5>
+                    
+                    <div class="mb-3">
+                        <label asp-for="CustomerName" class="form-label"></label>
+                        <input asp-for="CustomerName" class="form-control" required />
+                        <span asp-validation-for="CustomerName" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="CustomerAddress" class="form-label"></label>
+                        <textarea asp-for="CustomerAddress" class="form-control" rows="2"></textarea>
+                        <span asp-validation-for="CustomerAddress" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="CustomerEmail" class="form-label"></label>
+                        <input asp-for="CustomerEmail" class="form-control" type="email" />
+                        <span asp-validation-for="CustomerEmail" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="CustomerPhone" class="form-label"></label>
+                        <input asp-for="CustomerPhone" class="form-control" />
+                        <span asp-validation-for="CustomerPhone" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Line Items -->
+            <hr />
+            <h5 class="mb-3">Line Items</h5>
+            
+            <div id="invoiceItems">
+                @if (Model.InvoiceItems != null && Model.InvoiceItems.Any())
+                {
+                    for (int i = 0; i < Model.InvoiceItems.Count; i++)
+                    {
+                        <div class="row mb-3 invoice-item">
+                            <div class="col-md-5">
+                                <label class="form-label">Description</label>
+                                <input type="text" name="InvoiceItems[@i].Description" value="@Model.InvoiceItems.ElementAt(i).Description" class="form-control item-description" required />
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Quantity</label>
+                                <input type="number" name="InvoiceItems[@i].Quantity" value="@Model.InvoiceItems.ElementAt(i).Quantity" class="form-control item-quantity" min="1" onchange="calculateLineTotal(this)" required />
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Unit Price</label>
+                                <input type="number" name="InvoiceItems[@i].UnitPrice" value="@Model.InvoiceItems.ElementAt(i).UnitPrice" class="form-control item-price" step="0.01" min="0" onchange="calculateLineTotal(this)" required />
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Total</label>
+                                <input type="text" value="@Model.InvoiceItems.ElementAt(i).TotalPrice.ToString("N2")" class="form-control line-total" readonly />
+                            </div>
+                            <div class="col-md-1 d-flex align-items-end">
+                                <button type="button" class="btn btn-danger btn-sm w-100" onclick="removeItem(this)">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+
+            <button type="button" class="btn btn-secondary mb-3" onclick="addNewItem()">
+                <i class="bi bi-plus-circle"></i> Add Item
+            </button>
+        </div>
+
+        <div class="card-footer">
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="bi bi-check-circle"></i> Update Invoice
+            </button>
+            <a asp-action="ReviewInvoices" class="btn btn-secondary btn-lg">
+                <i class="bi bi-arrow-left"></i> Back to Review
+            </a>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <script>
+        let itemCounter = @(Model.InvoiceItems?.Count ?? 0);
+
+        function addNewItem() {
+            const itemsContainer = document.getElementById('invoiceItems');
+            const newItem = `
+                <div class="row mb-3 invoice-item">
+                    <div class="col-md-5">
+                        <label class="form-label">Description</label>
+                        <input type="text" name="InvoiceItems[${itemCounter}].Description" class="form-control item-description" required />
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Quantity</label>
+                        <input type="number" name="InvoiceItems[${itemCounter}].Quantity" class="form-control item-quantity" min="1" value="1" onchange="calculateLineTotal(this)" required />
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Unit Price</label>
+                        <input type="number" name="InvoiceItems[${itemCounter}].UnitPrice" class="form-control item-price" step="0.01" min="0" value="0" onchange="calculateLineTotal(this)" required />
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Total</label>
+                        <input type="text" class="form-control line-total" value="0.00" readonly />
+                    </div>
+                    <div class="col-md-1 d-flex align-items-end">
+                        <button type="button" class="btn btn-danger btn-sm w-100" onclick="removeItem(this)">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            itemsContainer.insertAdjacentHTML('beforeend', newItem);
+            itemCounter++;
+            calculateGrandTotal();
+        }
+
+        function removeItem(button) {
+            button.closest('.invoice-item').remove();
+            calculateGrandTotal();
+        }
+
+        function calculateLineTotal(element) {
+            const row = element.closest('.invoice-item');
+            const quantity = parseFloat(row.querySelector('.item-quantity')?.value || 0);
+            const price = parseFloat(row.querySelector('.item-price')?.value || 0);
+            const total = quantity * price;
+            const totalField = row.querySelector('.line-total');
+            if (totalField) {
+                totalField.value = total.toFixed(2);
+            }
+            calculateGrandTotal();
+        }
+
+        function calculateGrandTotal() {
+            let grandTotal = 0;
+            document.querySelectorAll('.invoice-item').forEach(row => {
+                const quantity = parseFloat(row.querySelector('.item-quantity')?.value || 0);
+                const price = parseFloat(row.querySelector('.item-price')?.value || 0);
+                grandTotal += quantity * price;
+            });
+            console.log('Grand Total:', grandTotal.toFixed(2));
+        }
+
+        // Add event listeners to existing items
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.item-quantity, .item-price').forEach(input => {
+                input.addEventListener('change', function() {
+                    calculateLineTotal(this);
+                });
+            });
+            calculateGrandTotal();
+        });
+    </script>
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+}
+

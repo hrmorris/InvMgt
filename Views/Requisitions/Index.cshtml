@@ -1,0 +1,146 @@
+@model IEnumerable<InvoiceManagement.Models.Requisition>
+
+@{
+    ViewData["Title"] = "Requisitions";
+}
+@functions {
+    public string FormatCurrency(decimal amount)
+    {
+        var settings = ViewData["CurrencySettings"] as CurrencySettings;
+        if (settings != null)
+        {
+            return CurrencyHelper.FormatCurrency(amount, settings);
+        }
+        return $"K {amount:N2}";
+    }
+    public string CurrencySymbol()
+    {
+        return ViewData["CurrencySymbol"]?.ToString() ?? "K";
+    }
+}
+
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-file-earmark-check"></i> Requisitions</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-action="Create" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Create New Requisition
+        </a>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle"></i> @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <form method="get" class="row g-3">
+            <div class="col-md-10">
+                <select name="status" class="form-select" onchange="this.form.submit()">
+                    <option value="">All Statuses</option>
+                    <option value="Draft" selected="@(ViewBag.Status == "Draft")">Draft</option>
+                    <option value="Pending_Supervisor" selected="@(ViewBag.Status == "Pending_Supervisor")">Pending
+                        Supervisor</option>
+                    <option value="Pending_Finance" selected="@(ViewBag.Status == "Pending_Finance")">Pending Finance
+                    </option>
+                    <option value="Pending_Approval" selected="@(ViewBag.Status == "Pending_Approval")">Pending Approval
+                    </option>
+                    <option value="Approved" selected="@(ViewBag.Status == "Approved")">Approved</option>
+                    <option value="Rejected" selected="@(ViewBag.Status == "Rejected")">Rejected</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <a href="@Url.Action("Index")" class="btn btn-secondary w-100">Clear</a>
+            </div>
+        </form>
+    </div>
+    <div class="card-body">
+        @if (Model.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Requisition #</th>
+                            <th>Date</th>
+                            <th>Requested By</th>
+                            <th>Department</th>
+                            <th>Estimated Amount</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var req in Model)
+                        {
+                            <tr>
+                                <td><strong>@req.RequisitionNumber</strong></td>
+                                <td>@req.RequisitionDate.ToString("dd/MM/yyyy")</td>
+                                <td>@req.RequestedBy</td>
+                                <td>@req.Department</td>
+                                <td>@FormatCurrency(req.EstimatedAmount)</td>
+                                <td>
+                                    @if (req.Status == "Approved")
+                                    {
+                                        <span class="badge bg-success">@req.Status</span>
+                                    }
+                                    else if (req.Status == "Rejected")
+                                    {
+                                        <span class="badge bg-danger">@req.Status</span>
+                                    }
+                                    else if (req.Status == "Draft")
+                                    {
+                                        <span class="badge bg-secondary">@req.Status</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-warning">@req.Status.Replace("_", " ")</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a asp-action="Details" asp-route-id="@req.Id" class="btn btn-sm btn-outline-primary"
+                                            title="View Details">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        @if (req.Status == "Draft" || req.Status == "Pending_Supervisor" || req.Status ==
+                                                                        "Rejected")
+                                        {
+                                            <a asp-action="Edit" asp-route-id="@req.Id" class="btn btn-sm btn-outline-secondary"
+                                                title="Edit">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                        }
+                                        <a asp-action="DownloadPdf" asp-route-id="@req.Id" class="btn btn-sm btn-outline-info"
+                                            title="Download PDF">
+                                            <i class="bi bi-file-pdf"></i>
+                                        </a>
+                                        @if (req.Status == "Draft" || req.Status == "Rejected" || req.Status ==
+                                                                        "Pending_Supervisor")
+                                        {
+                                            <a asp-action="Delete" asp-route-id="@req.Id" class="btn btn-sm btn-outline-danger"
+                                                title="Delete">
+                                                <i class="bi bi-trash"></i>
+                                            </a>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> No requisitions found. Click "Create New Requisition" to get started.
+            </div>
+        }
+    </div>
+</div>

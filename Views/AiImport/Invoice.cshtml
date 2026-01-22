@@ -1,0 +1,124 @@
+@{
+    ViewData["Title"] = "AI Import - Invoices";
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-robot"></i> AI-Powered Invoice Import</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-controller="Invoices" asp-action="Index" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Invoices
+        </a>
+    </div>
+</div>
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle"></i> @Html.Raw(TempData["ErrorMessage"])
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle"></i> @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="m-0"><i class="bi bi-cloud-upload"></i> Upload Invoice Files</h5>
+            </div>
+            <div class="card-body">
+                <form asp-action="ProcessInvoice" method="post" enctype="multipart/form-data">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+                    
+                    <div class="alert alert-info">
+                        <h6><i class="bi bi-lightbulb"></i> How it works:</h6>
+                        <ol class="mb-0">
+                            <li>Upload PDF or image files of invoices</li>
+                            <li>AI extracts invoice details automatically</li>
+                            <li>Review extracted data before saving</li>
+                            <li>Save to database with one click</li>
+                        </ol>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Select Invoice File</label>
+                        <input type="file" 
+                               class="form-control" 
+                               id="file" 
+                               name="file" 
+                               accept=".pdf,.jpg,.jpeg,.png,.gif,.webp"
+                               required />
+                        <div class="form-text">
+                            Supported formats: PDF, JPG, PNG, GIF, WebP
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-magic"></i> Process with AI
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow mb-3">
+            <div class="card-header bg-success text-white">
+                <h6 class="m-0"><i class="bi bi-check-circle"></i> What Gets Extracted</h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li><i class="bi bi-check text-success"></i> Invoice Number</li>
+                    <li><i class="bi bi-check text-success"></i> Invoice Date</li>
+                    <li><i class="bi bi-check text-success"></i> Due Date</li>
+                    <li><i class="bi bi-check text-success"></i> Customer Name</li>
+                    <li><i class="bi bi-check text-success"></i> Customer Details</li>
+                    <li><i class="bi bi-check text-success"></i> Line Items</li>
+                    <li><i class="bi bi-check text-success"></i> Quantities & Prices</li>
+                    <li><i class="bi bi-check text-success"></i> Total Amount</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card shadow">
+            <div class="card-header bg-warning text-dark">
+                <h6 class="m-0"><i class="bi bi-exclamation-triangle"></i> Important Notes</h6>
+            </div>
+            <div class="card-body">
+                <p class="small mb-2"><strong>AI Accuracy:</strong> The AI will do its best to extract data accurately, but please review all extracted information before saving.</p>
+                <p class="small mb-2"><strong>API Key Required:</strong> Make sure you've configured your Google AI API key in appsettings.json</p>
+                <p class="small mb-0"><strong>Clear Images:</strong> Better quality images/PDFs produce better results</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header bg-info text-white">
+                <h6 class="m-0"><i class="bi bi-question-circle"></i> How to Get Google AI API Key</h6>
+            </div>
+            <div class="card-body">
+                <ol>
+                    <li>Go to <a href="https://makersuite.google.com/app/apikey" target="_blank">Google AI Studio</a></li>
+                    <li>Click "Get API Key" or "Create API Key"</li>
+                    <li>Copy your API key</li>
+                    <li>Add it to <code>appsettings.json</code> under <code>GoogleAI:ApiKey</code></li>
+                    <li>Restart the application</li>
+                </ol>
+                <p class="mb-0 text-muted small">Google AI (Gemini) offers a free tier for testing and development.</p>
+            </div>
+        </div>
+    </div>
+</div>
+

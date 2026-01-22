@@ -1,0 +1,275 @@
+@model Requisition
+
+@{
+    ViewData["Title"] = "Approve Requisition";
+}
+@functions {
+    public string FormatCurrency(decimal amount)
+    {
+        var settings = ViewData["CurrencySettings"] as CurrencySettings;
+        if (settings != null)
+        {
+            return CurrencyHelper.FormatCurrency(amount, settings);
+        }
+        return $"K {amount:N2}";
+    }
+    public string CurrencySymbol()
+    {
+        return ViewData["CurrencySymbol"]?.ToString() ?? "K";
+    }
+}
+
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-check-circle"></i> Approve Requisition</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-action="PendingApprovals" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Pending
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Requisition Details -->
+    <div class="col-md-8">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-file-text"></i> Requisition Details</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-4">Requisition Number</dt>
+                    <dd class="col-sm-8"><strong>@Model.RequisitionNumber</strong></dd>
+
+                    <dt class="col-sm-4">Date</dt>
+                    <dd class="col-sm-8">@Model.RequisitionDate.ToString("dd/MM/yyyy")</dd>
+
+                    <dt class="col-sm-4">Requested By</dt>
+                    <dd class="col-sm-8">@Model.RequestedBy</dd>
+
+                    <dt class="col-sm-4">Department</dt>
+                    <dd class="col-sm-8">@Model.Department</dd>
+
+                    <dt class="col-sm-4">Facility Type</dt>
+                    <dd class="col-sm-8">
+                        <span class="badge @(Model.FacilityType == "Hospital" ? "bg-primary" : "bg-info")">
+                            @Model.FacilityType
+                        </span>
+                    </dd>
+
+                    <dt class="col-sm-4">Purpose</dt>
+                    <dd class="col-sm-8">@Model.Purpose</dd>
+
+                    @if (Model.EstimatedAmount > 0)
+                    {
+                        <dt class="col-sm-4">Estimated Amount</dt>
+                        <dd class="col-sm-8"><strong class="text-success">@FormatCurrency(Model.EstimatedAmount)</strong></dd>
+                    }
+
+                    @if (!string.IsNullOrEmpty(Model.CostCode))
+                    {
+                        <dt class="col-sm-4">Cost Code</dt>
+                        <dd class="col-sm-8">@Model.CostCode</dd>
+                    }
+
+                    @if (!string.IsNullOrEmpty(Model.BudgetCode))
+                    {
+                        <dt class="col-sm-4">Budget Code</dt>
+                        <dd class="col-sm-8">@Model.BudgetCode</dd>
+                    }
+
+                    <dt class="col-sm-4">Current Status</dt>
+                    <dd class="col-sm-8">
+                        @{
+                            var statusClass = Model.Status switch
+                            {
+                                "Pending_Supervisor" => "bg-warning text-dark",
+                                "Pending_Finance" => "bg-info",
+                                "Pending_Approval" => "bg-primary",
+                                "Approved" => "bg-success",
+                                "Rejected" => "bg-danger",
+                                _ => "bg-secondary"
+                            };
+                            var statusText = Model.Status.Replace("_", " ");
+                        }
+                        <span class="badge @statusClass">@statusText</span>
+                    </dd>
+                </dl>
+
+                @if (Model.RequisitionItems != null && Model.RequisitionItems.Any())
+                {
+                    <h6 class="mt-4 mb-3"><i class="bi bi-list-ul"></i> Items Requested</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Item Description</th>
+                                    <th>Quantity</th>
+                                    <th>Unit</th>
+                                    <th>Est. Unit Price</th>
+                                    <th>Est. Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model.RequisitionItems)
+                                {
+                                    <tr>
+                                        <td>@item.ItemDescription</td>
+                                        <td>@item.QuantityRequested</td>
+                                        <td>@item.Unit</td>
+                                        <td>@FormatCurrency(item.EstimatedUnitPrice)</td>
+                                        <td><strong>@FormatCurrency(item.EstimatedTotal)</strong></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Approval Forms -->
+    <div class="col-md-4">
+        @if (Model.Status == "Pending_Supervisor")
+        {
+            <div class="card shadow mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-person-check"></i> Supervisor Approval</h5>
+                </div>
+                <div class="card-body">
+                    <form asp-action="ApproveBySupervisor" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" asp-for="Id" />
+
+                        <div class="mb-3">
+                            <label for="supervisorName" class="form-label">Your Name</label>
+                            <input type="text" id="supervisorName" name="supervisorName" class="form-control" required />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="comments" class="form-label">Comments (Optional)</label>
+                            <textarea id="comments" name="comments" class="form-control" rows="3"></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="bi bi-check-circle"></i> Approve as Supervisor
+                        </button>
+                    </form>
+                </div>
+            </div>
+        }
+
+        @if (Model.Status == "Pending_Finance")
+        {
+            <div class="card shadow mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-cash-stack"></i> Finance Review</h5>
+                </div>
+                <div class="card-body">
+                    <form asp-action="ApproveByFinance" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" asp-for="Id" />
+
+                        <div class="mb-3">
+                            <label for="financeName" class="form-label">Your Name</label>
+                            <input type="text" id="financeName" name="financeName" class="form-control" required />
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="budgetOk" name="budgetOk" value="true" />
+                                <label class="form-check-label" for="budgetOk">
+                                    <i class="bi bi-wallet2"></i> Budget Available
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="needOk" name="needOk" value="true" />
+                                <label class="form-check-label" for="needOk">
+                                    <i class="bi bi-clipboard-check"></i> Need Justified
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="costCodeOk" name="costCodeOk" value="true" />
+                                <label class="form-check-label" for="costCodeOk">
+                                    <i class="bi bi-tag"></i> Cost Code Valid
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="financeComments" class="form-label">Comments (Optional)</label>
+                            <textarea id="financeComments" name="comments" class="form-control" rows="3"></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-info w-100">
+                            <i class="bi bi-check-circle"></i> Screen & Forward
+                        </button>
+                    </form>
+                </div>
+            </div>
+        }
+
+        @if (Model.Status == "Pending_Approval")
+        {
+            <div class="card shadow mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-person-badge"></i> Manager Approval</h5>
+                </div>
+                <div class="card-body">
+                    <form asp-action="ApproveByManager" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" asp-for="Id" />
+
+                        <div class="mb-3">
+                            <label for="approverName" class="form-label">Your Name</label>
+                            <input type="text" id="approverName" name="approverName" class="form-control" required />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="managerComments" class="form-label">Comments (Optional)</label>
+                            <textarea id="managerComments" name="comments" class="form-control" rows="3"></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-check-circle"></i> Give Final Approval
+                        </button>
+                    </form>
+                </div>
+            </div>
+        }
+
+        <!-- Reject Form -->
+        <div class="card shadow border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0"><i class="bi bi-x-circle"></i> Reject Requisition</h5>
+            </div>
+            <div class="card-body">
+                <form asp-action="Reject" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="Id" />
+
+                    <div class="mb-3">
+                        <label for="rejectionReason" class="form-label">Rejection Reason</label>
+                        <textarea id="rejectionReason" name="rejectionReason" class="form-control" rows="3" required></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-danger w-100" onclick="return confirm('Are you sure you want to reject this requisition?')">
+                        <i class="bi bi-x-circle"></i> Reject
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+}
+

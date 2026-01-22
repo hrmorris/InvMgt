@@ -1,0 +1,233 @@
+@model InvoiceManagement.Models.PurchaseOrder
+
+@{
+    ViewData["Title"] = "Receive Goods";
+}
+@functions {
+    public string FormatCurrency(decimal amount)
+    {
+        var settings = ViewData["CurrencySettings"] as CurrencySettings;
+        if (settings != null)
+        {
+            return CurrencyHelper.FormatCurrency(amount, settings);
+        }
+        return $"K {amount:N2}";
+    }
+    public string CurrencySymbol()
+    {
+        return ViewData["CurrencySymbol"]?.ToString() ?? "K";
+    }
+}
+
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-box-seam"></i> Receive Goods</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to PO
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow mb-3">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Purchase Order: @Model.PONumber</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-3">Supplier</dt>
+                    <dd class="col-sm-9"><strong>@Model.Supplier?.SupplierName</strong></dd>
+
+                    <dt class="col-sm-3">PO Date</dt>
+                    <dd class="col-sm-9">@Model.PODate.ToString("dd/MM/yyyy")</dd>
+
+                    <dt class="col-sm-3">Expected Delivery</dt>
+                    <dd class="col-sm-9">@Model.ExpectedDeliveryDate.ToString("dd/MM/yyyy")</dd>
+
+                    <dt class="col-sm-3">Total Amount</dt>
+                    <dd class="col-sm-9"><strong>@FormatCurrency(Model.TotalAmount)</strong></dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="card shadow">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Record Goods Receipt</h5>
+            </div>
+            <div class="card-body">
+                <form asp-action="ReceiveGoods" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@Model.Id" />
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> Enter the quantity received for each item. You can do partial receipts.
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Item Description</th>
+                                    <th>Qty Ordered</th>
+                                    <th>Already Received</th>
+                                    <th>Remaining</th>
+                                    <th>Receive Now</th>
+                                    <th>Unit</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{
+                                    var index = 0;
+                                }
+                                @foreach (var item in Model.PurchaseOrderItems)
+                                {
+                                    var remaining = item.QuantityOrdered - item.QuantityReceived;
+                                    <tr>
+                                        <td>
+                                            <strong>@item.ItemDescription</strong>
+                                            @if (!string.IsNullOrEmpty(item.ItemCode))
+                                            {
+                                                <br /><small class="text-muted">Code: @item.ItemCode</small>
+                                            }
+                                        </td>
+                                        <td>@item.QuantityOrdered</td>
+                                        <td>
+                                            @item.QuantityReceived
+                                            @if (item.ReceivedDate.HasValue)
+                                            {
+                                                <br /><small class="text-muted">@item.ReceivedDate.Value.ToString("dd/MM/yyyy")</small>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (remaining > 0)
+                                            {
+                                                <span class="badge bg-warning">@remaining</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-success">Complete</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (remaining > 0)
+                                            {
+                                                <input type="number" 
+                                                       name="quantities[@item.Id]" 
+                                                       class="form-control" 
+                                                       min="0" 
+                                                       max="@remaining" 
+                                                       value="0"
+                                                       style="width: 100px;" />
+                                            }
+                                            else
+                                            {
+                                                <input type="hidden" name="quantities[@item.Id]" value="0" />
+                                                <span class="text-muted">-</span>
+                                            }
+                                        </td>
+                                        <td>@item.Unit</td>
+                                    </tr>
+                                    index++;
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i> <strong>Important:</strong> Only enter quantities that were actually received today. Leave as 0 for items not yet delivered.
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="bi bi-check-circle"></i> Record Receipt
+                        </button>
+                        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow mb-3">
+            <div class="card-header bg-info text-white">
+                <i class="bi bi-graph-up"></i> Receipt Progress
+            </div>
+            <div class="card-body">
+                @{
+                    var totalOrdered = Model.PurchaseOrderItems.Sum(i => i.QuantityOrdered);
+                    var totalReceived = Model.PurchaseOrderItems.Sum(i => i.QuantityReceived);
+                    var percentReceived = totalOrdered > 0 ? (totalReceived * 100 / totalOrdered) : 0;
+                }
+                <dl class="mb-3">
+                    <dt>Total Items</dt>
+                    <dd>@Model.PurchaseOrderItems.Count</dd>
+
+                    <dt>Total Qty Ordered</dt>
+                    <dd>@totalOrdered</dd>
+
+                    <dt>Total Qty Received</dt>
+                    <dd><strong>@totalReceived</strong></dd>
+
+                    <dt>Remaining</dt>
+                    <dd><span class="badge bg-warning">@(totalOrdered - totalReceived)</span></dd>
+                </dl>
+
+                <h6>Overall Progress</h6>
+                <div class="progress" style="height: 25px;">
+                    <div class="progress-bar @(percentReceived >= 100 ? "bg-success" : percentReceived > 0 ? "bg-info" : "bg-secondary")" 
+                         role="progressbar" 
+                         style="width: @percentReceived%">
+                        @percentReceived%
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow mb-3">
+            <div class="card-header bg-secondary text-white">
+                <i class="bi bi-list-check"></i> Receipt Instructions
+            </div>
+            <div class="card-body">
+                <ol class="mb-0">
+                    <li>Check delivered items against PO</li>
+                    <li>Inspect for quality and damage</li>
+                    <li>Count quantities accurately</li>
+                    <li>Enter received quantities</li>
+                    <li>Click "Record Receipt"</li>
+                    <li>Items update automatically</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="card shadow">
+            <div class="card-header bg-warning">
+                <i class="bi bi-exclamation-triangle"></i> Notes
+            </div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li>You can record partial receipts</li>
+                    <li>Return here to record more items later</li>
+                    <li>PO status updates automatically</li>
+                    <li>Fully received = all items at 100%</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Auto-fill max quantity on double-click
+        document.querySelectorAll('input[type="number"]').forEach(input => {
+            input.addEventListener('dblclick', function() {
+                this.value = this.max;
+            });
+        });
+    </script>
+}
+

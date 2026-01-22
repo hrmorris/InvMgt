@@ -1,0 +1,297 @@
+@model InvoiceManagement.Models.PurchaseOrder
+
+@{
+    ViewData["Title"] = "Create Purchase Order";
+    var suppliers = ViewBag.Suppliers as IEnumerable<InvoiceManagement.Models.Supplier>;
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-cart-plus"></i> Create Purchase Order</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-body">
+                <form asp-action="Create" method="post">
+                    @Html.AntiForgeryToken()
+                    <div asp-validation-summary="All" class="alert alert-danger"></div>
+
+                    <h5 class="mb-3"><i class="bi bi-info-circle"></i> Purchase Order Information</h5>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="PONumber" class="form-label">
+                                PO Number *
+                            </label>
+                            <input asp-for="PONumber" class="form-control" readonly />
+                            <small class="text-muted">Auto-generated</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="PODate" class="form-label">
+                                PO Date *
+                            </label>
+                            <input asp-for="PODate" class="form-control" type="date" required />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="SupplierId" class="form-label">
+                                Supplier *
+                            </label>
+                            <select asp-for="SupplierId" class="form-select" required>
+                                <option value="">-- Select Supplier --</option>
+                                @if (suppliers != null)
+                                {
+                                    @foreach (var supplier in suppliers)
+                                    {
+                                        <option value="@supplier.Id">@supplier.SupplierName - @supplier.SupplierCode</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="ExpectedDeliveryDate" class="form-label">
+                                Expected Delivery Date *
+                            </label>
+                            <input asp-for="ExpectedDeliveryDate" class="form-control" type="date" required />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="PreparedBy" class="form-label">
+                                Prepared By (Your Name) *
+                            </label>
+                            <input asp-for="PreparedBy" class="form-control" required placeholder="Your full name" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="ApprovedBy" class="form-label">
+                                Approved By
+                            </label>
+                            <input asp-for="ApprovedBy" class="form-control" placeholder="Approver's name" />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="DeliveryAddress" class="form-label">
+                            Delivery Address *
+                        </label>
+                        <textarea asp-for="DeliveryAddress" class="form-control" rows="2" required
+                            placeholder="Full delivery address"></textarea>
+                    </div>
+
+                    <hr>
+                    <h5 class="mb-3"><i class="bi bi-list-ul"></i> Purchase Order Items</h5>
+
+                    <div id="items-container">
+                        <div class="card mb-3 item-card">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4 mb-2">
+                                        <label class="form-label">Item Description *</label>
+                                        <input type="text" name="items[0].ItemDescription" class="form-control" required
+                                            placeholder="Item name" />
+                                    </div>
+                                    <div class="col-md-2 mb-2">
+                                        <label class="form-label">Item Code</label>
+                                        <input type="text" name="items[0].ItemCode" class="form-control"
+                                            placeholder="Optional" />
+                                    </div>
+                                    <div class="col-md-2 mb-2">
+                                        <label class="form-label">Quantity *</label>
+                                        <input type="number" name="items[0].QuantityOrdered"
+                                            class="form-control item-quantity" required min="1" value="1"
+                                            onchange="calculateTotal()" />
+                                    </div>
+                                    <div class="col-md-2 mb-2">
+                                        <label class="form-label">Unit *</label>
+                                        <select name="items[0].Unit" class="form-select" required>
+                                            <option value="Pcs">Pcs</option>
+                                            <option value="Box">Box</option>
+                                            <option value="Carton">Carton</option>
+                                            <option value="Kg">Kg</option>
+                                            <option value="Liter">Liter</option>
+                                            <option value="Set">Set</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2 mb-2">
+                                        <label class="form-label">Unit Price *</label>
+                                        <input type="number" name="items[0].UnitPrice" class="form-control item-price"
+                                            required step="0.01" min="0" value="0" onchange="calculateTotal()" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn btn-outline-primary mb-3" onclick="addItem()">
+                        <i class="bi bi-plus-circle"></i> Add Another Item
+                    </button>
+
+                    <div class="alert alert-info">
+                        <strong>Total Amount:</strong> <span id="total-amount">K 0.00</span>
+                    </div>
+
+                    <hr>
+
+                    <div class="mb-3">
+                        <label asp-for="TermsAndConditions" class="form-label">
+                            Terms and Conditions
+                        </label>
+                        <textarea asp-for="TermsAndConditions" class="form-control" rows="3"
+                            placeholder="Payment terms, delivery conditions, etc."></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Notes" class="form-label">
+                            Additional Notes
+                        </label>
+                        <textarea asp-for="Notes" class="form-control" rows="3"
+                            placeholder="Any additional information"></textarea>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle"></i> Create Purchase Order
+                        </button>
+                        <a asp-action="Index" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow mb-3">
+            <div class="card-header bg-primary text-white">
+                <i class="bi bi-info-circle"></i> About Purchase Orders
+            </div>
+            <div class="card-body">
+                <h6>A Purchase Order is:</h6>
+                <ul class="mb-0">
+                    <li>An official document to a supplier</li>
+                    <li>Specifies items, quantities, and prices</li>
+                    <li>Legally binding contract</li>
+                    <li>Can be created from approved requisitions</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card shadow mb-3">
+            <div class="card-header bg-info text-white">
+                <i class="bi bi-lightbulb"></i> Tips
+            </div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li>Select the correct supplier</li>
+                    <li>Verify item descriptions and codes</li>
+                    <li>Confirm quantities and prices</li>
+                    <li>Set realistic delivery dates</li>
+                    <li>Include clear terms and conditions</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card shadow">
+            <div class="card-header bg-warning">
+                <i class="bi bi-exclamation-triangle"></i> Important
+            </div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li>All fields marked with * are required</li>
+                    <li>Ensure supplier is active</li>
+                    <li>You can add multiple items</li>
+                    <li>PO will be created as "Draft" status</li>
+                    <li>Review carefully before sending to supplier</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+    <script>
+        let itemCount = 1;
+
+        function addItem() {
+            const container = document.getElementById('items-container');
+            const newItem = document.createElement('div');
+            newItem.className = 'card mb-3 item-card';
+            newItem.innerHTML = `
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-2">
+                            <h6>Item ${itemCount + 1}</h6>
+                            <button type="button" class="btn btn-sm btn-danger" onclick="removeItem(this)">
+                                <i class="bi bi-trash"></i> Remove
+                            </button>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-2">
+                                <label class="form-label">Item Description *</label>
+                                <input type="text" name="items[${itemCount}].ItemDescription" class="form-control" required placeholder="Item name" />
+                            </div>
+                            <div class="col-md-2 mb-2">
+                                <label class="form-label">Item Code</label>
+                                <input type="text" name="items[${itemCount}].ItemCode" class="form-control" placeholder="Optional" />
+                            </div>
+                            <div class="col-md-2 mb-2">
+                                <label class="form-label">Quantity *</label>
+                                <input type="number" name="items[${itemCount}].QuantityOrdered" class="form-control item-quantity" required min="1" value="1" onchange="calculateTotal()" />
+                            </div>
+                            <div class="col-md-2 mb-2">
+                                <label class="form-label">Unit *</label>
+                                <select name="items[${itemCount}].Unit" class="form-select" required>
+                                    <option value="Pcs">Pcs</option>
+                                    <option value="Box">Box</option>
+                                    <option value="Carton">Carton</option>
+                                    <option value="Kg">Kg</option>
+                                    <option value="Liter">Liter</option>
+                                    <option value="Set">Set</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 mb-2">
+                                <label class="form-label">Unit Price *</label>
+                                <input type="number" name="items[${itemCount}].UnitPrice" class="form-control item-price" required step="0.01" min="0" value="0" onchange="calculateTotal()" />
+                            </div>
+                        </div>
+                    </div>
+                `;
+            container.appendChild(newItem);
+            itemCount++;
+        }
+
+        function removeItem(button) {
+            button.closest('.item-card').remove();
+            calculateTotal();
+        }
+
+        function calculateTotal() {
+            let total = 0;
+            const quantities = document.querySelectorAll('.item-quantity');
+            const prices = document.querySelectorAll('.item-price');
+
+            for (let i = 0; i < quantities.length; i++) {
+                const qty = parseFloat(quantities[i].value) || 0;
+                const price = parseFloat(prices[i].value) || 0;
+                total += qty * price;
+            }
+
+            document.getElementById('total-amount').textContent = 'K ' + total.toFixed(2);
+        }
+
+        // Calculate initial total
+        document.addEventListener('DOMContentLoaded', calculateTotal);
+    </script>
+}

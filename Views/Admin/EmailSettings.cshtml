@@ -1,0 +1,226 @@
+@{
+    ViewData["Title"] = "Email Settings";
+}
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">
+                <i class="bi bi-envelope-at me-2"></i>Email Settings
+            </h1>
+            <p class="text-muted mb-0">Configure email server for notifications</p>
+        </div>
+        <a href="@Url.Action("Index")" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Back to Admin
+        </a>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle me-2"></i>@TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle me-2"></i>@TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="row g-4">
+        <!-- SMTP Configuration -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0">
+                    <h5 class="mb-0"><i class="bi bi-server me-2"></i>SMTP Configuration</h5>
+                </div>
+                <div class="card-body">
+                    <form asp-action="UpdateEmailSettings" method="post">
+                        @Html.AntiForgeryToken()
+
+                        <div class="row g-3">
+                            <div class="col-md-8">
+                                <label class="form-label">SMTP Host</label>
+                                <input type="text" class="form-control" name="smtpHost" value="@ViewBag.SmtpHost"
+                                    placeholder="smtp.gmail.com" />
+                                <small class="text-muted">e.g., smtp.gmail.com, smtp.office365.com</small>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">SMTP Port</label>
+                                <input type="number" class="form-control" name="smtpPort" value="@ViewBag.SmtpPort"
+                                    placeholder="587" />
+                                <small class="text-muted">Common: 587 (TLS), 465 (SSL)</small>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Username / Email</label>
+                                <input type="text" class="form-control" name="smtpUsername"
+                                    value="@ViewBag.SmtpUsername" placeholder="your-email@gmail.com" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Password</label>
+                                <input type="password" class="form-control" name="smtpPassword"
+                                    placeholder="Leave blank to keep current" />
+                                <small class="text-muted">Leave blank to keep existing password</small>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">From Email Address</label>
+                                <input type="email" class="form-control" name="smtpFromEmail"
+                                    value="@ViewBag.SmtpFromEmail" placeholder="noreply@yourdomain.com" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">From Name</label>
+                                <input type="text" class="form-control" name="smtpFromName"
+                                    value="@ViewBag.SmtpFromName" placeholder="Invoice Management System" />
+                            </div>
+
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" name="smtpEnableSsl"
+                                        id="smtpEnableSsl" value="true" @(ViewBag.SmtpEnableSsl == "true" ? "checked" :
+                                                                                                                "") />
+                                    <label class="form-check-label" for="smtpEnableSsl">Enable SSL/TLS</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save me-1"></i> Save Settings
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test & Info Panel -->
+        <div class="col-lg-4">
+            <!-- Test Email -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-0">
+                    <h5 class="mb-0"><i class="bi bi-send me-2"></i>Test Configuration</h5>
+                </div>
+                <div class="card-body">
+                    <form asp-action="TestEmail" method="post">
+                        @Html.AntiForgeryToken()
+                        <div class="mb-3">
+                            <label class="form-label">Test Email Address</label>
+                            <input type="email" class="form-control" name="testEmailAddress"
+                                placeholder="test@example.com" required />
+                        </div>
+                        <button type="submit" class="btn btn-outline-primary w-100">
+                            <i class="bi bi-envelope-paper me-1"></i> Send Test Email
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Provider Help -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0">
+                    <h5 class="mb-0"><i class="bi bi-question-circle me-2"></i>Provider Settings</h5>
+                </div>
+                <div class="card-body">
+                    <div class="accordion" id="providerAccordion">
+                        <div class="accordion-item border-0">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                    data-bs-target="#gmailHelp">
+                                    Gmail
+                                </button>
+                            </h2>
+                            <div id="gmailHelp" class="accordion-collapse collapse" data-bs-parent="#providerAccordion">
+                                <div class="accordion-body small">
+                                    <strong>Host:</strong> smtp.gmail.com<br />
+                                    <strong>Port:</strong> 587<br />
+                                    <strong>SSL:</strong> Enabled<br />
+                                    <em class="text-muted">Use App Password for 2FA accounts</em>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item border-0">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                    data-bs-target="#outlookHelp">
+                                    Outlook/Office 365
+                                </button>
+                            </h2>
+                            <div id="outlookHelp" class="accordion-collapse collapse"
+                                data-bs-parent="#providerAccordion">
+                                <div class="accordion-body small">
+                                    <strong>Host:</strong> smtp.office365.com<br />
+                                    <strong>Port:</strong> 587<br />
+                                    <strong>SSL:</strong> Enabled
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item border-0">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                    data-bs-target="#sendgridHelp">
+                                    SendGrid
+                                </button>
+                            </h2>
+                            <div id="sendgridHelp" class="accordion-collapse collapse"
+                                data-bs-parent="#providerAccordion">
+                                <div class="accordion-body small">
+                                    <strong>Host:</strong> smtp.sendgrid.net<br />
+                                    <strong>Port:</strong> 587<br />
+                                    <strong>Username:</strong> apikey<br />
+                                    <strong>Password:</strong> Your API Key
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Email Notifications Info -->
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-header bg-transparent border-0">
+            <h5 class="mb-0"><i class="bi bi-bell me-2"></i>Notification Types</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <h6><i class="bi bi-receipt text-primary me-2"></i>Invoice Notifications</h6>
+                    <ul class="text-muted small">
+                        <li>New invoice created</li>
+                        <li>Invoice overdue reminder</li>
+                        <li>Invoice payment received</li>
+                    </ul>
+                </div>
+                <div class="col-md-4">
+                    <h6><i class="bi bi-cash text-success me-2"></i>Payment Notifications</h6>
+                    <ul class="text-muted small">
+                        <li>Payment received confirmation</li>
+                        <li>Payment allocation updates</li>
+                    </ul>
+                </div>
+                <div class="col-md-4">
+                    <h6><i class="bi bi-people text-info me-2"></i>System Notifications</h6>
+                    <ul class="text-muted small">
+                        <li>User account created</li>
+                        <li>Password reset requests</li>
+                        <li>System alerts</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="alert alert-info mt-3 mb-0">
+                <i class="bi bi-info-circle me-2"></i>
+                <small>Email notifications are currently not active. Configure SMTP settings and enable notifications in
+                    System Settings to activate.</small>
+            </div>
+        </div>
+    </div>
+</div>

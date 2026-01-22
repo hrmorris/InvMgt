@@ -1,0 +1,296 @@
+@model InvoiceManagement.Models.Requisition
+
+@{
+    ViewData["Title"] = "Edit Requisition";
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-pencil-square"></i> Edit Purchase Requisition</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Details
+        </a>
+    </div>
+</div>
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle"></i> @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-body">
+                <form asp-action="Edit" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="Id" />
+                    <input type="hidden" asp-for="CreatedDate" />
+                    <input type="hidden" asp-for="Status" />
+                    <div asp-validation-summary="All" class="alert alert-danger"></div>
+
+                    <h5 class="mb-3"><i class="bi bi-info-circle"></i> Requisition Information</h5>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="RequisitionNumber" class="form-label">
+                                Requisition Number *
+                            </label>
+                            <input asp-for="RequisitionNumber" class="form-control" readonly />
+                            <small class="text-muted">Cannot be changed</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="RequisitionDate" class="form-label">
+                                Requisition Date *
+                            </label>
+                            <input asp-for="RequisitionDate" class="form-control" type="date" required />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="RequestedBy" class="form-label">
+                                Requested By (Your Name) *
+                            </label>
+                            <input asp-for="RequestedBy" class="form-control" required placeholder="Your full name" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Department" class="form-label">
+                                Department *
+                            </label>
+                            <input asp-for="Department" class="form-control" required placeholder="e.g., Pharmacy, Maintenance" />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="FacilityType" class="form-label">
+                                Facility Type *
+                            </label>
+                            <select asp-for="FacilityType" class="form-select" required>
+                                <option value="">-- Select Facility Type --</option>
+                                <option value="Health Facility">Health Facility (Outstation)</option>
+                                <option value="Hospital Unit">Hospital Unit</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Purpose" class="form-label">
+                                Purpose *
+                            </label>
+                            <input asp-for="Purpose" class="form-control" required placeholder="Reason for this requisition" />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="CostCode" class="form-label">
+                                Cost Code *
+                            </label>
+                            <input asp-for="CostCode" class="form-control" required placeholder="e.g., CC-001" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="BudgetCode" class="form-label">
+                                Budget Code *
+                            </label>
+                            <input asp-for="BudgetCode" class="form-control" required placeholder="e.g., BGT-2025-Q1" />
+                        </div>
+                    </div>
+
+                    <hr>
+                    <h5 class="mb-3"><i class="bi bi-list-ul"></i> Requisition Items</h5>
+
+                    <div id="items-container">
+                        @if (Model.RequisitionItems != null && Model.RequisitionItems.Any())
+                        {
+                            for (int i = 0; i < Model.RequisitionItems.Count; i++)
+                            {
+                                <div class="card mb-3 item-card">
+                                    <div class="card-body">
+                                        <input type="hidden" name="items[@i].Id" value="@Model.RequisitionItems.ElementAt(i).Id" />
+                                        <input type="hidden" name="items[@i].RequisitionId" value="@Model.RequisitionItems.ElementAt(i).RequisitionId" />
+                                        @if (i > 0)
+                                        {
+                                            <div class="d-flex justify-content-between mb-2">
+                                                <h6>Item @(i + 1)</h6>
+                                                <button type="button" class="btn btn-sm btn-danger" onclick="removeItem(this)">
+                                                    <i class="bi bi-trash"></i> Remove
+                                                </button>
+                                            </div>
+                                        }
+                                        <div class="row">
+                                            <div class="col-md-4 mb-2">
+                                                <label class="form-label">Item Description *</label>
+                                                <input type="text" name="items[@i].ItemDescription" value="@Model.RequisitionItems.ElementAt(i).ItemDescription" class="form-control" required placeholder="Item name" />
+                                            </div>
+                                            <div class="col-md-2 mb-2">
+                                                <label class="form-label">Item Code</label>
+                                                <input type="text" name="items[@i].ItemCode" value="@Model.RequisitionItems.ElementAt(i).ItemCode" class="form-control" placeholder="Optional" />
+                                            </div>
+                                            <div class="col-md-2 mb-2">
+                                                <label class="form-label">Quantity *</label>
+                                                <input type="number" name="items[@i].QuantityRequested" value="@Model.RequisitionItems.ElementAt(i).QuantityRequested" class="form-control" required min="1" />
+                                            </div>
+                                            <div class="col-md-2 mb-2">
+                                                <label class="form-label">Unit *</label>
+                                                <select name="items[@i].Unit" class="form-select" required>
+                                                    <option value="Pcs" selected="@(Model.RequisitionItems.ElementAt(i).Unit == "Pcs")">Pcs</option>
+                                                    <option value="Box" selected="@(Model.RequisitionItems.ElementAt(i).Unit == "Box")">Box</option>
+                                                    <option value="Carton" selected="@(Model.RequisitionItems.ElementAt(i).Unit == "Carton")">Carton</option>
+                                                    <option value="Kg" selected="@(Model.RequisitionItems.ElementAt(i).Unit == "Kg")">Kg</option>
+                                                    <option value="Liter" selected="@(Model.RequisitionItems.ElementAt(i).Unit == "Liter")">Liter</option>
+                                                    <option value="Set" selected="@(Model.RequisitionItems.ElementAt(i).Unit == "Set")">Set</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-2 mb-2">
+                                                <label class="form-label">Est. Unit Price</label>
+                                                <input type="number" name="items[@i].EstimatedUnitPrice" value="@Model.RequisitionItems.ElementAt(i).EstimatedUnitPrice" class="form-control" step="0.01" min="0" />
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-12">
+                                                <label class="form-label">Justification</label>
+                                                <textarea name="items[@i].Justification" class="form-control" rows="2" placeholder="Why is this item needed?">@Model.RequisitionItems.ElementAt(i).Justification</textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+
+                    <button type="button" class="btn btn-outline-primary mb-3" onclick="addItem()">
+                        <i class="bi bi-plus-circle"></i> Add Another Item
+                    </button>
+
+                    <hr>
+
+                    <div class="mb-3">
+                        <label asp-for="Notes" class="form-label">
+                            Additional Notes
+                        </label>
+                        <textarea asp-for="Notes" class="form-control" rows="3" placeholder="Any additional information"></textarea>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle"></i> Update Requisition
+                        </button>
+                        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow mb-3 bg-info text-white">
+            <div class="card-body">
+                <h5><i class="bi bi-info-circle"></i> Edit Mode</h5>
+                <p class="mb-0">You can modify all requisition details. The requisition will remain in <strong>@Model.Status</strong> status after update.</p>
+            </div>
+        </div>
+
+        <div class="card shadow mb-3">
+            <div class="card-header bg-warning">
+                <i class="bi bi-exclamation-triangle"></i> Important
+            </div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li>All fields marked with * are required</li>
+                    <li>You can add or remove items</li>
+                    <li>Changes will be saved immediately</li>
+                    <li>Requisition number cannot be changed</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <i class="bi bi-clock-history"></i> Last Modified
+            </div>
+            <div class="card-body">
+                @if (Model.ModifiedDate.HasValue)
+                {
+                    <p class="mb-0">@Model.ModifiedDate.Value.ToString("yyyy-MM-dd HH:mm")</p>
+                }
+                else
+                {
+                    <p class="mb-0">Not yet modified</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        let itemCount = @Model.RequisitionItems.Count;
+
+        function addItem() {
+            const container = document.getElementById('items-container');
+            const newItem = document.createElement('div');
+            newItem.className = 'card mb-3 item-card';
+            newItem.innerHTML = `
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <h6>Item ${itemCount + 1}</h6>
+                        <button type="button" class="btn btn-sm btn-danger" onclick="removeItem(this)">
+                            <i class="bi bi-trash"></i> Remove
+                        </button>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-2">
+                            <label class="form-label">Item Description *</label>
+                            <input type="text" name="items[${itemCount}].ItemDescription" class="form-control" required placeholder="Item name" />
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            <label class="form-label">Item Code</label>
+                            <input type="text" name="items[${itemCount}].ItemCode" class="form-control" placeholder="Optional" />
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            <label class="form-label">Quantity *</label>
+                            <input type="number" name="items[${itemCount}].QuantityRequested" class="form-control" required min="1" value="1" />
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            <label class="form-label">Unit *</label>
+                            <select name="items[${itemCount}].Unit" class="form-select" required>
+                                <option value="Pcs">Pcs</option>
+                                <option value="Box">Box</option>
+                                <option value="Carton">Carton</option>
+                                <option value="Kg">Kg</option>
+                                <option value="Liter">Liter</option>
+                                <option value="Set">Set</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            <label class="form-label">Est. Unit Price</label>
+                            <input type="number" name="items[${itemCount}].EstimatedUnitPrice" class="form-control" step="0.01" min="0" value="0" />
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <label class="form-label">Justification</label>
+                            <textarea name="items[${itemCount}].Justification" class="form-control" rows="2" placeholder="Why is this item needed?"></textarea>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(newItem);
+            itemCount++;
+        }
+
+        function removeItem(button) {
+            if (document.querySelectorAll('.item-card').length > 1) {
+                button.closest('.item-card').remove();
+            } else {
+                alert('Cannot remove the last item. A requisition must have at least one item.');
+            }
+        }
+    </script>
+}

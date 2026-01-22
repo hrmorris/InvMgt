@@ -1,0 +1,169 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║           AI-POWERED INVOICE & PAYMENT IMPORT - QUICK SETUP                 ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+🎉 NEW FEATURE ADDED! Extract invoice/payment data from PDFs and images using AI!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚡ QUICK SETUP (2 Minutes)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEP 1: Get Google AI API Key (FREE!)
+--------------------------------------
+1. Go to: https://makersuite.google.com/app/apikey
+2. Sign in with Google account
+3. Click "Get API Key" or "Create API Key"
+4. Copy your API key
+
+STEP 2: Add API Key to Configuration
+-------------------------------------
+Edit this file: appsettings.json
+
+Find this section:
+{
+  "GoogleAI": {
+    "ApiKey": "YOUR_GOOGLE_AI_API_KEY_HERE"
+  }
+}
+
+Replace "YOUR_GOOGLE_AI_API_KEY_HERE" with your actual API key.
+
+STEP 3: Restart the Application
+--------------------------------
+Stop the server (Ctrl+C) and restart:
+cd /Users/hectormorris/Library/CloudStorage/OneDrive-Personal/Apps/InvMgt
+dotnet run --project InvoiceManagement.csproj
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 HOW TO USE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FOR INVOICES:
+-------------
+1. Open browser → http://localhost:5000
+2. Click "AI Import Invoices" in sidebar
+3. Upload invoice PDF or image (JPG, PNG, etc.)
+4. Click "Process with AI"
+5. Review extracted data
+6. Click "Save All Invoices"
+
+FOR PAYMENTS:
+-------------
+1. Click "AI Import Payments" in sidebar
+2. Upload payment receipt/confirmation
+3. Click "Process with AI"
+4. Review and match to invoices
+5. Click "Save All Payments"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✨ WHAT IT EXTRACTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FROM INVOICES:
+✓ Invoice number
+✓ Invoice date
+✓ Due date
+✓ Customer name & details
+✓ All line items
+✓ Quantities & prices
+✓ Total amount
+
+FROM PAYMENTS:
+✓ Payment/receipt number
+✓ Payment date
+✓ Amount paid
+✓ Payment method
+✓ Reference number
+✓ Related invoice (auto-match!)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📁 SUPPORTED FILE FORMATS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✓ PDF (invoices, receipts, statements)
+✓ JPG/JPEG (photos, scans)
+✓ PNG (screenshots, digital images)
+✓ GIF (image files)
+✓ WebP (modern format)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💡 SMART FEATURES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+AUTO-MATCHING:
+Payments are automatically matched to invoices by:
+• Invoice numbers mentioned in receipt
+• Matching amounts
+• Customer names
+• Reference numbers
+• Date proximity
+
+BATCH PROCESSING:
+Upload multiple files at once and process them all!
+
+REVIEW BEFORE SAVE:
+Always review extracted data before saving to database.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💰 PRICING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Google AI Free Tier:
+✓ 60 requests per minute
+✓ 1,500 requests per day
+✓ 1 million requests per month
+
+Perfect for most small-medium businesses!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 TIPS FOR BEST RESULTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✓ Use clear, high-quality scans or photos
+✓ Ensure entire invoice/receipt is visible
+✓ Make sure text is readable (not blurry)
+✓ Process one invoice per file
+✓ Always review extracted data before saving
+✓ Keep files under 10MB for faster processing
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📚 FULL DOCUMENTATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+See AI_IMPORT_GUIDE.md for complete documentation including:
+• Detailed setup instructions
+• Advanced features
+• Troubleshooting
+• Best practices
+• Security considerations
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ IMPORTANT NOTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+• API key is required for AI features to work
+• Internet connection needed to access Google AI
+• Data is processed securely (not stored by Google)
+• Always verify extracted data before saving
+• Free tier is generous but has limits
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ CHECKLIST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+□ Got Google AI API key
+□ Added key to appsettings.json
+□ Restarted application
+□ Opened http://localhost:5000
+□ Clicked "AI Import Invoices" or "AI Import Payments"
+□ Uploaded first file
+□ Reviewed extracted data
+□ Saved to database
+□ Verified on dashboard
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎉 YOU'RE ALL SET! Start importing invoices and payments with AI! 🤖
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+

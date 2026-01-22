@@ -1,0 +1,167 @@
+@model IEnumerable<Payment>
+
+@{
+    ViewData["Title"] = "Review Extracted Payments";
+    var unpaidInvoices = ViewBag.UnpaidInvoices as IEnumerable<Invoice> ?? Enumerable.Empty<Invoice>();
+}
+@functions {
+    public string FormatCurrency(decimal amount)
+    {
+        var settings = ViewData["CurrencySettings"] as CurrencySettings;
+        if (settings != null)
+        {
+            return CurrencyHelper.FormatCurrency(amount, settings);
+        }
+        return $"K {amount:N2}";
+    }
+    public string CurrencySymbol()
+    {
+        return ViewData["CurrencySymbol"]?.ToString() ?? "K";
+    }
+}
+
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-check-square"></i> Review Extracted Payments</h1>
+</div>
+
+<div class="alert alert-info">
+    <h5><i class="bi bi-info-circle"></i> Review Extracted Payments</h5>
+    <p class="mb-0">Review the extracted payment data. You can match payments to invoices now, or save them as unallocated and match them later.</p>
+</div>
+
+<form asp-action="SavePayments" method="post">
+    <div class="row">
+        @foreach (var payment in Model)
+        {
+            var index = Model.ToList().IndexOf(payment);
+            var matchedInvoice = unpaidInvoices.FirstOrDefault(i => i.Id == payment.InvoiceId);
+            
+            <div class="col-md-6 mb-4">
+                <div class="card shadow">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="m-0">
+                            Payment: @payment.PaymentNumber
+                            @if (payment.Notes != null && (payment.Notes.Contains("[AI Confidence: high]") || !payment.Notes.Contains("Confidence")))
+                            {
+                                <span class="badge bg-light text-dark float-end">High Confidence</span>
+                            }
+                            else if (payment.Notes != null && payment.Notes.Contains("[AI Confidence: medium]"))
+                            {
+                                <span class="badge bg-warning float-end">Medium Confidence</span>
+                            }
+                            else if (payment.Notes != null && payment.Notes.Contains("[AI Confidence: low]"))
+                            {
+                                <span class="badge bg-danger float-end">Low Confidence</span>
+                            }
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        @if (payment.Notes != null && payment.Notes.Contains("[Warning:"))
+                        {
+                            <div class="alert alert-warning alert-sm mb-3">
+                                <i class="bi bi-exclamation-triangle"></i> 
+                                <strong>AI Notice:</strong> Please verify carefully - 
+                                @{
+                                    var warningStart = payment.Notes.IndexOf("[Warning:");
+                                    var warningEnd = payment.Notes.IndexOf("]", warningStart);
+                                    var warning = payment.Notes.Substring(warningStart + 10, warningEnd - warningStart - 10);
+                                }
+                                @warning
+                            </div>
+                        }
+                        <dl class="row">
+                            <dt class="col-sm-4">Payment Number:</dt>
+                            <dd class="col-sm-8"><strong>@payment.PaymentNumber</strong></dd>
+
+                            <dt class="col-sm-4">Date:</dt>
+                            <dd class="col-sm-8">@payment.PaymentDate.ToString("dd/MM/yyyy")</dd>
+
+                            <dt class="col-sm-4">Amount:</dt>
+                            <dd class="col-sm-8"><strong class="text-success">@FormatCurrency(payment.Amount)</strong></dd>
+
+                            <dt class="col-sm-4">Method:</dt>
+                            <dd class="col-sm-8">@payment.PaymentMethod</dd>
+
+                            @if (!string.IsNullOrEmpty(payment.ReferenceNumber))
+                            {
+                                <dt class="col-sm-4">Reference:</dt>
+                                <dd class="col-sm-8">@payment.ReferenceNumber</dd>
+                            }
+
+                            @if (!string.IsNullOrEmpty(payment.Notes))
+                            {
+                                <dt class="col-sm-4">Notes:</dt>
+                                <dd class="col-sm-8">@payment.Notes</dd>
+                            }
+                        </dl>
+
+                        <hr />
+
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Match to Invoice (Optional):</strong></label>
+                            <select name="paymentInvoiceMapping[@index]" class="form-select">
+                                <option value="">-- No Invoice (Save as Unallocated) --</option>
+                                @foreach (var invoice in unpaidInvoices)
+                                {
+                                    var isSelected = invoice.Id == payment.InvoiceId;
+                                    <option value="@invoice.Id" selected="@isSelected">
+                                        @invoice.InvoiceNumber - @invoice.CustomerName (@FormatCurrency(invoice.BalanceAmount) due)
+                                    </option>
+                                }
+                            </select>
+                            <small class="form-text text-muted">
+                                <i class="bi bi-info-circle"></i> Leave unselected to save as unallocated. You can allocate to invoices later.
+                            </small>
+                        </div>
+
+                        @if (matchedInvoice != null)
+                        {
+                            <div class="alert alert-success small mb-0">
+                                <i class="bi bi-check-circle"></i> <strong>Auto-matched to:</strong> @matchedInvoice.InvoiceNumber
+                                <br />Customer: @matchedInvoice.CustomerName
+                                <br />Balance Due: @FormatCurrency(matchedInvoice.BalanceAmount)
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="alert alert-info small mb-0">
+                                <i class="bi bi-info-circle"></i> <strong>No automatic match.</strong> You can select an invoice or save as unallocated.
+                            </div>
+                        }
+                    </div>
+                    <div class="card-footer">
+                        <div class="btn-group w-100" role="group">
+                            <a asp-action="ViewPayment" asp-route-index="@index" class="btn btn-info btn-sm">
+                                <i class="bi bi-eye"></i> View
+                            </a>
+                            <a asp-action="EditPayment" asp-route-index="@index" class="btn btn-primary btn-sm">
+                                <i class="bi bi-pencil"></i> Edit
+                            </a>
+                            <a asp-action="DeletePayment" asp-route-index="@index" class="btn btn-danger btn-sm">
+                                <i class="bi bi-trash"></i> Delete
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="text-center mt-4">
+        <button type="submit" class="btn btn-success btn-lg px-5">
+            <i class="bi bi-check-circle"></i> Save All Payments to Database (@Model.Count())
+        </button>
+        <a asp-action="Payment" class="btn btn-secondary btn-lg px-4 ms-2">
+            <i class="bi bi-x-circle"></i> Cancel
+        </a>
+    </div>
+</form>
+
+<div class="mt-3 text-muted text-center">
+    <small>
+        <i class="bi bi-info-circle"></i> 
+        <strong>Tip:</strong> You can view, edit, or remove payments before saving. Payments without an invoice will be saved as "Unallocated" and can be matched to invoices later from the Payments page.
+    </small>
+</div>
+

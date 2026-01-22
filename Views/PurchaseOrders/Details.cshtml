@@ -1,0 +1,364 @@
+@model InvoiceManagement.Models.PurchaseOrder
+
+@{
+    ViewData["Title"] = "Purchase Order Details";
+    var userRole = Context.Session.GetString("UserRole");
+    var isAdmin = userRole == "Admin" || userRole == "SystemAdmin";
+}
+@functions {
+    public string FormatCurrency(decimal amount)
+    {
+        var settings = ViewData["CurrencySettings"] as CurrencySettings;
+        if (settings != null)
+        {
+            return CurrencyHelper.FormatCurrency(amount, settings);
+        }
+        return $"K {amount:N2}";
+    }
+    public string CurrencySymbol()
+    {
+        return ViewData["CurrencySymbol"]?.ToString() ?? "K";
+    }
+}
+
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-cart-check"></i> Purchase Order Details</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            @if (isAdmin || Model.Status == "Draft" || Model.Status == "Pending")
+            {
+                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">
+                    <i class="bi bi-pencil"></i> Edit
+                </a>
+            }
+            <a asp-action="DownloadPdf" asp-route-id="@Model.Id" class="btn btn-info">
+                <i class="bi bi-file-pdf"></i> Download PDF
+            </a>
+            @if (isAdmin || Model.Status == "Draft" || Model.Status == "Pending")
+            {
+                <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-danger">
+                    <i class="bi bi-trash"></i> Delete
+                </a>
+            }
+            @if (Model.Status != "Fully_Received" && Model.Status != "Cancelled")
+            {
+                <a asp-action="ReceiveGoods" asp-route-id="@Model.Id" class="btn btn-success">
+                    <i class="bi bi-box-seam"></i> Receive Goods
+                </a>
+            }
+        </div>
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle"></i> @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow mb-3">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Purchase Order Information</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-4">PO Number</dt>
+                    <dd class="col-sm-8"><strong class="fs-5">@Model.PONumber</strong></dd>
+
+                    <dt class="col-sm-4">PO Date</dt>
+                    <dd class="col-sm-8">@Model.PODate.ToString("dd/MM/yyyy")</dd>
+
+                    @if (Model.Requisition != null)
+                    {
+                        <dt class="col-sm-4">Requisition</dt>
+                        <dd class="col-sm-8">
+                            <a asp-controller="Requisitions" asp-action="Details" asp-route-id="@Model.RequisitionId"
+                                class="badge bg-info">
+                                @Model.Requisition.RequisitionNumber
+                            </a>
+                        </dd>
+                    }
+
+                    <dt class="col-sm-4">Supplier</dt>
+                    <dd class="col-sm-8">
+                        <strong>@Model.Supplier?.SupplierName</strong>
+                        @if (!string.IsNullOrEmpty(Model.Supplier?.SupplierCode))
+                        {
+                            <br />
+                        
+                            <small class="text-muted">Code: @Model.Supplier.SupplierCode</small>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.Supplier?.ContactPerson))
+                        {
+                            <br />
+                        
+                            <small>Contact: @Model.Supplier.ContactPerson</small>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.Supplier?.Email))
+                        {
+                            <br />
+                        
+                            <small>Email: @Model.Supplier.Email</small>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.Supplier?.Phone))
+                        {
+                            <br />
+                        
+                            <small>Phone: @Model.Supplier.Phone</small>
+                        }
+                    </dd>
+
+                    <dt class="col-sm-4">Expected Delivery</dt>
+                    <dd class="col-sm-8">@Model.ExpectedDeliveryDate.ToString("dd/MM/yyyy")</dd>
+
+                    <dt class="col-sm-4">Delivery Address</dt>
+                    <dd class="col-sm-8">@Model.DeliveryAddress</dd>
+
+                    <dt class="col-sm-4">Total Amount</dt>
+                    <dd class="col-sm-8"><strong class="fs-5 text-success">@FormatCurrency(Model.TotalAmount)</strong>
+                    </dd>
+
+                    <dt class="col-sm-4">Status</dt>
+                    <dd class="col-sm-8">
+                        @if (Model.Status == "Fully_Received")
+                        {
+                            <span class="badge bg-success fs-6">Fully Received</span>
+                        }
+                        else if (Model.Status == "Partially_Received")
+                        {
+                            <span class="badge bg-info fs-6">Partially Received</span>
+                        }
+                        else if (Model.Status == "Cancelled")
+                        {
+                            <span class="badge bg-danger fs-6">Cancelled</span>
+                        }
+                        else if (Model.Status == "Sent_to_Supplier")
+                        {
+                            <span class="badge bg-primary fs-6">Sent to Supplier</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary fs-6">@Model.Status.Replace("_", " ")</span>
+                        }
+                    </dd>
+
+                    <dt class="col-sm-4">Prepared By</dt>
+                    <dd class="col-sm-8">@Model.PreparedBy</dd>
+
+                    @if (!string.IsNullOrEmpty(Model.ApprovedBy))
+                    {
+                        <dt class="col-sm-4">Approved By</dt>
+                        <dd class="col-sm-8">
+                            @Model.ApprovedBy
+                            @if (Model.ApprovalDate.HasValue)
+                            {
+                                <br />
+                        
+                                <small class="text-muted">@Model.ApprovalDate.Value.ToString("yyyy-MM-dd HH:mm")</small>
+                            }
+                        </dd>
+                    }
+
+                    @if (!string.IsNullOrEmpty(Model.TermsAndConditions))
+                    {
+                        <dt class="col-sm-4">Terms & Conditions</dt>
+                        <dd class="col-sm-8">@Model.TermsAndConditions</dd>
+                    }
+
+                    @if (!string.IsNullOrEmpty(Model.Notes))
+                    {
+                        <dt class="col-sm-4">Notes</dt>
+                        <dd class="col-sm-8">@Model.Notes</dd>
+                    }
+                </dl>
+            </div>
+        </div>
+
+        <div class="card shadow">
+            <div class="card-header">
+                <h5 class="mb-0">Order Items</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Item Description</th>
+                                <th>Code</th>
+                                <th>Qty Ordered</th>
+                                <th>Qty Received</th>
+                                <th>Unit</th>
+                                <th>Unit Price</th>
+                                <th>Total</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model.PurchaseOrderItems)
+                            {
+                                <tr>
+                                    <td>@item.ItemDescription</td>
+                                    <td>@item.ItemCode</td>
+                                    <td>@item.QuantityOrdered</td>
+                                    <td>
+                                        <strong>@item.QuantityReceived</strong>
+                                        @if (item.ReceivedDate.HasValue)
+                                        {
+                                            <br />
+                                    
+                                            <small
+                                                class="text-muted">@item.ReceivedDate.Value.ToString("dd/MM/yyyy")</small>
+                                        }
+                                    </td>
+                                    <td>@item.Unit</td>
+                                    <td>@FormatCurrency(item.UnitPrice)</td>
+                                    <td><strong>@FormatCurrency((item.QuantityOrdered * item.UnitPrice))</strong></td>
+                                    <td>
+                                        @if (item.QuantityReceived >= item.QuantityOrdered)
+                                        {
+                                            <span class="badge bg-success">Complete</span>
+                                        }
+                                        else if (item.QuantityReceived > 0)
+                                        {
+                                            <span class="badge bg-warning">Partial</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Pending</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th colspan="6" class="text-end">Total Amount:</th>
+                                <th colspan="2">@FormatCurrency(Model.TotalAmount)</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow mb-3">
+            <div class="card-header bg-info text-white">
+                <i class="bi bi-info-circle"></i> Order Status
+            </div>
+            <div class="card-body">
+                <dl class="mb-0">
+                    <dt>Created Date</dt>
+                    <dd>@Model.CreatedDate.ToString("yyyy-MM-dd HH:mm")</dd>
+
+                    @if (Model.ModifiedDate.HasValue)
+                    {
+                        <dt>Last Modified</dt>
+                        <dd>@Model.ModifiedDate.Value.ToString("yyyy-MM-dd HH:mm")</dd>
+                    }
+
+                    <dt>Items Ordered</dt>
+                    <dd>@Model.PurchaseOrderItems.Count</dd>
+
+                    <dt>Total Qty Ordered</dt>
+                    <dd>@Model.PurchaseOrderItems.Sum(i => i.QuantityOrdered)</dd>
+
+                    <dt>Total Qty Received</dt>
+                    <dd>
+                        <strong>@Model.PurchaseOrderItems.Sum(i => i.QuantityReceived)</strong>
+                        @{
+                            var totalOrdered = Model.PurchaseOrderItems.Sum(i => i.QuantityOrdered);
+                            var totalReceived = Model.PurchaseOrderItems.Sum(i => i.QuantityReceived);
+                            var percentReceived = totalOrdered > 0 ? (totalReceived * 100 / totalOrdered) : 0;
+                        }
+                        <div class="progress mt-2">
+                            <div class="progress-bar @(percentReceived >= 100 ? "bg-success" : percentReceived > 0 ? "bg-warning" : "bg-secondary")"
+                                role="progressbar" style="width: @percentReceived%">
+                                @percentReceived%
+                            </div>
+                        </div>
+                    </dd>
+                </dl>
+            </div>
+        </div>
+
+        @if (Model.Supplier != null)
+        {
+            <div class="card shadow mb-3">
+                <div class="card-header bg-secondary text-white">
+                    <i class="bi bi-building"></i> Supplier Details
+                </div>
+                <div class="card-body">
+                    <dl class="mb-0">
+                        @if (!string.IsNullOrEmpty(Model.Supplier.Address))
+                        {
+                            <dt>Address</dt>
+                            <dd>@Model.Supplier.Address</dd>
+                        }
+
+                        @if (!string.IsNullOrEmpty(Model.Supplier.TIN))
+                        {
+                            <dt>TIN</dt>
+                            <dd>@Model.Supplier.TIN</dd>
+                        }
+
+                        @if (!string.IsNullOrEmpty(Model.Supplier.BankName))
+                        {
+                            <dt>Bank</dt>
+                            <dd>@Model.Supplier.BankName</dd>
+
+                            @if (!string.IsNullOrEmpty(Model.Supplier.BankAccountNumber))
+                            {
+                                <dt>Account</dt>
+                                <dd>@Model.Supplier.BankAccountNumber</dd>
+                            }
+                        }
+
+                        <dt>Payment Terms</dt>
+                        <dd>Net @Model.Supplier.PaymentTermsDays days</dd>
+                    </dl>
+                </div>
+            </div>
+        }
+
+        <div class="card shadow">
+            <div class="card-header bg-warning">
+                <i class="bi bi-truck"></i> Delivery Status
+            </div>
+            <div class="card-body">
+                @{
+                    var fullyReceived = Model.PurchaseOrderItems.All(i => i.QuantityReceived >= i.QuantityOrdered);
+                    var partiallyReceived = Model.PurchaseOrderItems.Any(i => i.QuantityReceived > 0);
+                }
+
+                @if (fullyReceived)
+                {
+                    <div class="alert alert-success mb-0">
+                        <i class="bi bi-check-circle-fill"></i> All items received
+                    </div>
+                }
+                else if (partiallyReceived)
+                {
+                    <div class="alert alert-warning mb-0">
+                        <i class="bi bi-exclamation-triangle"></i> Partially received - some items pending
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-secondary mb-0">
+                        <i class="bi bi-hourglass-split"></i> Awaiting delivery
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>

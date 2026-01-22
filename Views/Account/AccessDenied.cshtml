@@ -1,0 +1,49 @@
+@{
+    ViewData["Title"] = "Access Denied";
+}
+
+<div class="container">
+    <div class="row justify-content-center" style="margin-top: 100px;">
+        <div class="col-md-6">
+            <div class="card shadow-lg border-danger">
+                <div class="card-header bg-danger text-white text-center">
+                    <h3><i class="bi bi-shield-x"></i> Access Denied</h3>
+                </div>
+                <div class="card-body text-center p-5">
+                    <i class="bi bi-lock-fill text-danger" style="font-size: 5rem;"></i>
+                    
+                    <h4 class="mt-4 mb-3">You don't have permission to access this resource</h4>
+                    
+                    @if (!string.IsNullOrEmpty(ViewBag.Username))
+                    {
+                        <div class="alert alert-warning mt-4">
+                            <strong>Current User:</strong> @ViewBag.Username<br />
+                            <strong>Current Role:</strong> <span class="badge bg-info">@ViewBag.Role</span>
+                        </div>
+                    }
+                    
+                    <p class="text-muted mt-3">
+                        This page or action requires specific permissions that your account doesn't have. 
+                        If you believe you should have access, please contact your system administrator.
+                    </p>
+                    
+                    <div class="mt-4">
+                        <a asp-controller="Home" asp-action="Index" class="btn btn-primary btn-lg me-2">
+                            <i class="bi bi-house-door"></i> Go to Dashboard
+                        </a>
+                        <a href="javascript:history.back()" class="btn btn-secondary btn-lg">
+                            <i class="bi bi-arrow-left"></i> Go Back
+                        </a>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <small class="text-muted">
+                            Need help? Contact your administrator to request the necessary permissions.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

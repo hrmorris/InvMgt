@@ -1,0 +1,195 @@
+@using InvoiceManagement.Controllers
+@model DataCleanupStats
+@{
+    ViewData["Title"] = "Data Cleanup";
+}
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">
+                <i class="bi bi-trash me-2"></i>Data Cleanup & Archive
+            </h1>
+            <p class="text-muted mb-0">Manage old data and reclaim storage space</p>
+        </div>
+        <a href="@Url.Action("Index")" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Back to Admin
+        </a>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle me-2"></i>@TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle me-2"></i>@TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Warning Banner -->
+    <div class="alert alert-warning mb-4">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        <strong>Warning:</strong> Data cleanup operations are permanent and cannot be undone.
+        Please create a backup before proceeding.
+        <a href="@Url.Action("Backup")" class="alert-link ms-2">Create Backup Now</a>
+    </div>
+
+    <!-- Cleanup Statistics -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-journal-text text-secondary fs-3 mb-2"></i>
+                    <h3 class="mb-0">@Model.OldAuditLogsCount</h3>
+                    <small class="text-muted">Audit Logs (6+ months old)</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-file-earmark-text text-info fs-3 mb-2"></i>
+                    <h3 class="mb-0">@Model.ProcessedDocumentsCount</h3>
+                    <small class="text-muted">Processed Documents (3+ months old)</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-receipt text-success fs-3 mb-2"></i>
+                    <h3 class="mb-0">@Model.PaidInvoicesOlderThan1Year</h3>
+                    <small class="text-muted">Paid Invoices (1+ year old)</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-hdd text-warning fs-3 mb-2"></i>
+                    <h3 class="mb-0">@((Model.TotalDocumentStorageBytes / 1024.0 / 1024.0).ToString("F2")) MB</h3>
+                    <small class="text-muted">Document Storage Used</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cleanup Options -->
+    <div class="row g-4">
+        <!-- Audit Logs Cleanup -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent border-0">
+                    <h5 class="mb-0"><i class="bi bi-journal-text me-2"></i>Audit Logs Cleanup</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Remove audit log entries older than a specified period. This helps reduce
+                        database size while maintaining recent history.</p>
+
+                    <div class="mb-3">
+                        <label class="form-label">Delete logs older than:</label>
+                        <form asp-action="CleanupAuditLogs" method="post"
+                            onsubmit="return confirm('Are you sure you want to delete old audit logs? This action cannot be undone.');">
+                            @Html.AntiForgeryToken()
+                            <div class="input-group">
+                                <select name="monthsOld" class="form-select" style="max-width: 200px;">
+                                    <option value="3">3 months</option>
+                                    <option value="6" selected>6 months</option>
+                                    <option value="12">1 year</option>
+                                    <option value="24">2 years</option>
+                                </select>
+                                <button type="submit" class="btn btn-danger">
+                                    <i class="bi bi-trash me-1"></i> Clean Up
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="alert alert-info mb-0">
+                        <small><i class="bi bi-info-circle me-1"></i>@Model.OldAuditLogsCount records would be deleted
+                            with 6 months setting</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Storage Information -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent border-0">
+                    <h5 class="mb-0"><i class="bi bi-hdd me-2"></i>Storage Information</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Overview of storage usage across different data types.</p>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Documents</span>
+                            <span>@((Model.TotalDocumentStorageBytes / 1024.0 / 1024.0).ToString("F2")) MB</span>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar bg-info" role="progressbar" style="width: 60%"></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Audit Logs</span>
+                            <span>~@Model.OldAuditLogsCount entries</span>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar bg-secondary" role="progressbar" style="width: 30%"></div>
+                        </div>
+                    </div>
+
+                    <a href="@Url.Action("SystemHealth")" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-heart-pulse me-1"></i> View Full System Health
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Retention Policy -->
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-header bg-transparent border-0">
+            <h5 class="mb-0"><i class="bi bi-shield-check me-2"></i>Data Retention Policy</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <h6 class="text-success"><i class="bi bi-check-circle me-1"></i>Always Retained</h6>
+                    <ul class="text-muted small">
+                        <li>Current and recent invoices</li>
+                        <li>Payment records</li>
+                        <li>Active user accounts</li>
+                        <li>Supplier & Customer data</li>
+                    </ul>
+                </div>
+                <div class="col-md-4">
+                    <h6 class="text-warning"><i class="bi bi-exclamation-circle me-1"></i>Optional Cleanup</h6>
+                    <ul class="text-muted small">
+                        <li>Old audit log entries</li>
+                        <li>Processed document metadata</li>
+                        <li>Temporary files</li>
+                    </ul>
+                </div>
+                <div class="col-md-4">
+                    <h6 class="text-info"><i class="bi bi-info-circle me-1"></i>Recommendations</h6>
+                    <ul class="text-muted small">
+                        <li>Keep 6 months of audit logs</li>
+                        <li>Archive completed fiscal years</li>
+                        <li>Regular backup before cleanup</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

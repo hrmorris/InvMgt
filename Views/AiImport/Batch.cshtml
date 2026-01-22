@@ -1,0 +1,206 @@
+@{
+    ViewData["Title"] = "Batch Import";
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">
+                <i class="bi bi-files text-primary me-2"></i>Batch Import
+            </h2>
+            <p class="text-muted mb-0">
+                Upload multiple documents at once for bulk AI processing.
+            </p>
+        </div>
+        <div>
+            <a asp-action="Index" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Back
+            </a>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <form asp-action="ProcessBatch" method="post" enctype="multipart/form-data" id="batchForm">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="bi bi-cloud-upload me-2"></i>Upload Documents</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Document Type Selection -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Document Type <span class="text-danger">*</span></label>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="form-check card p-3 h-100">
+                                        <input class="form-check-input" type="radio" name="documentType" 
+                                               id="typeInvoice" value="Invoice" checked>
+                                        <label class="form-check-label w-100" for="typeInvoice">
+                                            <div class="d-flex align-items-center">
+                                                <i class="bi bi-receipt text-info fs-2 me-3"></i>
+                                                <div>
+                                                    <strong>Invoices</strong>
+                                                    <p class="mb-0 small text-muted">Process invoice documents</p>
+                                                </div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check card p-3 h-100">
+                                        <input class="form-check-input" type="radio" name="documentType" 
+                                               id="typePayment" value="Payment">
+                                        <label class="form-check-label w-100" for="typePayment">
+                                            <div class="d-flex align-items-center">
+                                                <i class="bi bi-credit-card text-success fs-2 me-3"></i>
+                                                <div>
+                                                    <strong>Payments</strong>
+                                                    <p class="mb-0 small text-muted">Process payment receipts</p>
+                                                </div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- File Upload -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Select Files <span class="text-danger">*</span></label>
+                            <div class="border rounded p-4 text-center bg-light" id="dropZone">
+                                <i class="bi bi-cloud-arrow-up display-4 text-muted"></i>
+                                <p class="mt-2 mb-2">Drag and drop files here, or click to browse</p>
+                                <input type="file" name="files" id="fileInput" multiple 
+                                       accept=".pdf,.png,.jpg,.jpeg,.gif,.webp" 
+                                       class="d-none" required>
+                                <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('fileInput').click()">
+                                    <i class="bi bi-folder2-open me-1"></i>Browse Files
+                                </button>
+                                <p class="text-muted small mt-3 mb-0">
+                                    Supported: PDF, PNG, JPEG, GIF, WebP (max 500MB each)
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Selected Files List -->
+                        <div id="fileList" class="d-none mb-4">
+                            <label class="form-label fw-bold">Selected Files</label>
+                            <div id="fileListContent" class="border rounded"></div>
+                        </div>
+
+                        <!-- Info Box -->
+                        <div class="alert alert-info mb-0">
+                            <h6 class="alert-heading"><i class="bi bi-info-circle me-2"></i>Batch Processing Info</h6>
+                            <ul class="mb-0 small">
+                                <li>All documents will be stored in the database for reference</li>
+                                <li>AI will attempt to extract data from each file</li>
+                                <li>Suppliers/Customers will be auto-matched by bank account or name</li>
+                                <li>You'll be able to review and edit before saving</li>
+                                <li>Processing time depends on the number and size of files</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <button type="submit" class="btn btn-primary btn-lg" id="submitBtn" disabled>
+                            <i class="bi bi-robot me-2"></i>Process Documents
+                            <span id="fileCount" class="badge bg-white text-primary ms-2">0</span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const fileList = document.getElementById('fileList');
+        const fileListContent = document.getElementById('fileListContent');
+        const fileCount = document.getElementById('fileCount');
+        const submitBtn = document.getElementById('submitBtn');
+        const dropZone = document.getElementById('dropZone');
+
+        // Handle file selection
+        fileInput.addEventListener('change', updateFileList);
+
+        // Drag and drop
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-primary', 'bg-primary', 'bg-opacity-10');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('border-primary', 'bg-primary', 'bg-opacity-10');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-primary', 'bg-primary', 'bg-opacity-10');
+            
+            const dt = new DataTransfer();
+            for (let file of e.dataTransfer.files) {
+                dt.items.add(file);
+            }
+            fileInput.files = dt.files;
+            updateFileList();
+        });
+
+        function updateFileList() {
+            const files = fileInput.files;
+            fileCount.textContent = files.length;
+            submitBtn.disabled = files.length === 0;
+
+            if (files.length > 0) {
+                fileList.classList.remove('d-none');
+                fileListContent.innerHTML = '';
+
+                for (let file of files) {
+                    const sizeKB = (file.size / 1024).toFixed(1);
+                    const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+                    const sizeDisplay = sizeMB >= 1 ? sizeMB + ' MB' : sizeKB + ' KB';
+                    
+                    const isValid = file.size <= 10 * 1024 * 1024;
+                    const iconClass = file.type.includes('pdf') ? 'bi-file-pdf text-danger' :
+                                     file.type.includes('image') ? 'bi-file-image text-info' :
+                                     'bi-file-earmark text-secondary';
+
+                    const div = document.createElement('div');
+                    div.className = 'p-2 border-bottom d-flex align-items-center ' + (isValid ? '' : 'bg-danger bg-opacity-10');
+                    div.innerHTML = `
+                        <i class="bi ${iconClass} fs-5 me-2"></i>
+                        <div class="flex-grow-1">
+                            <span class="fw-medium">${file.name}</span>
+                            <small class="text-muted ms-2">${sizeDisplay}</small>
+                        </div>
+                        ${!isValid ? '<span class="badge bg-danger">Too large</span>' : '<i class="bi bi-check-circle text-success"></i>'}
+                    `;
+                    fileListContent.appendChild(div);
+                }
+            } else {
+                fileList.classList.add('d-none');
+            }
+        }
+
+        // Form submission
+        document.getElementById('batchForm').addEventListener('submit', function() {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
+        });
+    </script>
+}

@@ -1,0 +1,163 @@
+@model IEnumerable<InvoiceManagement.Models.PurchaseOrder>
+
+@{
+    ViewData["Title"] = "Purchase Orders";
+}
+@functions {
+    public string FormatCurrency(decimal amount)
+    {
+        var settings = ViewData["CurrencySettings"] as CurrencySettings;
+        if (settings != null)
+        {
+            return CurrencyHelper.FormatCurrency(amount, settings);
+        }
+        return $"K {amount:N2}";
+    }
+    public string CurrencySymbol()
+    {
+        return ViewData["CurrencySymbol"]?.ToString() ?? "K";
+    }
+}
+
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-cart-check"></i> Purchase Orders</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-action="Create" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Create New Purchase Order
+        </a>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle"></i> @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle"></i> @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <form method="get" class="row g-3">
+            <div class="col-md-10">
+                <select name="status" class="form-select" onchange="this.form.submit()">
+                    <option value="">All Statuses</option>
+                    <option value="Draft" selected="@(ViewBag.Status == "Draft")">Draft</option>
+                    <option value="Pending" selected="@(ViewBag.Status == "Pending")">Pending</option>
+                    <option value="Sent_to_Supplier" selected="@(ViewBag.Status == "Sent_to_Supplier")">Sent to Supplier</option>
+                    <option value="Partially_Received" selected="@(ViewBag.Status == "Partially_Received")">Partially Received</option>
+                    <option value="Fully_Received" selected="@(ViewBag.Status == "Fully_Received")">Fully Received</option>
+                    <option value="Cancelled" selected="@(ViewBag.Status == "Cancelled")">Cancelled</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <a href="@Url.Action("Index")" class="btn btn-secondary w-100">Clear</a>
+            </div>
+        </form>
+    </div>
+    <div class="card-body">
+        @if (Model.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>PO Number</th>
+                            <th>PO Date</th>
+                            <th>Supplier</th>
+                            <th>Requisition #</th>
+                            <th>Total Amount</th>
+                            <th>Expected Delivery</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var po in Model)
+                        {
+                            <tr>
+                                <td><strong>@po.PONumber</strong></td>
+                                <td>@po.PODate.ToString("dd/MM/yyyy")</td>
+                                <td>@po.Supplier?.SupplierName</td>
+                                <td>@po.Requisition?.RequisitionNumber</td>
+                                <td>@FormatCurrency(po.TotalAmount)</td>
+                                <td>@po.ExpectedDeliveryDate.ToString("dd/MM/yyyy")</td>
+                                <td>
+                                    @if (po.Status == "Fully_Received")
+                                    {
+                                        <span class="badge bg-success">Fully Received</span>
+                                    }
+                                    else if (po.Status == "Partially_Received")
+                                    {
+                                        <span class="badge bg-info">Partially Received</span>
+                                    }
+                                    else if (po.Status == "Cancelled")
+                                    {
+                                        <span class="badge bg-danger">Cancelled</span>
+                                    }
+                                    else if (po.Status == "Sent_to_Supplier")
+                                    {
+                                        <span class="badge bg-primary">Sent to Supplier</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">@po.Status</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a asp-action="Details" asp-route-id="@po.Id" class="btn btn-sm btn-outline-primary"
+                                            title="View Details">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        @if (po.Status == "Draft" || po.Status == "Pending")
+                                        {
+                                            <a asp-action="Edit" asp-route-id="@po.Id" class="btn btn-sm btn-outline-secondary"
+                                                title="Edit">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                        }
+                                        <a asp-action="DownloadPdf" asp-route-id="@po.Id" class="btn btn-sm btn-outline-info"
+                                            title="Download PDF">
+                                            <i class="bi bi-file-pdf"></i>
+                                        </a>
+                                        @if (po.Status != "Fully_Received" && po.Status != "Cancelled")
+                                        {
+                                            <a asp-action="ReceiveGoods" asp-route-id="@po.Id"
+                                                class="btn btn-sm btn-outline-success" title="Receive Goods">
+                                                <i class="bi bi-box-seam"></i>
+                                            </a>
+                                        }
+                                        @if (po.Status == "Draft" || po.Status == "Pending")
+                                        {
+                                            <a asp-action="Delete" asp-route-id="@po.Id" class="btn btn-sm btn-outline-danger"
+                                                title="Delete">
+                                                <i class="bi bi-trash"></i>
+                                            </a>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> No purchase orders found. Create purchase orders from approved
+                requisitions.
+            </div>
+        }
+    </div>
+</div>

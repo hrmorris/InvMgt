@@ -1,0 +1,120 @@
+@model SystemSetting
+
+@{
+    ViewData["Title"] = "Create System Setting";
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-plus-circle"></i> Create System Setting</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-action="Settings" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Settings
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card shadow">
+            <div class="card-body">
+                <form asp-action="CreateSetting" method="post">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+                    
+                    <div class="mb-3">
+                        <label asp-for="Category" class="form-label"></label>
+                        <select asp-for="Category" class="form-select">
+                            <option value="General">General</option>
+                            <option value="Company">Company</option>
+                            <option value="Invoice">Invoice</option>
+                            <option value="Payment">Payment</option>
+                            <option value="Procurement">Procurement</option>
+                            <option value="Email">Email</option>
+                            <option value="Notification">Notification</option>
+                            <option value="Security">Security</option>
+                            <option value="API">API</option>
+                            <option value="Finance">Finance</option>
+                        </select>
+                        <span asp-validation-for="Category" class="text-danger"></span>
+                        <small class="form-text text-muted">Select the category this setting belongs to</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="SettingKey" class="form-label"></label>
+                        <input asp-for="SettingKey" class="form-control" placeholder="e.g., InvoiceDueDays, MaxUploadSize" />
+                        <span asp-validation-for="SettingKey" class="text-danger"></span>
+                        <small class="form-text text-muted">Use camelCase or snake_case for consistency</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="SettingValue" class="form-label"></label>
+                        <textarea asp-for="SettingValue" class="form-control" rows="3" placeholder="Setting value"></textarea>
+                        <span asp-validation-for="SettingValue" class="text-danger"></span>
+                        <small class="form-text text-muted">Enter the value for this setting</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Description" class="form-label"></label>
+                        <textarea asp-for="Description" class="form-control" rows="2" placeholder="Brief description of what this setting does"></textarea>
+                        <span asp-validation-for="Description" class="text-danger"></span>
+                        <small class="form-text text-muted">Describe the purpose and usage of this setting</small>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-lightbulb"></i> <strong>Tip:</strong> Setting keys should be unique and descriptive. Use clear values and add helpful descriptions for future reference.
+                    </div>
+
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle"></i> Create Setting
+                        </button>
+                        <a asp-action="Settings" class="btn btn-secondary btn-lg">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Common Settings Examples -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="m-0"><i class="bi bi-book"></i> Common Setting Examples</h5>
+            </div>
+            <div class="card-body">
+                <h6>General:</h6>
+                <ul class="small">
+                    <li><code>ApplicationName</code> - Name of your application</li>
+                    <li><code>DateFormat</code> - Default date format (DD/MM/YYYY)</li>
+                    <li><code>CurrencySymbol</code> - Currency symbol ($, £, €)</li>
+                </ul>
+
+                <h6>Company:</h6>
+                <ul class="small">
+                    <li><code>CompanyName</code> - Your company name</li>
+                    <li><code>CompanyAddress</code> - Company address</li>
+                    <li><code>CompanyPhone</code> - Company phone number</li>
+                    <li><code>CompanyEmail</code> - Company email</li>
+                </ul>
+
+                <h6>Invoice:</h6>
+                <ul class="small">
+                    <li><code>InvoiceDueDays</code> - Default due days (e.g., 30)</li>
+                    <li><code>InvoicePrefix</code> - Invoice number prefix (e.g., INV-)</li>
+                    <li><code>TaxRate</code> - Default tax rate percentage</li>
+                </ul>
+
+                <h6>Email:</h6>
+                <ul class="small">
+                    <li><code>SMTPServer</code> - Email server address</li>
+                    <li><code>SMTPPort</code> - Email server port</li>
+                    <li><code>EmailFrom</code> - Default sender email</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+}
+
