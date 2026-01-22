@@ -132,6 +132,12 @@
 </head>
 
 <body>
+    @{
+        var isLoggedIn = Context.Session.GetInt32("UserId").HasValue;
+        var userRole = Context.Session.GetString("Role") ?? "";
+        var isAdmin = userRole == "Admin" || userRole == "SystemAdmin";
+    }
+    
     <!-- Top Navigation Bar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top shadow">
         <div class="container-fluid">
@@ -139,301 +145,315 @@
                 <i class="bi bi-receipt me-2"></i> Invoice Manager
             </a>
 
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#topNavbar">
-                <span class="navbar-toggler-icon"></span>
-            </button>
+            @if (isLoggedIn)
+            {
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#topNavbar">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
 
-            <div class="collapse navbar-collapse" id="topNavbar">
-                <!-- Main Navigation Links -->
-                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                    <li class="nav-item">
-                        <a class="nav-link" asp-controller="Home" asp-action="Index">
-                            <i class="bi bi-house-door"></i> Dashboard
-                        </a>
-                    </li>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-file-earmark-text"></i> Invoices
-                        </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" asp-controller="Invoices" asp-action="Index"><i
-                                        class="bi bi-list"></i> All Invoices</a></li>
+                <div class="collapse navbar-collapse" id="topNavbar">
+                    <!-- Main Navigation Links -->
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Home" asp-action="Index">
+                                <i class="bi bi-house-door"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-file-earmark-text"></i> Invoices
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" asp-controller="Invoices" asp-action="Index"><i
+                                            class="bi bi-list"></i> All Invoices</a></li>
+                                <li><a class="dropdown-item" asp-controller="Invoices" asp-action="Create"><i
+                                            class="bi bi-plus-circle"></i> New Invoice</a></li>
+                                <li>
+                                    <hr class="dropdown-divider">
+                                </li>
+                                <li><a class="dropdown-item" asp-controller="Invoices" asp-action="Overdue"><i
+                                            class="bi bi-exclamation-triangle text-warning"></i> Overdue</a></li>
+                                <li><a class="dropdown-item text-danger" asp-controller="Invoices"
+                                        asp-action="OverAllocated"><i class="bi bi-exclamation-triangle-fill"></i>
+                                        Over-Allocated</a></li>
+                            </ul>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-credit-card"></i> Payments
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" asp-controller="Payments" asp-action="Index"><i
+                                            class="bi bi-list"></i> All Payments</a></li>
+                                <li><a class="dropdown-item" asp-controller="Payments" asp-action="Create"><i
+                                            class="bi bi-plus-circle"></i> New Payment</a></li>
+                            </ul>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Reports" asp-action="Index">
+                                <i class="bi bi-graph-up"></i> Reports
+                            </a>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-cart-check"></i> Procurement
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" asp-controller="Requisitions" asp-action="Index"><i
+                                            class="bi bi-file-earmark-check"></i> Requisitions</a></li>
+                                <li><a class="dropdown-item" asp-controller="Requisitions" asp-action="PendingApprovals"><i
+                                            class="bi bi-hourglass-split"></i> Pending Approvals</a></li>
+                                <li><a class="dropdown-item" asp-controller="PurchaseOrders" asp-action="Index"><i
+                                            class="bi bi-cart-check"></i> Purchase Orders</a></li>
+                            </ul>
+                        </li>
+                    </ul>
+
+                    <!-- Search Bar -->
+                    <form class="d-flex me-3" asp-controller="Invoices" asp-action="Index" method="get">
+                        <div class="input-group input-group-sm">
+                            <input type="text" name="searchTerm" class="form-control" placeholder="Search invoices..."
+                                style="min-width: 200px;">
+                            <button class="btn btn-light" type="submit"><i class="bi bi-search"></i></button>
+                        </div>
+                    </form>
+
+                    <!-- Quick Actions -->
+                    <div class="dropdown me-3">
+                        <button class="btn btn-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-plus-lg"></i> Quick Add
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" asp-controller="Invoices" asp-action="Create"><i
-                                        class="bi bi-plus-circle"></i> New Invoice</a></li>
+                                        class="bi bi-file-earmark-plus text-primary"></i> New Invoice</a></li>
+                            <li><a class="dropdown-item" asp-controller="Payments" asp-action="Create"><i
+                                        class="bi bi-credit-card text-success"></i> New Payment</a></li>
+                            <li><a class="dropdown-item" asp-controller="Requisitions" asp-action="Create"><i
+                                        class="bi bi-file-earmark-check text-info"></i> New Requisition</a></li>
                             <li>
                                 <hr class="dropdown-divider">
                             </li>
-                            <li><a class="dropdown-item" asp-controller="Invoices" asp-action="Overdue"><i
-                                        class="bi bi-exclamation-triangle text-warning"></i> Overdue</a></li>
-                            <li><a class="dropdown-item text-danger" asp-controller="Invoices"
-                                    asp-action="OverAllocated"><i class="bi bi-exclamation-triangle-fill"></i>
-                                    Over-Allocated</a></li>
+                            <li><a class="dropdown-item" asp-controller="AiImport" asp-action="Invoice"><i
+                                        class="bi bi-robot text-purple"></i> AI Import Invoice</a></li>
+                            <li><a class="dropdown-item" asp-controller="AiImport" asp-action="Payment"><i
+                                        class="bi bi-robot text-purple"></i> AI Import Payment</a></li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li><a class="dropdown-item" asp-controller="AiImport" asp-action="Documents"><i
+                                        class="bi bi-folder2-open text-secondary"></i> Document Library</a></li>
                         </ul>
-                    </li>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-credit-card"></i> Payments
-                        </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" asp-controller="Payments" asp-action="Index"><i
-                                        class="bi bi-list"></i> All Payments</a></li>
-                            <li><a class="dropdown-item" asp-controller="Payments" asp-action="Create"><i
-                                        class="bi bi-plus-circle"></i> New Payment</a></li>
-                        </ul>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" asp-controller="Reports" asp-action="Index">
-                            <i class="bi bi-graph-up"></i> Reports
-                        </a>
-                    </li>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-cart-check"></i> Procurement
-                        </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" asp-controller="Requisitions" asp-action="Index"><i
-                                        class="bi bi-file-earmark-check"></i> Requisitions</a></li>
-                            <li><a class="dropdown-item" asp-controller="Requisitions" asp-action="PendingApprovals"><i
-                                        class="bi bi-hourglass-split"></i> Pending Approvals</a></li>
-                            <li><a class="dropdown-item" asp-controller="PurchaseOrders" asp-action="Index"><i
-                                        class="bi bi-cart-check"></i> Purchase Orders</a></li>
-                        </ul>
-                    </li>
-                </ul>
-
-                <!-- Search Bar -->
-                <form class="d-flex me-3" asp-controller="Invoices" asp-action="Index" method="get">
-                    <div class="input-group input-group-sm">
-                        <input type="text" name="searchTerm" class="form-control" placeholder="Search invoices..."
-                            style="min-width: 200px;">
-                        <button class="btn btn-light" type="submit"><i class="bi bi-search"></i></button>
                     </div>
-                </form>
 
-                <!-- Quick Actions -->
-                <div class="dropdown me-3">
-                    <button class="btn btn-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                        <i class="bi bi-plus-lg"></i> Quick Add
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" asp-controller="Invoices" asp-action="Create"><i
-                                    class="bi bi-file-earmark-plus text-primary"></i> New Invoice</a></li>
-                        <li><a class="dropdown-item" asp-controller="Payments" asp-action="Create"><i
-                                    class="bi bi-credit-card text-success"></i> New Payment</a></li>
-                        <li><a class="dropdown-item" asp-controller="Requisitions" asp-action="Create"><i
-                                    class="bi bi-file-earmark-check text-info"></i> New Requisition</a></li>
-                        <li>
-                            <hr class="dropdown-divider">
-                        </li>
-                        <li><a class="dropdown-item" asp-controller="AiImport" asp-action="Invoice"><i
-                                    class="bi bi-robot text-purple"></i> AI Import Invoice</a></li>
-                        <li><a class="dropdown-item" asp-controller="AiImport" asp-action="Payment"><i
-                                    class="bi bi-robot text-purple"></i> AI Import Payment</a></li>
-                        <li>
-                            <hr class="dropdown-divider">
-                        </li>
-                        <li><a class="dropdown-item" asp-controller="AiImport" asp-action="Documents"><i
-                                    class="bi bi-folder2-open text-secondary"></i> Document Library</a></li>
-                    </ul>
-                </div>
-
-                <!-- User Menu -->
-                @if (Context.Session.GetString("Username") != null)
-                {
+                    <!-- User Menu -->
                     <div class="dropdown">
                         <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button"
                             data-bs-toggle="dropdown">
                             <i class="bi bi-person-circle"></i> @Context.Session.GetString("FullName")
-                            <span class="badge bg-light text-primary ms-1">@Context.Session.GetString("Role")</span>
+                            <span class="badge bg-light text-primary ms-1">@userRole</span>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" asp-controller="Admin" asp-action="Index"><i
-                                        class="bi bi-speedometer2"></i> Admin Dashboard</a></li>
-                            <li><a class="dropdown-item" asp-controller="Admin" asp-action="Settings"><i
-                                        class="bi bi-gear"></i> Settings</a></li>
-                            <li>
-                                <hr class="dropdown-divider">
-                            </li>
+                            @if (isAdmin)
+                            {
+                                <li><a class="dropdown-item" asp-controller="Admin" asp-action="Index"><i
+                                            class="bi bi-speedometer2"></i> Admin Dashboard</a></li>
+                                <li><a class="dropdown-item" asp-controller="Admin" asp-action="Settings"><i
+                                            class="bi bi-gear"></i> Settings</a></li>
+                                <li>
+                                    <hr class="dropdown-divider">
+                                </li>
+                            }
                             <li><a class="dropdown-item text-danger" asp-controller="Account" asp-action="Logout"><i
                                         class="bi bi-box-arrow-right"></i> Logout</a></li>
                         </ul>
                     </div>
-                }
-                else
-                {
+                </div>
+            }
+            else
+            {
+                <div class="ms-auto">
                     <a class="btn btn-light btn-sm" asp-controller="Account" asp-action="Login">
                         <i class="bi bi-box-arrow-in-right"></i> Login
                     </a>
-                }
-            </div>
+                </div>
+            }
         </div>
     </nav>
 
-    <!-- Mobile sidebar toggle -->
-    <button class="btn btn-primary d-md-none position-fixed" type="button" data-bs-toggle="collapse"
-        data-bs-target="#sidebarMenu"
-        style="bottom: 20px; right: 20px; z-index: 1050; border-radius: 50%; width: 50px; height: 50px;">
-        <i class="bi bi-list"></i>
-    </button>
+    @if (isLoggedIn)
+    {
+        <!-- Mobile sidebar toggle -->
+        <button class="btn btn-primary d-md-none position-fixed" type="button" data-bs-toggle="collapse"
+            data-bs-target="#sidebarMenu"
+            style="bottom: 20px; right: 20px; z-index: 1050; border-radius: 50%; width: 50px; height: 50px;">
+            <i class="bi bi-list"></i>
+        </button>
+    }
 
     <div class="container-fluid">
         <div class="row">
-            <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block sidebar collapse">
-                <div class="sidebar-sticky pt-3">
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="Home" asp-action="Index">
-                                <i class="bi bi-house-door"></i>
-                                Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="Invoices" asp-action="Index">
-                                <i class="bi bi-file-earmark-text"></i>
-                                Invoices
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="Payments" asp-action="Index">
-                                <i class="bi bi-credit-card"></i>
-                                Payments
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="Reports" asp-action="Index">
-                                <i class="bi bi-graph-up"></i>
-                                Reports
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="Invoices" asp-action="Overdue">
-                                <i class="bi bi-exclamation-triangle"></i>
-                                Overdue Invoices
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-danger" asp-controller="Invoices" asp-action="OverAllocated">
-                                <i class="bi bi-exclamation-triangle-fill"></i>
-                                Over-Allocated
-                            </a>
-                        </li>
-                    </ul>
+            @if (isLoggedIn)
+            {
+                <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block sidebar collapse">
+                    <div class="sidebar-sticky pt-3">
+                        <ul class="nav flex-column">
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Home" asp-action="Index">
+                                    <i class="bi bi-house-door"></i>
+                                    Dashboard
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Invoices" asp-action="Index">
+                                    <i class="bi bi-file-earmark-text"></i>
+                                    Invoices
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Payments" asp-action="Index">
+                                    <i class="bi bi-credit-card"></i>
+                                    Payments
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Reports" asp-action="Index">
+                                    <i class="bi bi-graph-up"></i>
+                                    Reports
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Invoices" asp-action="Overdue">
+                                    <i class="bi bi-exclamation-triangle"></i>
+                                    Overdue Invoices
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-danger" asp-controller="Invoices" asp-action="OverAllocated">
+                                    <i class="bi bi-exclamation-triangle-fill"></i>
+                                    Over-Allocated
+                                </a>
+                            </li>
+                        </ul>
 
-                    <h6
-                        class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
-                        <span>AI Import (Smart)</span>
-                    </h6>
-                    <ul class="nav flex-column mb-2">
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="AiImport" asp-action="Invoice">
-                                <i class="bi bi-robot"></i>
-                                AI Import Invoices
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="AiImport" asp-action="Payment">
-                                <i class="bi bi-robot"></i>
-                                AI Import Payments
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="AiImport" asp-action="Documents">
-                                <i class="bi bi-folder2-open"></i>
-                                Document Library
-                            </a>
-                        </li>
-                    </ul>
+                        <h6
+                            class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                            <span>AI Import (Smart)</span>
+                        </h6>
+                        <ul class="nav flex-column mb-2">
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="AiImport" asp-action="Invoice">
+                                    <i class="bi bi-robot"></i>
+                                    AI Import Invoices
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="AiImport" asp-action="Payment">
+                                    <i class="bi bi-robot"></i>
+                                    AI Import Payments
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="AiImport" asp-action="Documents">
+                                    <i class="bi bi-folder2-open"></i>
+                                    Document Library
+                                </a>
+                            </li>
+                        </ul>
 
-                    <h6
-                        class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
-                        <span>Manual Import</span>
-                    </h6>
-                    <ul class="nav flex-column mb-2">
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="Invoices" asp-action="Import">
-                                <i class="bi bi-upload"></i>
-                                CSV/Excel Invoices
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="Payments" asp-action="Import">
-                                <i class="bi bi-upload"></i>
-                                CSV/Excel Payments
-                            </a>
-                        </li>
-                    </ul>
+                        <h6
+                            class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                            <span>Manual Import</span>
+                        </h6>
+                        <ul class="nav flex-column mb-2">
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Invoices" asp-action="Import">
+                                    <i class="bi bi-upload"></i>
+                                    CSV/Excel Invoices
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Payments" asp-action="Import">
+                                    <i class="bi bi-upload"></i>
+                                    CSV/Excel Payments
+                                </a>
+                            </li>
+                        </ul>
 
-                    <h6
-                        class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
-                        <span>Procurement</span>
-                    </h6>
-                    <ul class="nav flex-column mb-2">
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="Requisitions" asp-action="Index">
-                                <i class="bi bi-file-earmark-check"></i>
-                                Requisitions
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="Requisitions" asp-action="PendingApprovals">
-                                <i class="bi bi-hourglass-split"></i>
-                                Pending Approvals
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="PurchaseOrders" asp-action="Index">
-                                <i class="bi bi-cart-check"></i>
-                                Purchase Orders
-                            </a>
-                        </li>
-                    </ul>
+                        <h6
+                            class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                            <span>Procurement</span>
+                        </h6>
+                        <ul class="nav flex-column mb-2">
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Requisitions" asp-action="Index">
+                                    <i class="bi bi-file-earmark-check"></i>
+                                    Requisitions
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Requisitions" asp-action="PendingApprovals">
+                                    <i class="bi bi-hourglass-split"></i>
+                                    Pending Approvals
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="PurchaseOrders" asp-action="Index">
+                                    <i class="bi bi-cart-check"></i>
+                                    Purchase Orders
+                                </a>
+                            </li>
+                        </ul>
 
-                    <h6
-                        class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
-                        <span>Administration</span>
-                    </h6>
-                    <ul class="nav flex-column mb-2">
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="Admin" asp-action="Index">
-                                <i class="bi bi-speedometer2"></i>
-                                Admin Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="Admin" asp-action="Users">
-                                <i class="bi bi-people"></i>
-                                User Management
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="Admin" asp-action="Suppliers">
-                                <i class="bi bi-building"></i>
-                                Supplier Management
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="Admin" asp-action="Customers">
-                                <i class="bi bi-person-lines-fill"></i>
-                                Customer Management
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="Admin" asp-action="AuditLogs">
-                                <i class="bi bi-clock-history"></i>
-                                Audit Logs
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="Admin" asp-action="Settings">
-                                <i class="bi bi-gear"></i>
-                                System Settings
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </nav>
+                        @if (isAdmin)
+                        {
+                            <h6
+                                class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                                <span>Administration</span>
+                            </h6>
+                            <ul class="nav flex-column mb-2">
+                                <li class="nav-item">
+                                    <a class="nav-link" asp-controller="Admin" asp-action="Index">
+                                        <i class="bi bi-speedometer2"></i>
+                                        Admin Dashboard
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" asp-controller="Admin" asp-action="Users">
+                                        <i class="bi bi-people"></i>
+                                        User Management
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" asp-controller="Admin" asp-action="Suppliers">
+                                        <i class="bi bi-building"></i>
+                                        Supplier Management
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" asp-controller="Admin" asp-action="Customers">
+                                        <i class="bi bi-person-lines-fill"></i>
+                                        Customer Management
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" asp-controller="Admin" asp-action="AuditLogs">
+                                        <i class="bi bi-clock-history"></i>
+                                        Audit Logs
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" asp-controller="Admin" asp-action="Settings">
+                                        <i class="bi bi-gear"></i>
+                                        System Settings
+                                    </a>
+                                </li>
+                            </ul>
+                        }
+                    </div>
+                </nav>
+            }
 
-            <main role="main" class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+            <main role="main" class="@(isLoggedIn ? "col-md-9 ms-sm-auto col-lg-10 px-md-4" : "col-12 px-md-4")">
                 @if (TempData["SuccessMessage"] != null)
                 {
                     <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">

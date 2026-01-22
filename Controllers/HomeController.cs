@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
 using InvoiceManagement.Services;
 using InvoiceManagement.Models;
+using InvoiceManagement.Authorization;
 
 namespace InvoiceManagement.Controllers
 {
+    [Authorize]
     public class HomeController : Controller
     {
         private readonly IInvoiceService _invoiceService;
@@ -12,7 +14,7 @@ namespace InvoiceManagement.Controllers
         private readonly IPurchaseOrderService _purchaseOrderService;
 
         public HomeController(
-            IInvoiceService invoiceService, 
+            IInvoiceService invoiceService,
             IPaymentService paymentService,
             IRequisitionService requisitionService,
             IPurchaseOrderService purchaseOrderService)
@@ -25,13 +27,6 @@ namespace InvoiceManagement.Controllers
 
         public async Task<IActionResult> Index()
         {
-            // Check if user is logged in
-            var userId = HttpContext.Session.GetInt32("UserId");
-            if (!userId.HasValue)
-            {
-                return RedirectToAction("Login", "Account");
-            }
-
             // Get user info from session
             ViewBag.Username = HttpContext.Session.GetString("Username");
             ViewBag.FullName = HttpContext.Session.GetString("FullName");

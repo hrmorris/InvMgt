@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
 using InvoiceManagement.Models;
 using InvoiceManagement.Services;
+using InvoiceManagement.Authorization;
 
 namespace InvoiceManagement.Controllers
 {
+    [Authorize]
     public class RequisitionsController : Controller
     {
         private readonly IRequisitionService _requisitionService;

@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
 using InvoiceManagement.Models;
 using InvoiceManagement.Services;
+using InvoiceManagement.Authorization;
 
 namespace InvoiceManagement.Controllers
 {
+    [Authorize]
     public class PurchaseOrdersController : Controller
     {
         private readonly IPurchaseOrderService _purchaseOrderService;

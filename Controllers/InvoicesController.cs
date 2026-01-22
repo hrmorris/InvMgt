@@ -3,9 +3,11 @@ using Microsoft.EntityFrameworkCore;
 using InvoiceManagement.Models;
 using InvoiceManagement.Services;
 using InvoiceManagement.Data;
+using InvoiceManagement.Authorization;
 
 namespace InvoiceManagement.Controllers
 {
+    [Authorize]
     public class InvoicesController : Controller
     {
         private readonly IInvoiceService _invoiceService;

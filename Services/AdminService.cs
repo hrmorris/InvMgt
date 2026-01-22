@@ -572,8 +572,16 @@ namespace InvoiceManagement.Services
                 {
                     Category = "API",
                     SettingKey = "AIModel",
-                    SettingValue = "gemini-2.5-pro",
+                    SettingValue = "gemini-2.0-flash",
                     Description = "Google AI model for document processing",
+                    ModifiedBy = "System"
+                },
+                new SystemSetting
+                {
+                    Category = "API",
+                    SettingKey = "GoogleAIApiKey",
+                    SettingValue = "",
+                    Description = "Google AI (Gemini) API key for AI-powered invoice/payment import. Get from https://aistudio.google.com/",
                     ModifiedBy = "System"
                 }
             };

@@ -1,14 +1,25 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.DataProtection;
 using InvoiceManagement.Data;
 using InvoiceManagement.Services;
 using InvoiceManagement.ModelBinders;
 using System.Globalization;
 
+// Enable legacy timestamp behavior for PostgreSQL to handle DateTime.Now without UTC conversion
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Build cross-platform database path
-var dbPath = Path.Combine(builder.Environment.ContentRootPath, "Data", "InvoiceManagement.db");
-var connectionString = $"Data Source={dbPath}";
+// Get database configuration
+var databaseProvider = builder.Configuration["DatabaseProvider"] ?? "SQLite";
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+// For SQLite in development, build cross-platform database path
+if (databaseProvider == "SQLite" && (string.IsNullOrEmpty(connectionString) || connectionString.Contains("InvoiceManagement.db")))
+{
+    var dbPath = Path.Combine(builder.Environment.ContentRootPath, "Data", "InvoiceManagement.db");
+    connectionString = $"Data Source={dbPath}";
+}
 
 // Set default culture to support DD/MM/YYYY date format
 var cultureInfo = new CultureInfo("en-GB"); // British English uses DD/MM/YYYY
@@ -36,9 +47,30 @@ builder.Services.AddSession(options =>
     options.Cookie.IsEssential = true;
 });
 
-// Configure Entity Framework with SQLite (cross-platform path)
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlite(connectionString));
+// Configure Data Protection to persist keys in-memory for containerized environments
+// This ensures anti-forgery tokens work properly in Cloud Run
+builder.Services.AddDataProtection()
+    .SetApplicationName("InvoiceManagement")
+    .SetDefaultKeyLifetime(TimeSpan.FromDays(90));
+
+// Configure anti-forgery to work with Cloud Run's load balancing
+builder.Services.AddAntiforgery(options =>
+{
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+    options.SuppressXFrameOptionsHeader = false;
+});
+
+// Configure Entity Framework with appropriate database provider
+if (databaseProvider == "PostgreSQL")
+{
+    builder.Services.AddDbContext<ApplicationDbContext>(options =>
+        options.UseNpgsql(connectionString));
+}
+else
+{
+    builder.Services.AddDbContext<ApplicationDbContext>(options =>
+        options.UseSqlite(connectionString));
+}
 
 // Register custom services
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
@@ -71,29 +103,22 @@ builder.Services.AddScoped<IEntityLookupService, EntityLookupService>();
 
 var app = builder.Build();
 
-// Apply database schema updates
+// Apply database migrations and schema updates
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+    var adminService = scope.ServiceProvider.GetRequiredService<IAdminService>();
+    var isPostgres = config["DatabaseProvider"] == "PostgreSQL";
+
     try
     {
-        // Add GSTEnabled column if it doesn't exist
-        db.Database.ExecuteSqlRaw(@"
-            CREATE TABLE IF NOT EXISTS __SchemaUpdates (UpdateName TEXT PRIMARY KEY);
-            INSERT OR IGNORE INTO __SchemaUpdates VALUES ('AddGSTEnabled');
-        ");
+        // Ensure database is created and migrations applied
+        db.Database.Migrate();
 
-        var needsUpdate = db.Database.SqlQueryRaw<int>("SELECT COUNT(*) FROM __SchemaUpdates WHERE UpdateName = 'AddGSTEnabled_Applied'").ToList().FirstOrDefault() == 0;
-        if (needsUpdate)
-        {
-            try
-            {
-                db.Database.ExecuteSqlRaw("ALTER TABLE Invoices ADD COLUMN GSTEnabled INTEGER NOT NULL DEFAULT 1");
-            }
-            catch { /* Column may already exist */ }
-
-            db.Database.ExecuteSqlRaw("INSERT OR REPLACE INTO __SchemaUpdates VALUES ('AddGSTEnabled_Applied')");
-        }
+        // Initialize default system settings (including GoogleAIApiKey)
+        await adminService.InitializeDefaultSettingsAsync();
+        Console.WriteLine("System settings initialized successfully");
 
         // Set default password for users who have no password set
         var usersWithoutPassword = db.Users.Where(u => string.IsNullOrEmpty(u.PasswordHash)).ToList();
@@ -121,7 +146,18 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
+// Configure forwarded headers for Cloud Run (HTTPS termination at load balancer)
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor |
+                       Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
+});
+
+// Only use HTTPS redirection in non-Cloud Run environments
+if (app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 app.UseStaticFiles();
 
 app.UseRouting();

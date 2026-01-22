@@ -1,14 +1,15 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using InvoiceManagement.Data;
 using InvoiceManagement.Models;
 using InvoiceManagement.Services;
 using InvoiceManagement.Models.ViewModels;
+using InvoiceManagement.Authorization;
 using System.Text.RegularExpressions;
 
 namespace InvoiceManagement.Controllers
 {
+    [Authorize]
     public class AiImportController : Controller
     {
         private readonly ApplicationDbContext _context;

@@ -15,8 +15,11 @@ namespace InvoiceManagement.Services
 
         public async Task<User?> AuthenticateAsync(string username, string password)
         {
+            // Try to find user by username OR email (case-insensitive)
             var user = await _context.Users
-                .FirstOrDefaultAsync(u => u.Username == username && u.Status == "Active");
+                .FirstOrDefaultAsync(u =>
+                    (u.Username == username || u.Email == username) &&
+                    u.Status == "Active");
 
             if (user != null)
             {

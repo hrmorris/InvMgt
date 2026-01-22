@@ -2,9 +2,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using InvoiceManagement.Models;
 using InvoiceManagement.Services;
+using InvoiceManagement.Authorization;
 
 namespace InvoiceManagement.Controllers
 {
+    [Authorize]
     public class PaymentsController : Controller
     {
         private readonly IPaymentService _paymentService;

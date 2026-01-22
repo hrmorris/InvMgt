@@ -3,9 +3,11 @@ using InvoiceManagement.Models;
 using InvoiceManagement.Services;
 using InvoiceManagement.Data;
 using Microsoft.EntityFrameworkCore;
+using InvoiceManagement.Authorization;
 
 namespace InvoiceManagement.Controllers
 {
+    [AuthorizeRoles(Roles.SystemAdmin, Roles.Admin)]
     public class AdminController : Controller
     {
         private readonly IAdminService _adminService;

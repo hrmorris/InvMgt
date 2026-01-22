@@ -1,0 +1,36 @@
+# Git files
+.git
+.gitignore
+
+# Build outputs
+bin/
+obj/
+
+# IDE files
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Data files (SQLite)
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+Data/InvoiceManagement.db*
+
+# Documentation
+*.md
+!README.md
+
+# Local settings
+appsettings.Development.json
+
+# Python files
+*.py
+
+# Shell scripts
+*.sh
+
+# Backup files
+*.bak

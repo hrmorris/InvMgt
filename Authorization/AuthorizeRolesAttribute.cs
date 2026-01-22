@@ -18,11 +18,11 @@ namespace InvoiceManagement.Authorization
 
         public void OnAuthorization(AuthorizationFilterContext context)
         {
-            var userRole = context.HttpContext.Session.GetString("UserRole");
-            var userId = context.HttpContext.Session.GetString("UserId");
+            var userRole = context.HttpContext.Session.GetString("Role");
+            var userId = context.HttpContext.Session.GetInt32("UserId");
 
             // Check if user is logged in
-            if (string.IsNullOrEmpty(userId))
+            if (!userId.HasValue)
             {
                 context.Result = new RedirectToActionResult("Login", "Account", null);
                 return;
@@ -58,11 +58,11 @@ namespace InvoiceManagement.Authorization
 
         public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
         {
-            var userId = context.HttpContext.Session.GetString("UserId");
-            var userRole = context.HttpContext.Session.GetString("UserRole");
+            var userIdInt = context.HttpContext.Session.GetInt32("UserId");
+            var userRole = context.HttpContext.Session.GetString("Role");
 
             // Check if user is logged in
-            if (string.IsNullOrEmpty(userId))
+            if (!userIdInt.HasValue)
             {
                 context.Result = new RedirectToActionResult("Login", "Account", null);
                 return;
@@ -84,17 +84,10 @@ namespace InvoiceManagement.Authorization
                 return;
             }
 
-            // Check if user has any of the required permissions
-            if (!int.TryParse(userId, out int userIdInt))
-            {
-                context.Result = new RedirectToActionResult("Login", "Account", null);
-                return;
-            }
-
             bool hasPermission = false;
             foreach (var permission in _permissions)
             {
-                if (await authService.HasPermissionAsync(userIdInt, permission))
+                if (await authService.HasPermissionAsync(userIdInt.Value, permission))
                 {
                     hasPermission = true;
                     break;
@@ -117,9 +110,9 @@ namespace InvoiceManagement.Authorization
     {
         public void OnAuthorization(AuthorizationFilterContext context)
         {
-            var userId = context.HttpContext.Session.GetString("UserId");
+            var userId = context.HttpContext.Session.GetInt32("UserId");
 
-            if (string.IsNullOrEmpty(userId))
+            if (!userId.HasValue)
             {
                 context.Result = new RedirectToActionResult("Login", "Account", null);
             }

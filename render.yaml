@@ -6,6 +6,8 @@ services:
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
+      - key: GoogleAI__ApiKey
+        sync: false  # Set this manually in Render dashboard for security
     disk:
       name: data
       mountPath: /app/Data

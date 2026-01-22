@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
 using InvoiceManagement.Services;
+using InvoiceManagement.Authorization;
 
 namespace InvoiceManagement.Controllers
 {
+    [Authorize]
     public class ReportsController : Controller
     {
         private readonly IInvoiceService _invoiceService;

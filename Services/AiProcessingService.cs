@@ -1,38 +1,95 @@
 using System.Text;
 using System.Text.Json;
+using InvoiceManagement.Data;
 using InvoiceManagement.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace InvoiceManagement.Services
 {
     /// <summary>
     /// AI-Powered Document Processing Service
-    /// Uses Google Gemini 2.5 Pro for advanced document analysis and data extraction
+    /// Uses Google Gemini 2.0 Flash for advanced document analysis and data extraction
     /// Features: Advanced OCR, intelligent data extraction, contextual understanding, multi-format support
     /// API Version: v1beta
+    /// Configuration priority: 1) Database SystemSettings, 2) appsettings.json, 3) Environment variable
     /// </summary>
     public class AiProcessingService : IAiProcessingService
     {
         private readonly HttpClient _httpClient;
         private readonly IConfiguration _configuration;
         private readonly ILogger<AiProcessingService> _logger;
+        private readonly IServiceProvider _serviceProvider;
         private string? _apiKey;
 
-        public AiProcessingService(HttpClient httpClient, IConfiguration configuration, ILogger<AiProcessingService> logger)
+        public AiProcessingService(HttpClient httpClient, IConfiguration configuration, ILogger<AiProcessingService> logger, IServiceProvider serviceProvider)
         {
             _httpClient = httpClient;
             _configuration = configuration;
             _logger = logger;
+            _serviceProvider = serviceProvider;
+
+            // Initialize API key (will be refreshed from database on each request)
+            InitializeApiKey();
+        }
+
+        private void InitializeApiKey()
+        {
+            // Try to get API key from configuration first
             _apiKey = _configuration["GoogleAI:ApiKey"];
+
+            // If not found in config, check environment variable (for production deployment)
+            if (string.IsNullOrEmpty(_apiKey))
+            {
+                _apiKey = Environment.GetEnvironmentVariable("GoogleAI__ApiKey")
+                       ?? Environment.GetEnvironmentVariable("GOOGLE_AI_API_KEY");
+            }
+
+            if (!string.IsNullOrEmpty(_apiKey))
+            {
+                _logger.LogInformation("Google AI API key configured from config/environment");
+            }
+        }
+
+        private async Task<string?> GetApiKeyAsync()
+        {
+            // First, try to get from database (highest priority for production)
+            try
+            {
+                using var scope = _serviceProvider.CreateScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                var setting = await dbContext.SystemSettings
+                    .FirstOrDefaultAsync(s => s.SettingKey == "GoogleAIApiKey");
+
+                if (setting != null && !string.IsNullOrEmpty(setting.SettingValue))
+                {
+                    _logger.LogInformation("Google AI API key loaded from database settings");
+                    return setting.SettingValue;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not load API key from database, falling back to config/environment");
+            }
+
+            // Fall back to config/environment variable
+            if (!string.IsNullOrEmpty(_apiKey))
+            {
+                return _apiKey;
+            }
+
+            return null;
         }
 
         public async Task<Invoice?> ExtractInvoiceFromFileAsync(Stream fileStream, string fileName)
         {
             try
             {
-                if (string.IsNullOrEmpty(_apiKey))
+                // Get API key (checks database first, then config/environment)
+                var apiKey = await GetApiKeyAsync();
+                if (string.IsNullOrEmpty(apiKey))
                 {
-                    _logger.LogError("Google AI API key is not configured. Please add GoogleAI:ApiKey to appsettings.json");
-                    throw new InvalidOperationException("Google AI API key is not configured");
+                    _logger.LogError("Google AI API key is not configured. Please set it in Admin Portal > System Settings, or add GoogleAI:ApiKey to appsettings.json");
+                    throw new InvalidOperationException("Google AI API key is not configured. Set it in Admin Portal > System Settings (GoogleAIApiKey) or in appsettings.json");
                 }
 
                 _logger.LogInformation($"Processing file: {fileName}");
@@ -52,8 +109,8 @@ namespace InvoiceManagement.Services
                 var mimeType = GetMimeType(fileName);
                 _logger.LogInformation($"MIME type: {mimeType}");
 
-                // Enhanced prompt for Gemini 2.5 Pro - leveraging advanced document analysis
-                var prompt = @"You are an expert AI document analyst powered by Gemini 2.5 Pro with advanced OCR and document understanding capabilities. Perform a comprehensive deep analysis of this SUPPLIER INVOICE document (a bill from a supplier to a company).
+                // Enhanced prompt for Gemini 2.0 Flash - leveraging advanced document analysis
+                var prompt = @"You are an expert AI document analyst powered by Gemini 2.0 Flash with advanced OCR and document understanding capabilities. Perform a comprehensive deep analysis of this SUPPLIER INVOICE document (a bill from a supplier to a company).
 
 IMPORTANT CONTEXT: This is a SUPPLIER INVOICE (Accounts Payable) - an invoice FROM a supplier TO a company. Extract the SUPPLIER information (the entity billing/sending the invoice), NOT the buyer/recipient company.
 
@@ -128,7 +185,7 @@ VALIDATION RULES:
 
 Return ONLY the JSON object, nothing else.";
 
-                var response = await CallGeminiVisionApiAsync(prompt, base64File, mimeType);
+                var response = await CallGeminiVisionApiAsync(prompt, base64File, mimeType, apiKey);
 
                 if (response == null)
                 {
@@ -161,7 +218,9 @@ Return ONLY the JSON object, nothing else.";
         {
             try
             {
-                if (string.IsNullOrEmpty(_apiKey))
+                // Get API key (checks database first, then config/environment)
+                var apiKey = await GetApiKeyAsync();
+                if (string.IsNullOrEmpty(apiKey))
                 {
                     _logger.LogError("Google AI API key is not configured");
                     return null;
@@ -307,7 +366,7 @@ CRITICAL RULES:
 ✓ Extract bank name from Transfer To suffix
 ✓ Look for invoice references in Note field";
 
-                var response = await CallGeminiVisionApiAsync(prompt, base64File, mimeType);
+                var response = await CallGeminiVisionApiAsync(prompt, base64File, mimeType, apiKey);
 
                 if (response == null)
                     return null;
@@ -343,7 +402,7 @@ CRITICAL RULES:
 
                 // Generate payment number from reference or timestamp
                 var refNumber = GetJsonString(root, "referenceNumber");
-                var paymentNumber = !string.IsNullOrEmpty(refNumber) 
+                var paymentNumber = !string.IsNullOrEmpty(refNumber)
                     ? $"PAY-{refNumber.Substring(Math.Max(0, refNumber.Length - 8))}"
                     : $"PAY-{DateTime.Now:yyyyMMddHHmmss}";
 
@@ -361,20 +420,20 @@ CRITICAL RULES:
                     // BSP-specific fields
                     TransferTo = GetJsonString(root, "transferTo"),
                     AccountType = GetJsonString(root, "accountType"),
-                    
+
                     // Payee (Supplier) bank details
                     BankAccountNumber = GetJsonString(root, "payeeAccountFull"),
                     PayeeBranchNumber = GetJsonString(root, "payeeBranchNumber"),
                     PayeeAccountNumber = GetJsonString(root, "payeeAccountNumber"),
                     PayeeName = GetJsonString(root, "payeeName"),
                     BankName = GetJsonString(root, "payeeBankName"),
-                    
+
                     // Payer (Our Company) bank details
                     PayerAccountNumber = GetJsonString(root, "payerAccountFull"),
                     PayerBranchNumber = GetJsonString(root, "payerBranchNumber"),
                     PayerBankAccountNumber = GetJsonString(root, "payerAccountNumber"),
                     PayerName = GetJsonString(root, "payerName"),
-                    
+
                     // Purpose and Notes
                     Purpose = GetJsonString(root, "purpose"),
                     Notes = BuildPaymentNotes(root)
@@ -406,19 +465,19 @@ CRITICAL RULES:
         private string BuildPaymentNotes(JsonElement root)
         {
             var notes = new StringBuilder();
-            
+
             var docType = GetJsonString(root, "documentType");
             if (!string.IsNullOrEmpty(docType))
                 notes.AppendLine($"Document Type: {docType}");
-            
+
             var relatedInvoice = GetJsonString(root, "relatedInvoiceNumber");
             if (!string.IsNullOrEmpty(relatedInvoice))
                 notes.AppendLine($"Related Invoice: {relatedInvoice}");
-            
+
             var extractionNotes = GetJsonString(root, "extractionNotes");
             if (!string.IsNullOrEmpty(extractionNotes))
                 notes.AppendLine($"AI Notes: {extractionNotes}");
-            
+
             var originalNotes = GetJsonString(root, "notes");
             if (!string.IsNullOrEmpty(originalNotes))
                 notes.AppendLine($"Note: {originalNotes}");
@@ -435,7 +494,7 @@ CRITICAL RULES:
                 return "Bank Transfer";
 
             var normalized = method.ToLowerInvariant().Trim();
-            
+
             return normalized switch
             {
                 "cash" => "Cash",
@@ -488,7 +547,9 @@ CRITICAL RULES:
         {
             try
             {
-                if (string.IsNullOrEmpty(_apiKey))
+                // Get API key (checks database first, then config/environment)
+                var apiKey = await GetApiKeyAsync();
+                if (string.IsNullOrEmpty(apiKey))
                 {
                     return "API key not configured";
                 }
@@ -527,7 +588,7 @@ Determine which invoice this payment should be matched to. Return ONLY a JSON ob
 
 Consider: invoice numbers mentioned, amounts, customer names, dates, and reference numbers. Return ONLY the JSON object, nothing else.";
 
-                var response = await CallGeminiTextApiAsync(prompt);
+                var response = await CallGeminiTextApiAsync(prompt, apiKey);
                 return response ?? "No match found";
             }
             catch (Exception ex)
@@ -537,7 +598,7 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
             }
         }
 
-        private async Task<string?> CallGeminiVisionApiAsync(string prompt, string base64Image, string mimeType)
+        private async Task<string?> CallGeminiVisionApiAsync(string prompt, string base64Image, string mimeType, string apiKey)
         {
             try
             {
@@ -566,14 +627,15 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
                         temperature = 0.1,
                         topK = 40,
                         topP = 0.95,
-                        maxOutputTokens = 8192  // Pro has higher token limit
+                        maxOutputTokens = 8192  // Flash model supports high token output
                     }
                 };
 
                 var jsonContent = JsonSerializer.Serialize(requestBody);
                 var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-                var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key={_apiKey}";
+                // Using Gemini 2.0 Flash - stable production model for AI Studio
+                var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={apiKey}";
                 var response = await _httpClient.PostAsync(url, content);
 
                 if (!response.IsSuccessStatusCode)
@@ -645,7 +707,7 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
             }
         }
 
-        private async Task<string?> CallGeminiTextApiAsync(string prompt)
+        private async Task<string?> CallGeminiTextApiAsync(string prompt, string apiKey)
         {
             try
             {
@@ -666,14 +728,15 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
                         temperature = 0.1,
                         topK = 40,
                         topP = 0.95,
-                        maxOutputTokens = 2048  // Pro has higher token limit
+                        maxOutputTokens = 2048  // Flash model output tokens
                     }
                 };
 
                 var jsonContent = JsonSerializer.Serialize(requestBody);
                 var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-                var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key={_apiKey}";
+                // Using Gemini 2.0 Flash - stable production model for AI Studio
+                var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={apiKey}";
                 var response = await _httpClient.PostAsync(url, content);
 
                 if (!response.IsSuccessStatusCode)
@@ -1031,10 +1094,10 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
             var dateStr = GetJsonString(element, propertyName);
             if (string.IsNullOrEmpty(dateStr))
                 return null;
-            
+
             if (DateTime.TryParse(dateStr, out var date))
                 return date;
-            
+
             // Try additional formats
             string[] formats = { "yyyy-MM-dd", "dd/MM/yyyy", "MM/dd/yyyy", "dd-MM-yyyy", "yyyy/MM/dd" };
             foreach (var format in formats)
@@ -1042,7 +1105,7 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
                 if (DateTime.TryParseExact(dateStr, format, null, System.Globalization.DateTimeStyles.None, out date))
                     return date;
             }
-            
+
             return null;
         }
 
