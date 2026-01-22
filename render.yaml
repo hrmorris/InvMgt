@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: invoice-management
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+    disk:
+      name: data
+      mountPath: /app/Data
+      sizeGB: 1
