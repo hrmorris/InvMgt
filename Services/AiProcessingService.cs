@@ -8,7 +8,7 @@ namespace InvoiceManagement.Services
 {
     /// <summary>
     /// AI-Powered Document Processing Service
-    /// Uses Google Gemini 2.0 Flash for advanced document analysis and data extraction
+    /// Uses Google Gemini 2.5 Pro for advanced document analysis and data extraction
     /// Features: Advanced OCR, intelligent data extraction, contextual understanding, multi-format support
     /// API Version: v1beta
     /// Configuration priority: 1) Database SystemSettings, 2) appsettings.json, 3) Environment variable
@@ -109,8 +109,8 @@ namespace InvoiceManagement.Services
                 var mimeType = GetMimeType(fileName);
                 _logger.LogInformation($"MIME type: {mimeType}");
 
-                // Enhanced prompt for Gemini 2.0 Flash - leveraging advanced document analysis
-                var prompt = @"You are an expert AI document analyst powered by Gemini 2.0 Flash with advanced OCR and document understanding capabilities. Perform a comprehensive deep analysis of this SUPPLIER INVOICE document (a bill from a supplier to a company).
+                // Enhanced prompt for Gemini 2.5 Pro - leveraging advanced document analysis
+                var prompt = @"You are an expert AI document analyst powered by Gemini 2.5 Pro with advanced OCR and document understanding capabilities. Perform a comprehensive deep analysis of this SUPPLIER INVOICE document (a bill from a supplier to a company).
 
 IMPORTANT CONTEXT: This is a SUPPLIER INVOICE (Accounts Payable) - an invoice FROM a supplier TO a company. Extract the SUPPLIER information (the entity billing/sending the invoice), NOT the buyer/recipient company.
 
@@ -230,7 +230,7 @@ Return ONLY the JSON object, nothing else.";
                 var base64File = Convert.ToBase64String(fileBytes);
                 var mimeType = GetMimeType(fileName);
 
-                // ENHANCED Gemini 2.0 Flash Prompt - Specialized for PNG Bank Statements (BSP, Westpac, ANZ, Kina Bank)
+                // ENHANCED Gemini 2.5 Pro Prompt - Specialized for PNG Bank Statements (BSP, Westpac, ANZ, Kina Bank)
                 var prompt = @"You are an elite financial AI analyst specialized in Papua New Guinea (PNG) banking documents, particularly BSP (Bank South Pacific) INTERNAL PAY NOW receipts and bank statements.
 
 ═══════════════════════════════════════════════════════════════════════════════
@@ -627,15 +627,15 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
                         temperature = 0.1,
                         topK = 40,
                         topP = 0.95,
-                        maxOutputTokens = 8192  // Flash model supports high token output
+                        maxOutputTokens = 8192  // Pro model supports high token output
                     }
                 };
 
                 var jsonContent = JsonSerializer.Serialize(requestBody);
                 var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-                // Using Gemini 2.0 Flash - stable production model for AI Studio
-                var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={apiKey}";
+                // Using Gemini 2.5 Pro - advanced model for AI Studio
+                var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key={apiKey}";
                 var response = await _httpClient.PostAsync(url, content);
 
                 if (!response.IsSuccessStatusCode)
@@ -728,15 +728,15 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
                         temperature = 0.1,
                         topK = 40,
                         topP = 0.95,
-                        maxOutputTokens = 2048  // Flash model output tokens
+                        maxOutputTokens = 2048  // Pro model output tokens
                     }
                 };
 
                 var jsonContent = JsonSerializer.Serialize(requestBody);
                 var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-                // Using Gemini 2.0 Flash - stable production model for AI Studio
-                var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={apiKey}";
+                // Using Gemini 2.5 Pro - advanced model for AI Studio
+                var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key={apiKey}";
                 var response = await _httpClient.PostAsync(url, content);
 
                 if (!response.IsSuccessStatusCode)
