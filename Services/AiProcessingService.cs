@@ -650,7 +650,7 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
                             }
                         }
                     },
-                    max_tokens = 8192,
+                    max_completion_tokens = 8192,
                     temperature = 0.1
                 };
 
@@ -748,7 +748,7 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
                             content = prompt
                         }
                     },
-                    max_tokens = 8192,
+                    max_completion_tokens = 8192,
                     temperature = 0.1
                 };
 
