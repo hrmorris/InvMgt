@@ -78,6 +78,34 @@ if (databaseProvider == "PostgreSQL")
             Console.WriteLine("Running database migrations...");
             db.Database.Migrate();
             Console.WriteLine("Database migrations applied successfully.");
+
+            // Always run ALTER statements to add any missing columns after migrations
+            Console.WriteLine("Checking for missing columns...");
+            var alterStatements = new[]
+            {
+                // BatchPayments columns that might be missing
+                @"ALTER TABLE ""BatchPayments"" ADD COLUMN IF NOT EXISTS ""BatchName"" VARCHAR(200);",
+                @"ALTER TABLE ""BatchPayments"" ADD COLUMN IF NOT EXISTS ""BankAccount"" VARCHAR(100);",
+                @"ALTER TABLE ""BatchPayments"" ADD COLUMN IF NOT EXISTS ""ApprovedBy"" VARCHAR(100);",
+                @"ALTER TABLE ""BatchPayments"" ADD COLUMN IF NOT EXISTS ""ApprovedDate"" TIMESTAMP;",
+                // BatchPaymentItems columns that might be missing
+                @"ALTER TABLE ""BatchPaymentItems"" ADD COLUMN IF NOT EXISTS ""IsProcessed"" BOOLEAN NOT NULL DEFAULT FALSE;",
+                @"ALTER TABLE ""BatchPaymentItems"" ADD COLUMN IF NOT EXISTS ""PaymentId"" INT REFERENCES ""Payments""(""Id"") ON DELETE SET NULL;"
+            };
+
+            foreach (var stmt in alterStatements)
+            {
+                try
+                {
+                    db.Database.ExecuteSqlRaw(stmt);
+                }
+                catch (Exception stmtEx)
+                {
+                    // Ignore errors - column might already exist or table might not exist yet
+                    Console.WriteLine($"Alter note: {stmtEx.Message}");
+                }
+            }
+            Console.WriteLine("Column check completed.");
         }
         catch (Exception ex)
         {
@@ -123,32 +151,6 @@ if (databaseProvider == "PostgreSQL")
                     catch (Exception stmtEx)
                     {
                         Console.WriteLine($"Statement note: {stmtEx.Message}");
-                    }
-                }
-
-                // Add missing columns to existing tables (ALTER TABLE for incremental schema updates)
-                var alterStatements = new[]
-                {
-                    // BatchPayments columns that might be missing
-                    @"ALTER TABLE ""BatchPayments"" ADD COLUMN IF NOT EXISTS ""BatchName"" VARCHAR(200);",
-                    @"ALTER TABLE ""BatchPayments"" ADD COLUMN IF NOT EXISTS ""BankAccount"" VARCHAR(100);",
-                    @"ALTER TABLE ""BatchPayments"" ADD COLUMN IF NOT EXISTS ""ApprovedBy"" VARCHAR(100);",
-                    @"ALTER TABLE ""BatchPayments"" ADD COLUMN IF NOT EXISTS ""ApprovedDate"" TIMESTAMP;",
-                    // BatchPaymentItems columns that might be missing
-                    @"ALTER TABLE ""BatchPaymentItems"" ADD COLUMN IF NOT EXISTS ""IsProcessed"" BOOLEAN NOT NULL DEFAULT FALSE;",
-                    @"ALTER TABLE ""BatchPaymentItems"" ADD COLUMN IF NOT EXISTS ""PaymentId"" INT REFERENCES ""Payments""(""Id"") ON DELETE SET NULL;"
-                };
-
-                foreach (var stmt in alterStatements)
-                {
-                    try
-                    {
-                        db.Database.ExecuteSqlRaw(stmt);
-                    }
-                    catch (Exception stmtEx)
-                    {
-                        // Ignore errors for columns that already exist
-                        Console.WriteLine($"Alter note: {stmtEx.Message}");
                     }
                 }
 
