@@ -1133,6 +1133,47 @@ namespace InvoiceManagement.Controllers
                 .Select(g => new { Method = g.Key, Total = g.Sum(p => p.Amount) })
                 .ToDictionaryAsync(x => x.Method, x => x.Total);
         }
+
+        // ==================== DATA MIGRATION ====================
+
+        // GET: Admin/MigrateData
+        [HttpGet]
+        public IActionResult MigrateData()
+        {
+            return View();
+        }
+
+        // POST: Admin/RunMigration
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RunMigration()
+        {
+            try
+            {
+                // Get paths
+                var sqlitePath = Path.Combine(_environment.ContentRootPath, "Data", "InvoiceManagement.db");
+
+                if (!System.IO.File.Exists(sqlitePath))
+                {
+                    return Json(new { success = false, message = $"SQLite database not found at: {sqlitePath}" });
+                }
+
+                var postgresConnection = _context.Database.GetConnectionString();
+                if (string.IsNullOrEmpty(postgresConnection))
+                {
+                    return Json(new { success = false, message = "PostgreSQL connection string not found" });
+                }
+
+                var migrator = new DataMigrator(sqlitePath, postgresConnection);
+                var result = await migrator.MigrateAllDataAsync();
+
+                return Json(new { success = true, message = result });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Migration failed: {ex.Message}" });
+            }
+        }
     }
 
     // ==================== ADMIN VIEW MODELS ====================

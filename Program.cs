@@ -5,6 +5,14 @@ using InvoiceManagement.Services;
 using InvoiceManagement.ModelBinders;
 using System.Globalization;
 
+// Check for migration command
+if (args.Length > 0 && args[0] == "--migrate")
+{
+    AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+    await DataMigrator.RunMigrationAsync();
+    return;
+}
+
 // Enable legacy timestamp behavior for PostgreSQL to handle DateTime.Now without UTC conversion
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
