@@ -191,6 +191,21 @@ namespace InvoiceManagement.Controllers
             var customers = await _customerService.GetAllCustomersAsync();
             ViewBag.Customers = customers.Where(c => c.Status == "Active").OrderBy(c => c.CustomerName).ToList();
 
+            // Get available unlinked documents for attachment
+            var availableDocuments = await _context.ImportedDocuments
+                .Where(d => d.InvoiceId == null && d.PaymentId == null && d.DocumentType == "Invoice")
+                .OrderByDescending(d => d.UploadDate)
+                .Take(50)
+                .ToListAsync();
+            ViewBag.AvailableDocuments = availableDocuments;
+
+            // Get documents already linked to this invoice
+            var linkedDocuments = await _context.ImportedDocuments
+                .Where(d => d.InvoiceId == id)
+                .OrderByDescending(d => d.UploadDate)
+                .ToListAsync();
+            ViewBag.LinkedDocuments = linkedDocuments;
+
             return View(invoice);
         }
 
@@ -713,6 +728,69 @@ namespace InvoiceManagement.Controllers
             {
                 _logger.LogError(ex, "Error creating customer from invoice");
                 return Json(new { success = false, message = $"Error creating customer: {ex.Message}" });
+            }
+        }
+
+        // POST: Invoices/LinkDocument - Link an existing document to an invoice
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> LinkDocument(int documentId, int invoiceId)
+        {
+            try
+            {
+                var document = await _context.ImportedDocuments.FindAsync(documentId);
+                if (document == null)
+                {
+                    TempData["ErrorMessage"] = "Document not found.";
+                    return RedirectToAction("Edit", new { id = invoiceId });
+                }
+
+                var invoice = await _context.Invoices.FindAsync(invoiceId);
+                if (invoice == null)
+                {
+                    TempData["ErrorMessage"] = "Invoice not found.";
+                    return RedirectToAction("Index");
+                }
+
+                document.InvoiceId = invoiceId;
+                await _context.SaveChangesAsync();
+
+                TempData["SuccessMessage"] = $"Document '{document.OriginalFileName}' linked to invoice successfully.";
+                return RedirectToAction("Edit", new { id = invoiceId });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error linking document to invoice");
+                TempData["ErrorMessage"] = $"Error linking document: {ex.Message}";
+                return RedirectToAction("Edit", new { id = invoiceId });
+            }
+        }
+
+        // POST: Invoices/UnlinkDocument - Unlink a document from an invoice
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UnlinkDocument(int documentId, int invoiceId)
+        {
+            try
+            {
+                var document = await _context.ImportedDocuments.FindAsync(documentId);
+                if (document == null)
+                {
+                    TempData["ErrorMessage"] = "Document not found.";
+                    return RedirectToAction("Edit", new { id = invoiceId });
+                }
+
+                document.InvoiceId = null;
+                await _context.SaveChangesAsync();
+
+                TempData["SuccessMessage"] = $"Document '{document.OriginalFileName}' unlinked from invoice.";
+                return RedirectToAction("Edit", new { id = invoiceId });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error unlinking document from invoice");
+                TempData["ErrorMessage"] = $"Error unlinking document: {ex.Message}";
+                return RedirectToAction("Edit", new { id = invoiceId });
             }
         }
     }
