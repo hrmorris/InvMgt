@@ -324,10 +324,11 @@ namespace InvoiceManagement.Services
 
         public async Task<IEnumerable<Invoice>> GetUnpaidInvoicesAsync(int? supplierId = null)
         {
+            // Note: Use (TotalAmount - PaidAmount) instead of BalanceAmount because BalanceAmount is a computed property
             var query = _context.Invoices
                 .Include(i => i.Supplier)
                 .Include(i => i.Customer)
-                .Where(i => i.Status != "Paid" && i.BalanceAmount > 0);
+                .Where(i => i.Status != "Paid" && (i.TotalAmount - i.PaidAmount) > 0);
 
             if (supplierId.HasValue)
             {
@@ -345,10 +346,12 @@ namespace InvoiceManagement.Services
                 .Select(bi => bi.InvoiceId)
                 .ToListAsync();
 
+            // Note: Use (TotalAmount - PaidAmount) instead of BalanceAmount because BalanceAmount is a computed property
+            // that EF Core cannot translate to SQL
             var query = _context.Invoices
                 .Include(i => i.Supplier)
                 .Include(i => i.Customer)
-                .Where(i => i.Status != "Paid" && i.BalanceAmount > 0 && !invoiceIdsInBatch.Contains(i.Id));
+                .Where(i => i.Status != "Paid" && (i.TotalAmount - i.PaidAmount) > 0 && !invoiceIdsInBatch.Contains(i.Id));
 
             if (supplierId.HasValue)
             {
