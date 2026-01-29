@@ -48,6 +48,48 @@ builder.Services.AddSession(options =>
     options.Cookie.Name = ".InvMgt.Session"; // Unique cookie name
 });
 
+// For PostgreSQL, ensure database schema exists BEFORE configuring DataProtection
+// This prevents "relation does not exist" errors on fresh databases
+if (databaseProvider == "PostgreSQL")
+{
+    // Create a temporary service provider to run migrations first
+    var tempServices = new ServiceCollection();
+    tempServices.AddDbContext<ApplicationDbContext>(options =>
+        options.UseNpgsql(connectionString));
+
+    using (var tempProvider = tempServices.BuildServiceProvider())
+    using (var scope = tempProvider.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        try
+        {
+            Console.WriteLine("Ensuring database schema exists...");
+            db.Database.Migrate();
+            Console.WriteLine("Database migrations applied successfully.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Migration note: {ex.Message}");
+            // Try to create essential tables manually if migration fails
+            try
+            {
+                db.Database.ExecuteSqlRaw(@"
+                    CREATE TABLE IF NOT EXISTS ""DataProtectionKeys"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""FriendlyName"" TEXT,
+                        ""Xml"" TEXT
+                    );
+                ");
+                Console.WriteLine("DataProtectionKeys table ensured.");
+            }
+            catch (Exception tableEx)
+            {
+                Console.WriteLine($"Table creation note: {tableEx.Message}");
+            }
+        }
+    }
+}
+
 // Configure Data Protection to persist keys for containerized environments
 // This ensures anti-forgery tokens and session cookies work properly across Cloud Run instances
 if (databaseProvider == "PostgreSQL")
