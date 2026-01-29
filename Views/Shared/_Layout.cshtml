@@ -187,6 +187,11 @@
                                             class="bi bi-list"></i> All Payments</a></li>
                                 <li><a class="dropdown-item" asp-controller="Payments" asp-action="Create"><i
                                             class="bi bi-plus-circle"></i> New Payment</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" asp-controller="BatchPayments" asp-action="Index"><i
+                                            class="bi bi-layers"></i> Batch Payments</a></li>
+                                <li><a class="dropdown-item" asp-controller="BatchPayments" asp-action="Create"><i
+                                            class="bi bi-plus-square"></i> New Batch</a></li>
                             </ul>
                         </li>
                         <li class="nav-item">
@@ -313,6 +318,12 @@
                                 <a class="nav-link" asp-controller="Payments" asp-action="Index">
                                     <i class="bi bi-credit-card"></i>
                                     Payments
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="BatchPayments" asp-action="Index">
+                                    <i class="bi bi-layers"></i>
+                                    Batch Payments
                                 </a>
                             </li>
                             <li class="nav-item">

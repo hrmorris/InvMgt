@@ -32,6 +32,10 @@ namespace InvoiceManagement.Data
         public DbSet<UserRole> UserRoles { get; set; }
         public DbSet<RolePermission> RolePermissions { get; set; }
 
+        // Batch Payments
+        public DbSet<BatchPayment> BatchPayments { get; set; }
+        public DbSet<BatchPaymentItem> BatchPaymentItems { get; set; }
+
         // Data Protection Keys (for session/cookie encryption in Cloud Run)
         public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
 
@@ -229,6 +233,36 @@ namespace InvoiceManagement.Data
                     .WithMany(p => p.RolePermissions)
                     .HasForeignKey(e => e.PermissionId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Batch Payments
+            modelBuilder.Entity<BatchPayment>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.BatchReference).IsUnique();
+                entity.Ignore(e => e.TotalAmount);
+                entity.Ignore(e => e.InvoiceCount);
+                entity.Ignore(e => e.SupplierCount);
+            });
+
+            modelBuilder.Entity<BatchPaymentItem>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.AmountToPay).HasPrecision(18, 2);
+                entity.HasIndex(e => new { e.BatchPaymentId, e.InvoiceId }).IsUnique();
+                entity.HasOne(e => e.BatchPayment)
+                    .WithMany(b => b.BatchItems)
+                    .HasForeignKey(e => e.BatchPaymentId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.Invoice)
+                    .WithMany()
+                    .HasForeignKey(e => e.InvoiceId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.Payment)
+                    .WithMany()
+                    .HasForeignKey(e => e.PaymentId)
+                    .OnDelete(DeleteBehavior.SetNull)
+                    .IsRequired(false);
             });
         }
     }

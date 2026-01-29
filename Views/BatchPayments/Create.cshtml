@@ -1,0 +1,114 @@
+@model BatchPayment
+
+@{
+    ViewData["Title"] = "Create Batch Payment";
+}
+
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Header -->
+            <div class="d-flex align-items-center mb-4">
+                <a asp-action="Index" class="btn btn-outline-secondary me-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-plus-circle text-primary me-2"></i>Create Batch Payment
+                    </h2>
+                    <p class="text-muted mb-0">Create a new batch to group invoices for payment</p>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <form asp-action="Create" method="post">
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label asp-for="BatchReference" class="form-label">
+                                    <i class="fas fa-hashtag text-muted me-1"></i>Batch Reference
+                                </label>
+                                <input asp-for="BatchReference" class="form-control" readonly />
+                                <span asp-validation-for="BatchReference" class="text-danger"></span>
+                                <small class="text-muted">Auto-generated reference number</small>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="BatchName" class="form-label">
+                                    <i class="fas fa-tag text-muted me-1"></i>Batch Name (Optional)
+                                </label>
+                                <input asp-for="BatchName" class="form-control" placeholder="e.g., January Supplier Payments" />
+                                <span asp-validation-for="BatchName" class="text-danger"></span>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="ScheduledPaymentDate" class="form-label">
+                                    <i class="fas fa-calendar text-muted me-1"></i>Scheduled Payment Date
+                                </label>
+                                <input asp-for="ScheduledPaymentDate" type="date" class="form-control" />
+                                <span asp-validation-for="ScheduledPaymentDate" class="text-danger"></span>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="PaymentMethod" class="form-label">
+                                    <i class="fas fa-credit-card text-muted me-1"></i>Payment Method
+                                </label>
+                                <select asp-for="PaymentMethod" asp-items="ViewBag.PaymentMethods" class="form-select">
+                                    <option value="">-- Select Method --</option>
+                                </select>
+                                <span asp-validation-for="PaymentMethod" class="text-danger"></span>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="BankAccount" class="form-label">
+                                    <i class="fas fa-university text-muted me-1"></i>Source Bank Account
+                                </label>
+                                <input asp-for="BankAccount" class="form-control" placeholder="e.g., BSP 123-456789" />
+                                <span asp-validation-for="BankAccount" class="text-danger"></span>
+                            </div>
+
+                            <div class="col-12">
+                                <label asp-for="Notes" class="form-label">
+                                    <i class="fas fa-sticky-note text-muted me-1"></i>Notes
+                                </label>
+                                <textarea asp-for="Notes" class="form-control" rows="3" placeholder="Add any notes about this batch..."></textarea>
+                                <span asp-validation-for="Notes" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <div class="d-flex justify-content-between">
+                            <a asp-action="Index" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-1"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-plus me-1"></i> Create Batch
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Info Card -->
+            <div class="card border-0 bg-light mt-4">
+                <div class="card-body">
+                    <h6><i class="fas fa-info-circle text-info me-2"></i>How Batch Payments Work</h6>
+                    <ol class="mb-0 small">
+                        <li>Create a batch with a reference and optional details</li>
+                        <li>Add unpaid invoices to the batch</li>
+                        <li>Review and adjust payment amounts if needed</li>
+                        <li>Mark the batch as "Ready" when prepared</li>
+                        <li>Process the batch to create individual payments for each invoice</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

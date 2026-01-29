@@ -1,0 +1,454 @@
+@model BatchPayment
+
+@{
+    ViewData["Title"] = $"Batch: {Model.BatchReference}";
+    var availableInvoices = ViewBag.AvailableInvoices as IEnumerable<Invoice> ?? new List<Invoice>();
+    var suppliers = ViewBag.Suppliers as IEnumerable<Supplier> ?? new List<Supplier>();
+}
+
+@functions {
+    public string FormatCurrency(decimal amount)
+    {
+        var settings = ViewData["CurrencySettings"] as CurrencySettings;
+        if (settings != null)
+        {
+            return CurrencyHelper.FormatCurrency(amount, settings);
+        }
+        return $"K {amount:N2}";
+    }
+}
+
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div class="d-flex align-items-center">
+            <a asp-action="Index" class="btn btn-outline-secondary me-3">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <div>
+                <h2 class="mb-1">
+                    <i class="fas fa-layer-group text-primary me-2"></i>@Model.BatchReference
+                </h2>
+                <p class="text-muted mb-0">@(Model.BatchName ?? "Batch Payment")</p>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            @{
+                var statusClass = Model.Status switch
+                {
+                    "Draft" => "bg-secondary",
+                    "Ready" => "bg-warning text-dark",
+                    "Processing" => "bg-info",
+                    "Completed" => "bg-success",
+                    "Cancelled" => "bg-danger",
+                    _ => "bg-secondary"
+                };
+            }
+            <span class="badge @statusClass fs-6 px-3 py-2">@Model.Status</span>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>@TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i>@TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="row g-4">
+        <!-- Left Column - Batch Details & Items -->
+        <div class="col-lg-8">
+            <!-- Batch Summary Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Batch Details</h5>
+                    @if (Model.Status == "Draft")
+                    {
+                        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-edit me-1"></i>Edit
+                        </a>
+                    }
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label text-muted small">Total Amount</label>
+                            <div class="fs-4 fw-bold text-primary">@FormatCurrency(Model.TotalAmount)</div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label text-muted small">Invoices</label>
+                            <div class="fs-4 fw-bold">@Model.InvoiceCount</div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label text-muted small">Scheduled Date</label>
+                            <div class="fs-6">
+                                @if (Model.ScheduledPaymentDate.HasValue)
+                                {
+                                    @Model.ScheduledPaymentDate.Value.ToString("dd MMM yyyy")
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Not set</span>
+                                }
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label text-muted small">Payment Method</label>
+                            <div class="fs-6">@(Model.PaymentMethod ?? "Not set")</div>
+                        </div>
+                        @if (!string.IsNullOrEmpty(Model.Notes))
+                        {
+                            <div class="col-12">
+                                <label class="form-label text-muted small">Notes</label>
+                                <div>@Model.Notes</div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Invoices in Batch -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0"><i class="fas fa-file-invoice me-2"></i>Invoices in Batch (@Model.InvoiceCount)
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    @if (!Model.BatchItems.Any())
+                    {
+                        <div class="text-center py-5">
+                            <i class="fas fa-file-invoice fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No invoices in this batch</h5>
+                            <p class="text-muted">Add invoices from the panel on the right</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Invoice #</th>
+                                        <th>Supplier/Customer</th>
+                                        <th>Due Date</th>
+                                        <th class="text-end">Invoice Total</th>
+                                        <th class="text-end">Balance</th>
+                                        <th class="text-end">Amount to Pay</th>
+                                        <th class="text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in Model.BatchItems.OrderBy(i => i.Invoice?.DueDate))
+                                    {
+                                        var isOverdue = item.Invoice?.DueDate < DateTime.Now;
+                                        <tr>
+                                            <td>
+                                                <a href="/Invoices/Details/@item.InvoiceId" class="text-decoration-none">
+                                                    @item.Invoice?.InvoiceNumber
+                                                </a>
+                                                @if (item.IsProcessed)
+                                                {
+                                                    <span class="badge bg-success ms-1">Paid</span>
+                                                }
+                                            </td>
+                                            <td>@(item.Invoice?.Supplier?.SupplierName ?? item.Invoice?.Customer?.CustomerName
+                                                                                        ?? item.Invoice?.CustomerName)</td>
+                                            <td>
+                                                <span class="@(isOverdue == true ? "text-danger fw-semibold" : "")">
+                                                    @item.Invoice?.DueDate.ToString("dd MMM yyyy")
+                                                    @if (isOverdue == true)
+                                                    {
+                                                        <i class="fas fa-exclamation-circle text-danger ms-1" title="Overdue"></i>
+                                                    }
+                                                </span>
+                                            </td>
+                                            <td class="text-end">@FormatCurrency(item.Invoice?.TotalAmount ?? 0)</td>
+                                            <td class="text-end">@FormatCurrency(item.Invoice?.BalanceAmount ?? 0)</td>
+                                            <td class="text-end">
+                                                @if (Model.Status == "Draft" && !item.IsProcessed)
+                                                {
+                                                    <form asp-action="UpdateItemAmount" method="post" class="d-inline">
+                                                        <input type="hidden" name="batchId" value="@Model.Id" />
+                                                        <input type="hidden" name="itemId" value="@item.Id" />
+                                                        <div class="input-group input-group-sm" style="width: 130px;">
+                                                            <input type="number" name="amountToPay"
+                                                                class="form-control form-control-sm text-end"
+                                                                value="@item.AmountToPay" step="0.01" min="0.01"
+                                                                max="@item.Invoice?.BalanceAmount" />
+                                                            <button type="submit" class="btn btn-outline-primary btn-sm"
+                                                                title="Update">
+                                                                <i class="fas fa-check"></i>
+                                                            </button>
+                                                        </div>
+                                                    </form>
+                                                }
+                                                else
+                                                {
+                                                    <span class="fw-semibold">@FormatCurrency(item.AmountToPay)</span>
+                                                }
+                                            </td>
+                                            <td class="text-center">
+                                                @if (Model.Status == "Draft" && !item.IsProcessed)
+                                                {
+                                                    <form asp-action="RemoveInvoice" method="post" class="d-inline"
+                                                        onsubmit="return confirm('Remove this invoice from the batch?');">
+                                                        <input type="hidden" name="batchId" value="@Model.Id" />
+                                                        <input type="hidden" name="invoiceId" value="@item.InvoiceId" />
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove">
+                                                            <i class="fas fa-times"></i>
+                                                        </button>
+                                                    </form>
+                                                }
+                                                @if (item.PaymentId.HasValue)
+                                                {
+                                                    <a href="/Payments/Details/@item.PaymentId"
+                                                        class="btn btn-sm btn-outline-success" title="View Payment">
+                                                        <i class="fas fa-receipt"></i>
+                                                    </a>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                                <tfoot class="table-light">
+                                    <tr>
+                                        <td colspan="5" class="text-end fw-bold">Total to Pay:</td>
+                                        <td class="text-end fw-bold text-primary fs-5">@FormatCurrency(Model.TotalAmount)
+                                        </td>
+                                        <td></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column - Actions & Add Invoices -->
+        <div class="col-lg-4">
+            <!-- Actions Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0"><i class="fas fa-cogs me-2"></i>Actions</h5>
+                </div>
+                <div class="card-body">
+                    @if (Model.Status == "Draft")
+                    {
+                        @if (Model.InvoiceCount > 0)
+                        {
+                            <form asp-action="MarkReady" method="post" class="mb-2">
+                                <input type="hidden" name="id" value="@Model.Id" />
+                                <button type="submit" class="btn btn-warning w-100">
+                                    <i class="fas fa-check-circle me-1"></i> Mark as Ready
+                                </button>
+                            </form>
+                        }
+                        <form asp-action="Cancel" method="post" class="mb-2"
+                            onsubmit="return confirm('Are you sure you want to cancel this batch?');">
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            <button type="submit" class="btn btn-outline-danger w-100">
+                                <i class="fas fa-ban me-1"></i> Cancel Batch
+                            </button>
+                        </form>
+                    }
+                    else if (Model.Status == "Ready")
+                    {
+                        <button type="button" class="btn btn-success w-100 mb-2" data-bs-toggle="modal"
+                            data-bs-target="#processModal">
+                            <i class="fas fa-play me-1"></i> Process Batch
+                        </button>
+                        <form asp-action="Cancel" method="post"
+                            onsubmit="return confirm('Are you sure you want to cancel this batch?');">
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            <button type="submit" class="btn btn-outline-danger w-100">
+                                <i class="fas fa-ban me-1"></i> Cancel Batch
+                            </button>
+                        </form>
+                    }
+                    else if (Model.Status == "Completed")
+                    {
+                        <div class="alert alert-success mb-0">
+                            <i class="fas fa-check-circle me-2"></i>
+                            <strong>Batch Processed</strong><br>
+                            <small>Completed on @Model.ProcessedDate?.ToString("dd MMM yyyy HH:mm")</small>
+                        </div>
+                    }
+                    else if (Model.Status == "Cancelled")
+                    {
+                        <div class="alert alert-secondary mb-0">
+                            <i class="fas fa-ban me-2"></i>
+                            <strong>Batch Cancelled</strong>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Add Invoices Card (only for Draft batches) -->
+            @if (Model.Status == "Draft")
+            {
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white py-3">
+                        <h5 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Add Invoices</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (!availableInvoices.Any())
+                        {
+                            <div class="text-center py-3">
+                                <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                                <p class="text-muted mb-0">All unpaid invoices are already in this batch or there are no unpaid
+                                    invoices.</p>
+                            </div>
+                        }
+                        else
+                        {
+                            <!-- Filter by Supplier -->
+                            <div class="mb-3">
+                                <label class="form-label small text-muted">Filter by Supplier</label>
+                                <select id="supplierFilter" class="form-select form-select-sm">
+                                    <option value="">All Suppliers</option>
+                                    @foreach (var supplier in suppliers)
+                                    {
+                                        <option value="@supplier.Id">@supplier.SupplierName</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <!-- Available Invoices List -->
+                            <div class="list-group list-group-flush" style="max-height: 400px; overflow-y: auto;"
+                                id="availableInvoicesList">
+                                @foreach (var invoice in availableInvoices.OrderBy(i => i.DueDate))
+                                {
+                                    var isOverdue = invoice.DueDate < DateTime.Now;
+                                    <div class="list-group-item px-0 py-2 invoice-item" data-supplier-id="@invoice.SupplierId">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div class="flex-grow-1">
+                                                <div class="fw-semibold">@invoice.InvoiceNumber</div>
+                                                <small class="text-muted">@(invoice.Supplier?.SupplierName ??
+                                                                                            invoice.Customer?.CustomerName ?? invoice.CustomerName)</small>
+                                                <br>
+                                                <small class="@(isOverdue ? "text-danger" : "text-muted")">
+                                                    Due: @invoice.DueDate.ToString("dd MMM")
+                                                    @if (isOverdue)
+                                                    {
+                                                        <span class="badge bg-danger ms-1">Overdue</span>
+                                                    }
+                                                </small>
+                                            </div>
+                                            <div class="text-end">
+                                                <div class="fw-semibold">@FormatCurrency(invoice.BalanceAmount)</div>
+                                                <form asp-action="AddInvoice" method="post" class="mt-1">
+                                                    <input type="hidden" name="batchId" value="@Model.Id" />
+                                                    <input type="hidden" name="invoiceId" value="@invoice.Id" />
+                                                    <button type="submit" class="btn btn-sm btn-primary">
+                                                        <i class="fas fa-plus"></i> Add
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+
+                            <hr class="my-3">
+                            <button type="button" class="btn btn-outline-primary w-100" id="addAllBtn">
+                                <i class="fas fa-plus-circle me-1"></i> Add All Visible (@availableInvoices.Count())
+                            </button>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Process Batch Modal -->
+<div class="modal fade" id="processModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="Process" method="post">
+                <input type="hidden" name="id" value="@Model.Id" />
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-play text-success me-2"></i>Process Batch</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        This will create <strong>@Model.InvoiceCount payment(s)</strong> totaling
+                        <strong>@FormatCurrency(Model.TotalAmount)</strong>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Payment Method</label>
+                        <select name="paymentMethod" class="form-select" required>
+                            @{
+                                var bankTransferSelected = Model.PaymentMethod == "Bank Transfer" ? "selected" : "";
+                                var chequeSelected = Model.PaymentMethod == "Cheque" ? "selected" : "";
+                                var cashSelected = Model.PaymentMethod == "Cash" ? "selected" : "";
+                                var eftSelected = Model.PaymentMethod == "EFT" ? "selected" : "";
+                                var directDebitSelected = Model.PaymentMethod == "Direct Debit" ? "selected" : "";
+                            }
+                            <option value="Bank Transfer" selected="@bankTransferSelected">Bank Transfer</option>
+                            <option value="Cheque" selected="@chequeSelected">Cheque</option>
+                            <option value="Cash" selected="@cashSelected">Cash</option>
+                            <option value="EFT" selected="@eftSelected">EFT</option>
+                            <option value="Direct Debit" selected="@directDebitSelected">Direct Debit</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Reference Number (Optional)</label>
+                        <input type="text" name="referenceNumber" class="form-control"
+                            placeholder="e.g., Bank transaction reference" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-play me-1"></i> Process Payments
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Filter invoices by supplier
+        document.getElementById('supplierFilter')?.addEventListener('change', function () {
+            const supplierId = this.value;
+            document.querySelectorAll('.invoice-item').forEach(item => {
+                if (!supplierId || item.dataset.supplierId === supplierId) {
+                    item.style.display = '';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+
+        // Add all visible invoices
+        document.getElementById('addAllBtn')?.addEventListener('click', async function () {
+            const visibleItems = document.querySelectorAll('.invoice-item:not([style*="display: none"]) form');
+            if (visibleItems.length === 0) return;
+
+            if (!confirm(`Add ${visibleItems.length} invoice(s) to this batch?`)) return;
+
+            // Submit all forms sequentially
+            for (const form of visibleItems) {
+                form.submit();
+                break; // Submit one and let page reload
+            }
+        });
+    </script>
+}

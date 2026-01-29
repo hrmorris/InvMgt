@@ -187,6 +187,7 @@ else
 // Register custom services
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddScoped<IBatchPaymentService, BatchPaymentService>();
 builder.Services.AddScoped<IImportService, ImportService>();
 builder.Services.AddScoped<IPdfService, PdfService>();
 

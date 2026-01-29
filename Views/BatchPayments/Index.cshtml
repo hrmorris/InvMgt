@@ -1,0 +1,214 @@
+@model IEnumerable<BatchPayment>
+
+@{
+    ViewData["Title"] = "Batch Payments";
+}
+
+@functions {
+    public string FormatCurrency(decimal amount)
+    {
+        var settings = ViewData["CurrencySettings"] as CurrencySettings;
+        if (settings != null)
+        {
+            return CurrencyHelper.FormatCurrency(amount, settings);
+        }
+        return $"K {amount:N2}";
+    }
+}
+
+@{
+    var draftBatches = Model.Where(b => b.Status == "Draft").ToList();
+    var readyBatches = Model.Where(b => b.Status == "Ready").ToList();
+    var completedBatches = Model.Where(b => b.Status == "Completed").ToList();
+    var cancelledBatches = Model.Where(b => b.Status == "Cancelled").ToList();
+}
+
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">
+                <i class="fas fa-layer-group text-primary me-2"></i>Batch Payments
+            </h2>
+            <p class="text-muted mb-0">Create and manage payment batches for multiple invoices</p>
+        </div>
+        <a asp-action="Create" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i> New Batch
+        </a>
+    </div>
+
+    <!-- Messages -->
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>@TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i>@TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <!-- Summary Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 bg-primary text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="card-subtitle mb-2 opacity-75">Draft Batches</h6>
+                            <h2 class="card-title mb-0">@draftBatches.Count</h2>
+                        </div>
+                        <i class="fas fa-edit fa-2x opacity-50"></i>
+                    </div>
+                    <small class="opacity-75">@FormatCurrency(draftBatches.Sum(b => b.TotalAmount)) total</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 bg-warning text-dark h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="card-subtitle mb-2 opacity-75">Ready to Process</h6>
+                            <h2 class="card-title mb-0">@readyBatches.Count</h2>
+                        </div>
+                        <i class="fas fa-clock fa-2x opacity-50"></i>
+                    </div>
+                    <small class="opacity-75">@FormatCurrency(readyBatches.Sum(b => b.TotalAmount)) total</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 bg-success text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="card-subtitle mb-2 opacity-75">Completed</h6>
+                            <h2 class="card-title mb-0">@completedBatches.Count</h2>
+                        </div>
+                        <i class="fas fa-check-circle fa-2x opacity-50"></i>
+                    </div>
+                    <small class="opacity-75">@FormatCurrency(completedBatches.Sum(b => b.TotalAmount)) processed</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 bg-secondary text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="card-subtitle mb-2 opacity-75">Total Batches</h6>
+                            <h2 class="card-title mb-0">@Model.Count()</h2>
+                        </div>
+                        <i class="fas fa-layer-group fa-2x opacity-50"></i>
+                    </div>
+                    <small class="opacity-75">All time</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Batch List -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3">
+            <h5 class="mb-0"><i class="fas fa-list me-2"></i>All Batches</h5>
+        </div>
+        <div class="card-body p-0">
+            @if (!Model.Any())
+            {
+                <div class="text-center py-5">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No batch payments yet</h5>
+                    <p class="text-muted mb-3">Create a new batch to start grouping invoices for payment</p>
+                    <a asp-action="Create" class="btn btn-primary">
+                        <i class="fas fa-plus me-1"></i> Create First Batch
+                    </a>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Batch Reference</th>
+                                <th>Name</th>
+                                <th>Status</th>
+                                <th class="text-center">Invoices</th>
+                                <th class="text-end">Total Amount</th>
+                                <th>Scheduled Date</th>
+                                <th>Created</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var batch in Model)
+                            {
+                                var statusClass = batch.Status switch
+                                {
+                                    "Draft" => "bg-secondary",
+                                    "Ready" => "bg-warning text-dark",
+                                    "Processing" => "bg-info",
+                                    "Completed" => "bg-success",
+                                    "Cancelled" => "bg-danger",
+                                    _ => "bg-secondary"
+                                };
+                                <tr>
+                                    <td>
+                                        <a asp-action="Details" asp-route-id="@batch.Id" class="text-decoration-none fw-semibold">
+                                            @batch.BatchReference
+                                        </a>
+                                    </td>
+                                    <td>@(batch.BatchName ?? "-")</td>
+                                    <td>
+                                        <span class="badge @statusClass">@batch.Status</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-light text-dark">@batch.InvoiceCount</span>
+                                    </td>
+                                    <td class="text-end fw-semibold">@FormatCurrency(batch.TotalAmount)</td>
+                                    <td>
+                                        @if (batch.ScheduledPaymentDate.HasValue)
+                                        {
+                                            <span class="@(batch.ScheduledPaymentDate.Value < DateTime.Now && batch.Status != "Completed" ? "text-danger" : "")">
+                                                @batch.ScheduledPaymentDate.Value.ToString("dd MMM yyyy")
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">@batch.CreatedDate.ToString("dd MMM yyyy")</small>
+                                    </td>
+                                    <td class="text-end">
+                                        <div class="btn-group btn-group-sm">
+                                            <a asp-action="Details" asp-route-id="@batch.Id" class="btn btn-outline-primary" title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            @if (batch.Status == "Draft")
+                                            {
+                                                <a asp-action="Edit" asp-route-id="@batch.Id" class="btn btn-outline-secondary" title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <a asp-action="Delete" asp-route-id="@batch.Id" class="btn btn-outline-danger" title="Delete">
+                                                    <i class="fas fa-trash"></i>
+                                                </a>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
