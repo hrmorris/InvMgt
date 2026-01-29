@@ -317,12 +317,12 @@
                         toast.className = 'position-fixed bottom-0 end-0 p-3';
                         toast.style.zIndex = '11';
                         toast.innerHTML = `
-                                        <div class="toast show bg-success text-white" role="alert">
-                                            <div class="toast-body">
-                                                <i class="bi bi-check-circle me-2"></i>${result.message}
+                                            <div class="toast show bg-success text-white" role="alert">
+                                                <div class="toast-body">
+                                                    <i class="bi bi-check-circle me-2"></i>${result.message}
+                                                </div>
                                             </div>
-                                        </div>
-                                    `;
+                                        `;
                         document.body.appendChild(toast);
                         setTimeout(() => toast.remove(), 3000);
                     } else {
@@ -367,11 +367,26 @@
 
                     const response = await fetch('@Url.Action("AnalyzeDocument", "AiImport")', {
                         method: 'POST',
-                        body: formData
+                        body: formData,
+                        credentials: 'same-origin'
                     });
+
+                    // Check if we got redirected (session expired)
+                    if (response.redirected || response.url.includes('/Account/Login')) {
+                        showToast('Session expired. Please refresh the page and try again.', 'error');
+                        analyzeBtn.disabled = false;
+                        analyzeBtn.innerHTML = '<i class="bi bi-robot me-1"></i>Run AI Analysis';
+                        return;
+                    }
 
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    // Check content type before parsing JSON
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        throw new Error('Server returned non-JSON response. You may need to log in again.');
                     }
 
                     const result = await response.json();
@@ -420,12 +435,12 @@
                 toast.className = 'auto-toast position-fixed bottom-0 end-0 p-3';
                 toast.style.zIndex = '11';
                 toast.innerHTML = `
-                        <div class="toast show bg-${type} text-white" role="alert">
-                            <div class="toast-body">
-                                <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>${message}
+                            <div class="toast show bg-${type} text-white" role="alert">
+                                <div class="toast-body">
+                                    <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>${message}
+                                </div>
                             </div>
-                        </div>
-                    `;
+                        `;
                 document.body.appendChild(toast);
                 setTimeout(() => toast.remove(), 4000);
             }
