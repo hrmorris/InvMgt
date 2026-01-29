@@ -1232,7 +1232,7 @@ namespace InvoiceManagement.Controllers
                 }
 
                 TempData["Success"] = $"Invoice {invoice.InvoiceNumber} imported successfully!";
-                return RedirectToAction("Details", "Invoices", new { id = invoice.Id });
+                return RedirectToAction("Index", "Invoices");
             }
             catch (Exception ex)
             {
