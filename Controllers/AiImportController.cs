@@ -2188,6 +2188,153 @@ namespace InvoiceManagement.Controllers
             }
         }
 
+        // POST: AiImport/AnalyzeDocument - Run AI analysis on an existing document
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> AnalyzeDocument([FromForm] int id)
+        {
+            try
+            {
+                _logger.LogInformation($"AnalyzeDocument called for document id={id}");
+
+                var document = await _context.ImportedDocuments.FindAsync(id);
+                if (document == null)
+                {
+                    return Json(new { success = false, message = "Document not found." });
+                }
+
+                // Get the document content
+                var content = await _documentService.GetDocumentContentAsync(id);
+                if (content == null || content.Length == 0)
+                {
+                    return Json(new { success = false, message = "Document content not found." });
+                }
+
+                // Create a memory stream for the AI service
+                using var stream = new MemoryStream(content);
+
+                // Process with AI based on document type
+                if (document.DocumentType == "Invoice")
+                {
+                    var extractedInvoice = await _aiService.ExtractInvoiceFromFileAsync(stream, document.OriginalFileName ?? "document");
+
+                    if (extractedInvoice == null)
+                    {
+                        document.ProcessingStatus = "Error";
+                        document.ProcessingNotes = "AI could not extract invoice data from document.";
+                        await _context.SaveChangesAsync();
+                        return Json(new { success = false, message = "Could not extract invoice data from the document." });
+                    }
+
+                    // Build the extracted data JSON
+                    var extractedJson = System.Text.Json.JsonSerializer.Serialize(new
+                    {
+                        InvoiceNumber = extractedInvoice.InvoiceNumber ?? "",
+                        InvoiceDate = extractedInvoice.InvoiceDate,
+                        DueDate = extractedInvoice.DueDate,
+                        CustomerName = extractedInvoice.CustomerName ?? "",
+                        SubTotal = extractedInvoice.SubTotal,
+                        GSTAmount = extractedInvoice.GSTAmount,
+                        TotalAmount = extractedInvoice.TotalAmount,
+                        Notes = extractedInvoice.Notes ?? "",
+                        InvoiceType = extractedInvoice.InvoiceType ?? "Payable",
+                        ExtractedSupplierName = extractedInvoice.Supplier?.SupplierName ?? "",
+                        ExtractedCustomerName = extractedInvoice.CustomerName ?? "",
+                        Items = extractedInvoice.InvoiceItems?.Select(i => new
+                        {
+                            Description = i.Description ?? "",
+                            Quantity = i.Quantity,
+                            UnitPrice = i.UnitPrice
+                        }).ToList()
+                    });
+
+                    // Update document with extracted data
+                    document.ProcessingStatus = "Extracted";
+                    document.ProcessedDate = DateTime.Now;
+                    document.ProcessingNotes = extractedJson;
+                    document.ExtractedSupplierName = extractedInvoice.Supplier?.SupplierName;
+                    document.ExtractedCustomerName = extractedInvoice.CustomerName;
+
+                    // Rename file with invoice number if available
+                    string? newFileName = null;
+                    if (!string.IsNullOrWhiteSpace(extractedInvoice.InvoiceNumber))
+                    {
+                        var extension = Path.GetExtension(document.OriginalFileName);
+                        var cleanInvoiceNumber = string.Join("", extractedInvoice.InvoiceNumber.Where(c => !Path.GetInvalidFileNameChars().Contains(c)));
+                        newFileName = $"InvNo_{cleanInvoiceNumber}{extension}";
+                        document.OriginalFileName = newFileName;
+                    }
+
+                    await _context.SaveChangesAsync();
+
+                    _logger.LogInformation($"Document {id} analyzed successfully. Invoice: {extractedInvoice.InvoiceNumber}");
+
+                    return Json(new
+                    {
+                        success = true,
+                        message = "Document analyzed successfully!",
+                        data = new
+                        {
+                            invoiceNumber = extractedInvoice.InvoiceNumber ?? "",
+                            invoiceDate = extractedInvoice.InvoiceDate.ToString("yyyy-MM-dd"),
+                            dueDate = extractedInvoice.DueDate.ToString("yyyy-MM-dd"),
+                            supplierName = extractedInvoice.Supplier?.SupplierName ?? "",
+                            customerName = extractedInvoice.CustomerName ?? "",
+                            subTotal = extractedInvoice.SubTotal,
+                            gstAmount = extractedInvoice.GSTAmount,
+                            totalAmount = extractedInvoice.TotalAmount,
+                            invoiceType = extractedInvoice.InvoiceType ?? "Payable",
+                            newFileName = newFileName
+                        }
+                    });
+                }
+                else if (document.DocumentType == "Payment")
+                {
+                    var extractedPayment = await _aiService.ExtractPaymentFromFileAsync(stream, document.OriginalFileName ?? "document");
+
+                    if (extractedPayment == null)
+                    {
+                        document.ProcessingStatus = "Error";
+                        document.ProcessingNotes = "AI could not extract payment data from document.";
+                        await _context.SaveChangesAsync();
+                        return Json(new { success = false, message = "Could not extract payment data from the document." });
+                    }
+
+                    document.ProcessingStatus = "Extracted";
+                    document.ProcessedDate = DateTime.Now;
+                    document.ExtractedSupplierName = extractedPayment.TransferTo;
+                    document.ExtractedAccountNumber = extractedPayment.BankAccountNumber;
+                    document.ExtractedBankName = extractedPayment.BankName;
+
+                    await _context.SaveChangesAsync();
+
+                    return Json(new
+                    {
+                        success = true,
+                        message = "Payment document analyzed successfully!",
+                        data = new
+                        {
+                            paymentDate = extractedPayment.PaymentDate.ToString("yyyy-MM-dd"),
+                            amount = extractedPayment.Amount,
+                            transferTo = extractedPayment.TransferTo ?? "",
+                            accountNumber = extractedPayment.BankAccountNumber ?? "",
+                            bankName = extractedPayment.BankName ?? "",
+                            referenceNumber = extractedPayment.ReferenceNumber ?? ""
+                        }
+                    });
+                }
+                else
+                {
+                    return Json(new { success = false, message = $"Unsupported document type: {document.DocumentType}" });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error analyzing document {DocumentId}", id);
+                return Json(new { success = false, message = $"Error analyzing document: {ex.Message}" });
+            }
+        }
+
         // POST: AiImport/UpdateDocumentSupplier
         [HttpPost]
         [ValidateAntiForgeryToken]
