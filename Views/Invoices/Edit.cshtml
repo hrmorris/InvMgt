@@ -148,7 +148,7 @@
                 <div class="col-md-6">
                     <h5 class="mb-3" id="partyInfoHeader">@(isSupplierInvoice ? "Supplier" : "Customer") Information
                     </h5>
-                    <small class="text-muted d-block mb-3" id="partyInfoHint">@(isSupplierInvoice ? "Supplier details                      (who is billing you)" : "Customer details (who you are billing)")</small>
+                    <small class="text-muted d-block mb-3" id="partyInfoHint">@(isSupplierInvoice ? "Supplier details                        (who is billing you)" : "Customer details (who you are billing)")</small>
 
                     <!-- Supplier Selection (shown when Supplier invoice type) -->
                     <div class="mb-3" id="supplierSelectSection" style="@(isSupplierInvoice ? "" : "display:none")">
@@ -456,69 +456,159 @@
 
         @if (availableDocuments.Any())
         {
+            // Parse ProcessingNotes JSON to extract invoice info for sorting
+            var docsWithInfo = availableDocuments.Select(doc =>
+            {
+                string supplierName = doc.ExtractedSupplierName ?? "";
+                string invoiceNumber = "";
+                DateTime? invoiceDate = null;
+                decimal totalAmount = 0;
+
+                if (!string.IsNullOrEmpty(doc.ProcessingNotes))
+                {
+                    try
+                    {
+                        var json = System.Text.Json.JsonDocument.Parse(doc.ProcessingNotes);
+                        if (json.RootElement.TryGetProperty("InvoiceNumber", out var invNum))
+                            invoiceNumber = invNum.GetString() ?? "";
+                        if (json.RootElement.TryGetProperty("InvoiceDate", out var invDate) && invDate.ValueKind !=
+                        System.Text.Json.JsonValueKind.Null)
+                            invoiceDate = invDate.GetDateTime();
+                        if (json.RootElement.TryGetProperty("TotalAmount", out var amt))
+                            totalAmount = amt.GetDecimal();
+                        if (string.IsNullOrEmpty(supplierName) && json.RootElement.TryGetProperty("ExtractedSupplierName", out var
+                        supName))
+                            supplierName = supName.GetString() ?? "";
+                    }
+                    catch { }
+                }
+
+                return new
+                {
+                    Document = doc,
+                    SupplierName = supplierName,
+                    InvoiceNumber = invoiceNumber,
+                    InvoiceDate = invoiceDate,
+                    TotalAmount = totalAmount,
+                    Year = invoiceDate?.Year ?? doc.UploadDate.Year,
+                    Month = invoiceDate?.Month ?? doc.UploadDate.Month
+                };
+            })
+            .OrderByDescending(x => x.Year)
+            .ThenByDescending(x => x.Month)
+            .ThenBy(x => x.SupplierName)
+            .ThenByDescending(x => x.InvoiceDate)
+            .ThenBy(x => x.InvoiceNumber)
+            .ThenByDescending(x => x.TotalAmount)
+            .ToList();
+
+            var groupedDocs = docsWithInfo.GroupBy(x => new { x.Year, x.Month });
+
             <h6 class="mb-3"><i class="bi bi-folder text-warning"></i> Available Unlinked Documents
                 (@availableDocuments.Count)</h6>
-            <p class="text-muted small">Select documents to attach to this invoice:</p>
-            <div class="table-responsive">
-                <table class="table table-bordered table-hover table-sm">
-                    <thead class="table-light">
-                        <tr>
-                            <th style="width: 40px;"></th>
-                            <th>File Name</th>
-                            <th>Size</th>
-                            <th>Upload Date</th>
-                            <th>Extracted Info</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var doc in availableDocuments.OrderByDescending(d => d.UploadDate))
-                        {
-                            <tr>
-                                <td class="text-center">
-                                    <i
-                                        class="bi @(doc.ContentType?.Contains("pdf") == true ? "bi-file-pdf text-danger fs-5" : doc.ContentType?.Contains("image") == true ? "bi-file-image text-primary fs-5" : "bi-file-earmark fs-5")"></i>
-                                </td>
-                                <td>
-                                    <strong>@doc.OriginalFileName</strong>
-                                    @if (!string.IsNullOrEmpty(doc.ExtractedSupplierName))
-                                    {
-                                        <br />
+            <p class="text-muted small">Documents organized by year, month, supplier, and invoice details:</p>
 
-                                        <small class="text-muted">Supplier: @doc.ExtractedSupplierName</small>
-                                    }
-                                </td>
-                                <td>@(doc.FileSize > 0 ? $"{doc.FileSize / 1024.0:N1} KB" : "-")</td>
-                                <td>@doc.UploadDate.ToString("dd/MM/yyyy")</td>
-                                <td>
-                                    @if (!string.IsNullOrEmpty(doc.ProcessingNotes))
+            foreach (var monthGroup in groupedDocs)
+            {
+                var monthName = new DateTime(monthGroup.Key.Year, monthGroup.Key.Month, 1).ToString("MMMM yyyy");
+                <div class="card mb-3 border-secondary">
+                    <div class="card-header bg-light py-2">
+                        <strong><i class="bi bi-calendar3 me-2"></i>@monthName</strong>
+                        <span class="badge bg-secondary float-end">@monthGroup.Count() document(s)</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-sm mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 30px;"></th>
+                                        <th>Supplier</th>
+                                        <th>Invoice #</th>
+                                        <th>Date</th>
+                                        <th class="text-end">Amount</th>
+                                        <th>File</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in monthGroup)
                                     {
-                                        <span class="badge bg-success">AI Extracted</span>
+                                        var doc = item.Document;
+                                        <tr>
+                                            <td class="text-center">
+                                                <i
+                                                    class="bi @(doc.ContentType?.Contains("pdf") == true ? "bi-file-pdf text-danger" : doc.ContentType?.Contains("image") == true ? "bi-file-image text-primary" : "bi-file-earmark")"></i>
+                                            </td>
+                                            <td>
+                                                @if (!string.IsNullOrEmpty(item.SupplierName))
+                                                {
+                                                    <strong>@item.SupplierName</strong>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted fst-italic">Unknown</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (!string.IsNullOrEmpty(item.InvoiceNumber))
+                                                {
+                                                    <code>@item.InvoiceNumber</code>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (item.InvoiceDate.HasValue)
+                                                {
+                                                    @item.InvoiceDate.Value.ToString("dd/MM/yyyy")
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </td>
+                                            <td class="text-end">
+                                                @if (item.TotalAmount > 0)
+                                                {
+                                                    <strong>@FormatCurrency(item.TotalAmount)</strong>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <small class="text-muted" title="@doc.OriginalFileName">
+                                                    @(doc.OriginalFileName.Length > 20 ? doc.OriginalFileName.Substring(0, 17) +
+                                                                                            "..." : doc.OriginalFileName)
+                                                </small>
+                                            </td>
+                                            <td>
+                                                <form asp-controller="Invoices" asp-action="LinkDocument" method="post"
+                                                    class="d-inline">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="documentId" value="@doc.Id" />
+                                                    <input type="hidden" name="invoiceId" value="@Model.Id" />
+                                                    <button type="submit" class="btn btn-sm btn-success"
+                                                        title="Link to this invoice">
+                                                        <i class="bi bi-link-45deg"></i>
+                                                    </button>
+                                                </form>
+                                                <a asp-controller="AiImport" asp-action="ViewDocument" asp-route-id="@doc.Id"
+                                                    class="btn btn-sm btn-outline-info" title="Preview" target="_blank">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
                                     }
-                                    else
-                                    {
-                                        <span class="badge bg-secondary">Pending</span>
-                                    }
-                                </td>
-                                <td>
-                                    <form asp-controller="Invoices" asp-action="LinkDocument" method="post" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="documentId" value="@doc.Id" />
-                                        <input type="hidden" name="invoiceId" value="@Model.Id" />
-                                        <button type="submit" class="btn btn-sm btn-success" title="Link to this invoice">
-                                            <i class="bi bi-link-45deg me-1"></i>Link
-                                        </button>
-                                    </form>
-                                    <a asp-controller="AiImport" asp-action="ViewDocument" asp-route-id="@doc.Id"
-                                        class="btn btn-sm btn-outline-info" title="Preview" target="_blank">
-                                        <i class="bi bi-eye"></i>
-                                    </a>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            }
         }
         else if (!linkedDocuments.Any())
         {
@@ -743,32 +833,32 @@ else if (Model.BalanceAmount <= 0)
             const itemsContainer = document.getElementById('invoiceItems');
             console.log('Adding item with index:', itemCounter);
             const newItem = `
-                                                                                                <div class="row mb-3 invoice-item">
-                                                                                                    <input type="hidden" name="items[${itemCounter}].Id" value="0" />
-                                                                                                    <input type="hidden" name="items[${itemCounter}].InvoiceId" value="@Model.Id" />
-                                                                                                    <div class="col-md-5">
-                                                                                                        <label class="form-label">Description</label>
-                                                                                                        <input type="text" name="items[${itemCounter}].Description" class="form-control item-description" required />
+                                                                                                    <div class="row mb-3 invoice-item">
+                                                                                                        <input type="hidden" name="items[${itemCounter}].Id" value="0" />
+                                                                                                        <input type="hidden" name="items[${itemCounter}].InvoiceId" value="@Model.Id" />
+                                                                                                        <div class="col-md-5">
+                                                                                                            <label class="form-label">Description</label>
+                                                                                                            <input type="text" name="items[${itemCounter}].Description" class="form-control item-description" required />
+                                                                                                        </div>
+                                                                                                        <div class="col-md-2">
+                                                                                                            <label class="form-label">Quantity</label>
+                                                                                                            <input type="number" name="items[${itemCounter}].Quantity" class="form-control item-quantity" min="1" value="1" onchange="calculateLineTotal(this)" required />
+                                                                                                        </div>
+                                                                                                        <div class="col-md-2">
+                                                                                                            <label class="form-label">Unit Price</label>
+                                                                                                            <input type="number" name="items[${itemCounter}].UnitPrice" class="form-control item-price" step="0.0001" min="0" value="0" onchange="calculateLineTotal(this)" required />
+                                                                                                        </div>
+                                                                                                        <div class="col-md-2">
+                                                                                                            <label class="form-label">Total</label>
+                                                                                                            <input type="text" class="form-control line-total" value="0.00" readonly />
+                                                                                                        </div>
+                                                                                                        <div class="col-md-1 d-flex align-items-end">
+                                                                                                            <button type="button" class="btn btn-danger btn-sm w-100" onclick="removeItem(this)">
+                                                                                                                <i class="bi bi-trash"></i>
+                                                                                                            </button>
+                                                                                                        </div>
                                                                                                     </div>
-                                                                                                    <div class="col-md-2">
-                                                                                                        <label class="form-label">Quantity</label>
-                                                                                                        <input type="number" name="items[${itemCounter}].Quantity" class="form-control item-quantity" min="1" value="1" onchange="calculateLineTotal(this)" required />
-                                                                                                    </div>
-                                                                                                    <div class="col-md-2">
-                                                                                                        <label class="form-label">Unit Price</label>
-                                                                                                        <input type="number" name="items[${itemCounter}].UnitPrice" class="form-control item-price" step="0.0001" min="0" value="0" onchange="calculateLineTotal(this)" required />
-                                                                                                    </div>
-                                                                                                    <div class="col-md-2">
-                                                                                                        <label class="form-label">Total</label>
-                                                                                                        <input type="text" class="form-control line-total" value="0.00" readonly />
-                                                                                                    </div>
-                                                                                                    <div class="col-md-1 d-flex align-items-end">
-                                                                                                        <button type="button" class="btn btn-danger btn-sm w-100" onclick="removeItem(this)">
-                                                                                                            <i class="bi bi-trash"></i>
-                                                                                                        </button>
-                                                                                                    </div>
-                                                                                                </div>
-                                                                                            `;
+                                                                                                `;
             itemsContainer.insertAdjacentHTML('beforeend', newItem);
             itemCounter++;
             console.log('Item added, new counter:', itemCounter);
@@ -892,14 +982,14 @@ else if (Model.BalanceAmount <= 0)
                 amountInput.value = suggested.toFixed(2);
 
                 detailsSpan.innerHTML = `
-                                                                                                    <strong>Payment Number:</strong> ${number}<br />
-                                                                                                    <strong>Date:</strong> ${date}<br />
-                                                                                                    <strong>Method:</strong> ${method}<br />
-                                                                                                    <strong>Total Payment:</strong> $${totalAmount.toFixed(2)}<br />
-                                                                                                    <strong>Unallocated:</strong> $${unallocated.toFixed(2)}<br />
-                                                                                                    <strong>Invoice Balance:</strong> $${invoiceBalance.toFixed(2)}<br />
-                                                                                                    <strong>Suggested Amount:</strong> $${suggested.toFixed(2)}
-                                                                                                `;
+                                                                                                        <strong>Payment Number:</strong> ${number}<br />
+                                                                                                        <strong>Date:</strong> ${date}<br />
+                                                                                                        <strong>Method:</strong> ${method}<br />
+                                                                                                        <strong>Total Payment:</strong> $${totalAmount.toFixed(2)}<br />
+                                                                                                        <strong>Unallocated:</strong> $${unallocated.toFixed(2)}<br />
+                                                                                                        <strong>Invoice Balance:</strong> $${invoiceBalance.toFixed(2)}<br />
+                                                                                                        <strong>Suggested Amount:</strong> $${suggested.toFixed(2)}
+                                                                                                    `;
                 infoDiv.style.display = 'block';
             } else {
                 infoDiv.style.display = 'none';
