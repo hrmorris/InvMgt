@@ -74,7 +74,7 @@
     </div>
 }
 
-<form asp-action="Edit" method="post">
+<form asp-action="Edit" method="post" novalidate>
     <input type="hidden" asp-for="Id" />
     <input type="hidden" asp-for="CreatedDate" />
     <input type="hidden" asp-for="PaidAmount" />
@@ -325,7 +325,7 @@
                                 <div class="input-group input-group-sm">
                                     <span class="input-group-text">GST Rate</span>
                                     <input type="number" class="form-control" id="gstRateInput" name="GSTRate"
-                                        value="@Model.GSTRate" min="0" max="100" step="0.1"
+                                        value="@Model.GSTRate" min="0" max="100" step="any"
                                         onchange="calculateGrandTotal()">
                                     <span class="input-group-text">%</span>
                                 </div>
