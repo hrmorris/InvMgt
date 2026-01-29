@@ -1,11 +1,11 @@
 steps:
   # Build the container image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/$PROJECT_ID/invoice-management:$COMMIT_SHA', '.']
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/invoice-management:${_TAG}', '.']
 
   # Push the container image to Container Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/invoice-management:$COMMIT_SHA']
+    args: ['push', 'gcr.io/$PROJECT_ID/invoice-management:${_TAG}']
 
   # Deploy container image to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -15,7 +15,7 @@ steps:
       - 'deploy'
       - 'invoice-management'
       - '--image'
-      - 'gcr.io/$PROJECT_ID/invoice-management:$COMMIT_SHA'
+      - 'gcr.io/$PROJECT_ID/invoice-management:${_TAG}'
       - '--region'
       - 'us-central1'
       - '--platform'
@@ -35,12 +35,13 @@ steps:
       - 'ASPNETCORE_ENVIRONMENT=Production,OpenAI__ApiKey=${_OPENAI_API_KEY}'
 
 # Substitution variables - set these in Cloud Build trigger or command line
-# Example: gcloud builds submit --substitutions=_OPENAI_API_KEY=your-api-key
+# Example: gcloud builds submit --substitutions=_OPENAI_API_KEY=your-api-key,_TAG=latest
 substitutions:
   _OPENAI_API_KEY: ''  # Set via Cloud Build trigger or --substitutions flag
+  _TAG: 'latest'       # Default to 'latest' if not specified
 
 images:
-  - 'gcr.io/$PROJECT_ID/invoice-management:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/invoice-management:${_TAG}'
 
 options:
   logging: CLOUD_LOGGING_ONLY
