@@ -5,7 +5,7 @@
     var availablePayments = ViewBag.AvailablePayments as List<Payment> ?? new List<Payment>();
     var suppliers = ViewBag.Suppliers as List<Supplier> ?? new List<Supplier>();
     var customers = ViewBag.Customers as List<Customer> ?? new List<Customer>();
-    var isSupplierInvoice = Model.InvoiceType == "Supplier" || Model.SupplierId.HasValue;
+    var isSupplierInvoice = Model.InvoiceType == "Supplier" || Model.InvoiceType == "Payable" || Model.SupplierId.HasValue;
 }
 @functions {
     public string FormatCurrency(decimal amount)
@@ -117,8 +117,11 @@
                     <div class="mb-3">
                         <label asp-for="InvoiceType" class="form-label">Invoice Type</label>
                         <select asp-for="InvoiceType" class="form-select" id="invoiceTypeSelect">
-                            <option value="Supplier">Supplier Invoice (Payable - from supplier to us)</option>
-                            <option value="Customer">Customer Invoice (Receivable - from us to customer)</option>
+                            <option value="Supplier" @(Model.InvoiceType == "Supplier" || Model.InvoiceType == "Payable"
+                                                                                     ? "selected" : "")>Supplier Invoice (Payable - from supplier to us)</option>
+                            <option value="Customer" @(Model.InvoiceType == "Customer" || Model.InvoiceType ==
+                                                                                     "Receivable" ? "selected" : "")>Customer Invoice (Receivable - from us to customer)
+                            </option>
                         </select>
                         <small class="form-text text-muted">Select Supplier if this invoice is FROM a supplier TO your
                             organization</small>
@@ -534,32 +537,32 @@ else if (Model.BalanceAmount <= 0)
             const itemsContainer = document.getElementById('invoiceItems');
             console.log('Adding item with index:', itemCounter);
             const newItem = `
-                                                                                    <div class="row mb-3 invoice-item">
-                                                                                        <input type="hidden" name="items[${itemCounter}].Id" value="0" />
-                                                                                        <input type="hidden" name="items[${itemCounter}].InvoiceId" value="@Model.Id" />
-                                                                                        <div class="col-md-5">
-                                                                                            <label class="form-label">Description</label>
-                                                                                            <input type="text" name="items[${itemCounter}].Description" class="form-control item-description" required />
+                                                                                        <div class="row mb-3 invoice-item">
+                                                                                            <input type="hidden" name="items[${itemCounter}].Id" value="0" />
+                                                                                            <input type="hidden" name="items[${itemCounter}].InvoiceId" value="@Model.Id" />
+                                                                                            <div class="col-md-5">
+                                                                                                <label class="form-label">Description</label>
+                                                                                                <input type="text" name="items[${itemCounter}].Description" class="form-control item-description" required />
+                                                                                            </div>
+                                                                                            <div class="col-md-2">
+                                                                                                <label class="form-label">Quantity</label>
+                                                                                                <input type="number" name="items[${itemCounter}].Quantity" class="form-control item-quantity" min="1" value="1" onchange="calculateLineTotal(this)" required />
+                                                                                            </div>
+                                                                                            <div class="col-md-2">
+                                                                                                <label class="form-label">Unit Price</label>
+                                                                                                <input type="number" name="items[${itemCounter}].UnitPrice" class="form-control item-price" step="0.0001" min="0" value="0" onchange="calculateLineTotal(this)" required />
+                                                                                            </div>
+                                                                                            <div class="col-md-2">
+                                                                                                <label class="form-label">Total</label>
+                                                                                                <input type="text" class="form-control line-total" value="0.00" readonly />
+                                                                                            </div>
+                                                                                            <div class="col-md-1 d-flex align-items-end">
+                                                                                                <button type="button" class="btn btn-danger btn-sm w-100" onclick="removeItem(this)">
+                                                                                                    <i class="bi bi-trash"></i>
+                                                                                                </button>
+                                                                                            </div>
                                                                                         </div>
-                                                                                        <div class="col-md-2">
-                                                                                            <label class="form-label">Quantity</label>
-                                                                                            <input type="number" name="items[${itemCounter}].Quantity" class="form-control item-quantity" min="1" value="1" onchange="calculateLineTotal(this)" required />
-                                                                                        </div>
-                                                                                        <div class="col-md-2">
-                                                                                            <label class="form-label">Unit Price</label>
-                                                                                            <input type="number" name="items[${itemCounter}].UnitPrice" class="form-control item-price" step="0.0001" min="0" value="0" onchange="calculateLineTotal(this)" required />
-                                                                                        </div>
-                                                                                        <div class="col-md-2">
-                                                                                            <label class="form-label">Total</label>
-                                                                                            <input type="text" class="form-control line-total" value="0.00" readonly />
-                                                                                        </div>
-                                                                                        <div class="col-md-1 d-flex align-items-end">
-                                                                                            <button type="button" class="btn btn-danger btn-sm w-100" onclick="removeItem(this)">
-                                                                                                <i class="bi bi-trash"></i>
-                                                                                            </button>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                `;
+                                                                                    `;
             itemsContainer.insertAdjacentHTML('beforeend', newItem);
             itemCounter++;
             console.log('Item added, new counter:', itemCounter);
@@ -683,14 +686,14 @@ else if (Model.BalanceAmount <= 0)
                 amountInput.value = suggested.toFixed(2);
 
                 detailsSpan.innerHTML = `
-                                                                                        <strong>Payment Number:</strong> ${number}<br />
-                                                                                        <strong>Date:</strong> ${date}<br />
-                                                                                        <strong>Method:</strong> ${method}<br />
-                                                                                        <strong>Total Payment:</strong> $${totalAmount.toFixed(2)}<br />
-                                                                                        <strong>Unallocated:</strong> $${unallocated.toFixed(2)}<br />
-                                                                                        <strong>Invoice Balance:</strong> $${invoiceBalance.toFixed(2)}<br />
-                                                                                        <strong>Suggested Amount:</strong> $${suggested.toFixed(2)}
-                                                                                    `;
+                                                                                            <strong>Payment Number:</strong> ${number}<br />
+                                                                                            <strong>Date:</strong> ${date}<br />
+                                                                                            <strong>Method:</strong> ${method}<br />
+                                                                                            <strong>Total Payment:</strong> $${totalAmount.toFixed(2)}<br />
+                                                                                            <strong>Unallocated:</strong> $${unallocated.toFixed(2)}<br />
+                                                                                            <strong>Invoice Balance:</strong> $${invoiceBalance.toFixed(2)}<br />
+                                                                                            <strong>Suggested Amount:</strong> $${suggested.toFixed(2)}
+                                                                                        `;
                 infoDiv.style.display = 'block';
             } else {
                 infoDiv.style.display = 'none';

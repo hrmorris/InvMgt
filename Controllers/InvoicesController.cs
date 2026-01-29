@@ -222,21 +222,40 @@ namespace InvoiceManagement.Controllers
             ModelState.Remove("Supplier"); // Navigation property, not posted
             ModelState.Remove("Customer"); // Navigation property, not posted
 
+            // Normalize InvoiceType - treat "Payable" as "Supplier"
+            if (invoice.InvoiceType == "Payable")
+            {
+                invoice.InvoiceType = "Supplier";
+            }
+            else if (invoice.InvoiceType == "Receivable")
+            {
+                invoice.InvoiceType = "Customer";
+            }
+
             // For Supplier invoices, CustomerName is not required - use supplier info instead
-            if (invoice.InvoiceType == "Supplier" && invoice.SupplierId.HasValue)
+            if (invoice.InvoiceType == "Supplier")
             {
                 ModelState.Remove("CustomerName");
-                // Get supplier name to use as CustomerName if empty
-                if (string.IsNullOrWhiteSpace(invoice.CustomerName))
+
+                if (invoice.SupplierId.HasValue)
                 {
-                    var supplier = await _context.Suppliers.FindAsync(invoice.SupplierId.Value);
-                    if (supplier != null)
+                    // Get supplier name to use as CustomerName if empty
+                    if (string.IsNullOrWhiteSpace(invoice.CustomerName))
                     {
-                        invoice.CustomerName = supplier.SupplierName;
-                        invoice.CustomerAddress = supplier.Address;
-                        invoice.CustomerEmail = supplier.Email;
-                        invoice.CustomerPhone = supplier.Phone;
+                        var supplier = await _context.Suppliers.FindAsync(invoice.SupplierId.Value);
+                        if (supplier != null)
+                        {
+                            invoice.CustomerName = supplier.SupplierName;
+                            invoice.CustomerAddress = supplier.Address;
+                            invoice.CustomerEmail = supplier.Email;
+                            invoice.CustomerPhone = supplier.Phone;
+                        }
                     }
+                }
+                else if (string.IsNullOrWhiteSpace(invoice.CustomerName))
+                {
+                    // No supplier selected, use a default name
+                    invoice.CustomerName = "Unknown Supplier";
                 }
             }
 
