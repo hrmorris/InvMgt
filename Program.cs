@@ -71,26 +71,13 @@ if (databaseProvider == "PostgreSQL")
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         try
         {
-            Console.WriteLine("Ensuring database schema exists...");
-            // Check if tables exist first
-            var tableExists = false;
-            try
-            {
-                db.Database.ExecuteSqlRaw(@"SELECT 1 FROM ""SystemSettings"" LIMIT 1");
-                tableExists = true;
-                Console.WriteLine("Database tables already exist.");
-            }
-            catch
-            {
-                tableExists = false;
-            }
+            Console.WriteLine("Checking and applying database migrations...");
 
-            if (!tableExists)
-            {
-                Console.WriteLine("Running database migrations...");
-                db.Database.Migrate();
-                Console.WriteLine("Database migrations applied successfully.");
-            }
+            // Always run migrations - EF Core handles this idempotently
+            // This ensures new tables (like BatchPayments) are created on existing databases
+            Console.WriteLine("Running database migrations...");
+            db.Database.Migrate();
+            Console.WriteLine("Database migrations applied successfully.");
         }
         catch (Exception ex)
         {
@@ -122,7 +109,9 @@ if (databaseProvider == "PostgreSQL")
                     @"CREATE TABLE IF NOT EXISTS ""PurchaseOrderItems"" (""Id"" SERIAL PRIMARY KEY, ""PurchaseOrderId"" INT NOT NULL REFERENCES ""PurchaseOrders""(""Id"") ON DELETE CASCADE, ""ItemDescription"" VARCHAR(200) NOT NULL, ""ItemCode"" VARCHAR(100), ""QuantityOrdered"" INT NOT NULL, ""Unit"" VARCHAR(50) NOT NULL, ""UnitPrice"" DECIMAL(18,2) NOT NULL, ""QuantityReceived"" INT NOT NULL DEFAULT 0, ""ReceivedDate"" TIMESTAMP);",
                     @"CREATE TABLE IF NOT EXISTS ""RolePermissions"" (""Id"" SERIAL PRIMARY KEY, ""RoleId"" INT NOT NULL REFERENCES ""Roles""(""Id"") ON DELETE CASCADE, ""PermissionId"" INT NOT NULL REFERENCES ""Permissions""(""Id"") ON DELETE CASCADE, ""AssignedDate"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);",
                     @"CREATE TABLE IF NOT EXISTS ""UserRoles"" (""Id"" SERIAL PRIMARY KEY, ""UserId"" INT NOT NULL REFERENCES ""Users""(""Id"") ON DELETE CASCADE, ""RoleId"" INT NOT NULL REFERENCES ""Roles""(""Id"") ON DELETE CASCADE, ""AssignedDate"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, ""AssignedBy"" VARCHAR(100));",
-                    @"CREATE TABLE IF NOT EXISTS ""AuditLogs"" (""Id"" SERIAL PRIMARY KEY, ""UserId"" INT REFERENCES ""Users""(""Id"") ON DELETE SET NULL, ""Username"" VARCHAR(100), ""Action"" VARCHAR(100) NOT NULL, ""Entity"" VARCHAR(100) NOT NULL, ""EntityId"" INT, ""Details"" VARCHAR(1000), ""ActionDate"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, ""IpAddress"" VARCHAR(50));"
+                    @"CREATE TABLE IF NOT EXISTS ""AuditLogs"" (""Id"" SERIAL PRIMARY KEY, ""UserId"" INT REFERENCES ""Users""(""Id"") ON DELETE SET NULL, ""Username"" VARCHAR(100), ""Action"" VARCHAR(100) NOT NULL, ""Entity"" VARCHAR(100) NOT NULL, ""EntityId"" INT, ""Details"" VARCHAR(1000), ""ActionDate"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, ""IpAddress"" VARCHAR(50));",
+                    @"CREATE TABLE IF NOT EXISTS ""BatchPayments"" (""Id"" SERIAL PRIMARY KEY, ""BatchReference"" VARCHAR(50) NOT NULL UNIQUE, ""Description"" VARCHAR(500), ""Status"" VARCHAR(50) NOT NULL DEFAULT 'Draft', ""TotalAmount"" DECIMAL(18,2) NOT NULL DEFAULT 0, ""PaymentMethod"" VARCHAR(50), ""ScheduledPaymentDate"" TIMESTAMP, ""ProcessedDate"" TIMESTAMP, ""ProcessedBy"" VARCHAR(200), ""Notes"" VARCHAR(1000), ""CreatedDate"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, ""CreatedBy"" VARCHAR(200), ""ModifiedDate"" TIMESTAMP);",
+                    @"CREATE TABLE IF NOT EXISTS ""BatchPaymentItems"" (""Id"" SERIAL PRIMARY KEY, ""BatchPaymentId"" INT NOT NULL REFERENCES ""BatchPayments""(""Id"") ON DELETE CASCADE, ""InvoiceId"" INT NOT NULL REFERENCES ""Invoices""(""Id"") ON DELETE RESTRICT, ""AmountToPay"" DECIMAL(18,2) NOT NULL, ""Notes"" VARCHAR(500), ""AddedDate"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);"
                 };
 
                 foreach (var stmt in schemaStatements)
