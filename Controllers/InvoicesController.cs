@@ -239,17 +239,14 @@ namespace InvoiceManagement.Controllers
 
                 if (invoice.SupplierId.HasValue)
                 {
-                    // Get supplier name to use as CustomerName if empty
-                    if (string.IsNullOrWhiteSpace(invoice.CustomerName))
+                    // ALWAYS get supplier name to use as CustomerName when supplier is selected
+                    var supplier = await _context.Suppliers.FindAsync(invoice.SupplierId.Value);
+                    if (supplier != null)
                     {
-                        var supplier = await _context.Suppliers.FindAsync(invoice.SupplierId.Value);
-                        if (supplier != null)
-                        {
-                            invoice.CustomerName = supplier.SupplierName;
-                            invoice.CustomerAddress = supplier.Address;
-                            invoice.CustomerEmail = supplier.Email;
-                            invoice.CustomerPhone = supplier.Phone;
-                        }
+                        invoice.CustomerName = supplier.SupplierName;
+                        invoice.CustomerAddress = supplier.Address;
+                        invoice.CustomerEmail = supplier.Email;
+                        invoice.CustomerPhone = supplier.Phone;
                     }
                 }
                 else if (string.IsNullOrWhiteSpace(invoice.CustomerName))
@@ -259,8 +256,8 @@ namespace InvoiceManagement.Controllers
                 }
             }
 
-            // For Customer invoices, populate from customer if selected
-            if (invoice.InvoiceType == "Customer" && invoice.CustomerId.HasValue && string.IsNullOrWhiteSpace(invoice.CustomerName))
+            // For Customer invoices, always populate from customer if selected
+            if (invoice.InvoiceType == "Customer" && invoice.CustomerId.HasValue)
             {
                 var customer = await _context.Customers.FindAsync(invoice.CustomerId.Value);
                 if (customer != null)
