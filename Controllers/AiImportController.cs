@@ -1233,7 +1233,7 @@ namespace InvoiceManagement.Controllers
 
                 // Check if there are more documents pending review
                 var pendingDocuments = await _context.ImportedDocuments
-                    .Where(d => d.Status == "Extracted" && d.DocumentType == "Invoice" && d.InvoiceId == null)
+                    .Where(d => d.ProcessingStatus == "Extracted" && d.DocumentType == "Invoice" && d.InvoiceId == null)
                     .CountAsync();
 
                 if (pendingDocuments > 0)
@@ -1258,14 +1258,14 @@ namespace InvoiceManagement.Controllers
         public async Task<IActionResult> SavedWithPending()
         {
             var pendingDocuments = await _context.ImportedDocuments
-                .Where(d => d.Status == "Extracted" && d.DocumentType == "Invoice" && d.InvoiceId == null)
-                .OrderByDescending(d => d.UploadedDate)
+                .Where(d => d.ProcessingStatus == "Extracted" && d.DocumentType == "Invoice" && d.InvoiceId == null)
+                .OrderByDescending(d => d.UploadDate)
                 .Take(5)
-                .Select(d => new { d.Id, d.OriginalFileName, d.UploadedDate })
+                .Select(d => new { d.Id, d.OriginalFileName, d.UploadDate })
                 .ToListAsync();
 
             ViewBag.PendingCount = await _context.ImportedDocuments
-                .CountAsync(d => d.Status == "Extracted" && d.DocumentType == "Invoice" && d.InvoiceId == null);
+                .CountAsync(d => d.ProcessingStatus == "Extracted" && d.DocumentType == "Invoice" && d.InvoiceId == null);
             ViewBag.PendingDocuments = pendingDocuments;
 
             return View();

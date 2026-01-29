@@ -58,7 +58,7 @@
                                                     @doc.OriginalFileName
                                                 </td>
                                                 <td class="text-muted">
-                                                    @(((DateTime)doc.UploadedDate).ToString("dd MMM yyyy HH:mm"))
+                                                    @(((DateTime)doc.UploadDate).ToString("dd MMM yyyy HH:mm"))
                                                 </td>
                                                 <td>
                                                     <a href="@Url.Action("EditInvoice", "AiImport", new { documentId = doc.Id })"
