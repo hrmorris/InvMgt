@@ -56,6 +56,107 @@ namespace InvoiceManagement.Controllers
             return View();
         }
 
+        // GET: AiImport/EditInvoice - Edit an imported document before saving
+        public async Task<IActionResult> EditInvoice(int documentId)
+        {
+            var document = await _context.ImportedDocuments
+                .Include(d => d.Invoice)
+                .FirstOrDefaultAsync(d => d.Id == documentId);
+
+            if (document == null)
+            {
+                TempData["Error"] = "Document not found.";
+                return RedirectToAction(nameof(Documents));
+            }
+
+            // If already linked to an invoice, redirect to that invoice
+            if (document.InvoiceId.HasValue)
+            {
+                TempData["Info"] = "This document is already linked to an invoice.";
+                return RedirectToAction("Edit", "Invoices", new { id = document.InvoiceId });
+            }
+
+            try
+            {
+                // Re-process the document with AI
+                Invoice? extractedInvoice = null;
+                using (var stream = new MemoryStream(document.FileContent))
+                {
+                    extractedInvoice = await _aiService.ExtractInvoiceFromFileAsync(stream, document.OriginalFileName);
+                }
+
+                if (extractedInvoice == null)
+                {
+                    TempData["Error"] = "Could not extract invoice data from the document.";
+                    return RedirectToAction(nameof(Documents));
+                }
+
+                // Try to match supplier by name
+                Supplier? matchedSupplier = null;
+                if (extractedInvoice.Supplier != null && !string.IsNullOrEmpty(extractedInvoice.Supplier.SupplierName))
+                {
+                    matchedSupplier = await _entityLookupService.FindSupplierByNameAsync(extractedInvoice.Supplier.SupplierName);
+                }
+
+                // Try to match customer by name
+                Customer? matchedCustomer = null;
+                if (!string.IsNullOrEmpty(extractedInvoice.CustomerName))
+                {
+                    matchedCustomer = await _entityLookupService.FindCustomerByNameAsync(extractedInvoice.CustomerName);
+                }
+
+                // Get all suppliers and customers for dropdown
+                var suppliers = await _entityLookupService.GetAllSuppliersAsync();
+                var customers = await _entityLookupService.GetAllCustomersAsync();
+
+                var viewModel = new AiImportInvoiceViewModel
+                {
+                    DocumentId = document.Id,
+                    OriginalFileName = document.OriginalFileName,
+                    InvoiceNumber = extractedInvoice.InvoiceNumber ?? "",
+                    InvoiceDate = extractedInvoice.InvoiceDate,
+                    DueDate = extractedInvoice.DueDate,
+                    CustomerName = extractedInvoice.CustomerName ?? "",
+                    CustomerAddress = extractedInvoice.CustomerAddress ?? "",
+                    CustomerEmail = extractedInvoice.CustomerEmail ?? "",
+                    CustomerPhone = extractedInvoice.CustomerPhone ?? "",
+                    SubTotal = extractedInvoice.SubTotal,
+                    GSTAmount = extractedInvoice.GSTAmount,
+                    TotalAmount = extractedInvoice.TotalAmount,
+                    Notes = extractedInvoice.Notes ?? "",
+                    InvoiceType = extractedInvoice.InvoiceType ?? "Payable",
+                    Items = extractedInvoice.InvoiceItems?.Select(i => new AiImportInvoiceItemViewModel
+                    {
+                        Description = i.Description ?? "",
+                        Quantity = i.Quantity,
+                        UnitPrice = i.UnitPrice
+                    }).ToList() ?? new List<AiImportInvoiceItemViewModel>(),
+
+                    // Supplier matching
+                    ExtractedSupplierName = extractedInvoice.Supplier?.SupplierName ?? "",
+                    MatchedSupplierId = matchedSupplier?.Id,
+                    MatchedSupplierName = matchedSupplier?.SupplierName,
+                    MatchConfidence = matchedSupplier != null ? "High" : "None",
+
+                    // Customer matching
+                    MatchedCustomerId = matchedCustomer?.Id,
+                    MatchedCustomerName = matchedCustomer?.CustomerName,
+
+                    // Dropdown data
+                    AvailableSuppliers = suppliers,
+                    AvailableCustomers = customers
+                };
+
+                return View("ReviewInvoice", viewModel);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing document {DocumentId} for edit", documentId);
+                TempData["Error"] = $"Error processing document: {ex.Message}";
+                return RedirectToAction(nameof(Documents));
+            }
+        }
+
         // GET: AiImport/ReviewInvoice - Review an existing imported document
         public async Task<IActionResult> ReviewInvoice(int documentId)
         {
