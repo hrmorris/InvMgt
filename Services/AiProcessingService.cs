@@ -8,9 +8,8 @@ namespace InvoiceManagement.Services
 {
     /// <summary>
     /// AI-Powered Document Processing Service
-    /// Uses Google Gemini 2.5 Pro for advanced document analysis and data extraction
+    /// Uses OpenAI GPT-5.2 for advanced document analysis and data extraction
     /// Features: Advanced OCR, intelligent data extraction, contextual understanding, multi-format support
-    /// API Version: v1beta
     /// Configuration priority: 1) Database SystemSettings, 2) appsettings.json, 3) Environment variable
     /// </summary>
     public class AiProcessingService : IAiProcessingService
@@ -35,18 +34,18 @@ namespace InvoiceManagement.Services
         private void InitializeApiKey()
         {
             // Try to get API key from configuration first
-            _apiKey = _configuration["GoogleAI:ApiKey"];
+            _apiKey = _configuration["OpenAI:ApiKey"];
 
             // If not found in config, check environment variable (for production deployment)
             if (string.IsNullOrEmpty(_apiKey))
             {
-                _apiKey = Environment.GetEnvironmentVariable("GoogleAI__ApiKey")
-                       ?? Environment.GetEnvironmentVariable("GOOGLE_AI_API_KEY");
+                _apiKey = Environment.GetEnvironmentVariable("OpenAI__ApiKey")
+                       ?? Environment.GetEnvironmentVariable("OPENAI_API_KEY");
             }
 
             if (!string.IsNullOrEmpty(_apiKey))
             {
-                _logger.LogInformation("Google AI API key configured from config/environment");
+                _logger.LogInformation("OpenAI API key configured from config/environment");
             }
         }
 
@@ -58,12 +57,16 @@ namespace InvoiceManagement.Services
                 using var scope = _serviceProvider.CreateScope();
                 var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                 var setting = await dbContext.SystemSettings
-                    .FirstOrDefaultAsync(s => s.SettingKey == "GoogleAIApiKey");
+                    .FirstOrDefaultAsync(s => s.SettingKey == "OpenAIApiKey");
 
                 if (setting != null && !string.IsNullOrEmpty(setting.SettingValue))
                 {
-                    _logger.LogInformation("Google AI API key loaded from database settings");
+                    _logger.LogInformation("OpenAI API key loaded from database settings (key length: {Length})", setting.SettingValue.Length);
                     return setting.SettingValue;
+                }
+                else
+                {
+                    _logger.LogWarning("OpenAIApiKey setting found but value is empty or null. Setting exists: {Exists}", setting != null);
                 }
             }
             catch (Exception ex)
@@ -74,9 +77,11 @@ namespace InvoiceManagement.Services
             // Fall back to config/environment variable
             if (!string.IsNullOrEmpty(_apiKey))
             {
+                _logger.LogInformation("Using API key from config/environment variable");
                 return _apiKey;
             }
 
+            _logger.LogError("No OpenAI API key found in database, config, or environment variables");
             return null;
         }
 
@@ -88,8 +93,8 @@ namespace InvoiceManagement.Services
                 var apiKey = await GetApiKeyAsync();
                 if (string.IsNullOrEmpty(apiKey))
                 {
-                    _logger.LogError("Google AI API key is not configured. Please set it in Admin Portal > System Settings, or add GoogleAI:ApiKey to appsettings.json");
-                    throw new InvalidOperationException("Google AI API key is not configured. Set it in Admin Portal > System Settings (GoogleAIApiKey) or in appsettings.json");
+                    _logger.LogError("OpenAI API key is not configured. Please set it in Admin Portal > System Settings, or add OpenAI:ApiKey to appsettings.json");
+                    throw new InvalidOperationException("OpenAI API key is not configured. Set it in Admin Portal > System Settings (OpenAIApiKey) or in appsettings.json");
                 }
 
                 _logger.LogInformation($"Processing file: {fileName}");
@@ -114,15 +119,31 @@ namespace InvoiceManagement.Services
 
 IMPORTANT CONTEXT: This is a SUPPLIER INVOICE (Accounts Payable) - an invoice FROM a supplier TO a company. Extract the SUPPLIER information (the entity billing/sending the invoice), NOT the buyer/recipient company.
 
+**CRITICAL: SCAN ALL PAGES OF THIS DOCUMENT**
+- This document may have MULTIPLE PAGES
+- You MUST read and analyze EVERY page of this PDF
+- Extract information from ALL pages, not just the first page
+- Line items may span multiple pages
+- Totals are often on the LAST page
+- If there are MULTIPLE SEPARATE INVOICES in this document, extract the FIRST invoice and include a warning noting how many other invoices were found
+
 ADVANCED SCANNING PROTOCOL:
-1. DOCUMENT STRUCTURE ANALYSIS:
+
+1. MULTI-PAGE DOCUMENT ANALYSIS:
+   - Scan ALL pages from beginning to end
+   - Track page continuations (e.g., 'Page 1 of 3')
+   - Identify continued line items across pages
+   - Look for summary/total on the last page
+   - Combine data from all related pages
+
+2. DOCUMENT STRUCTURE ANALYSIS:
    - Identify document layout, headers, footers, and sections
    - Detect tables, columns, and data relationships
    - Recognize logos, watermarks, stamps, and signatures
    - Read both printed text and handwritten annotations
    - Process multi-column layouts and complex formatting
 
-2. INTELLIGENT DATA EXTRACTION:
+3. INTELLIGENT DATA EXTRACTION:
    - Extract SUPPLIER/VENDOR information (the company sending the invoice, usually at the top)
    - Distinguish between 'Bill From' (supplier) and 'Bill To' (buyer/recipient)
    - Use contextual understanding to identify invoice elements
@@ -131,10 +152,10 @@ ADVANCED SCANNING PROTOCOL:
    - Identify currency symbols and decimal separators
    - Extract data from tables with merged cells or irregular layouts
 
-3. QUALITY ASSURANCE:
+4. QUALITY ASSURANCE:
    - Verify mathematical accuracy of all calculations
    - Cross-check totals against line item sums
-   - Validate date logic (invoice date ≤ due date)
+   - Validate date logic (invoice date should be before or equal to due date)
    - Identify missing or ambiguous information
    - Flag inconsistencies or potential errors
 
@@ -147,7 +168,7 @@ COMPREHENSIVE EXTRACTION REQUIREMENTS:
   * Supplier email
   * Supplier phone
   * Tax ID/VAT number
-- Line Items: Extract ALL items including hidden details, notes, SKU/part numbers
+- Line Items: Extract ALL items from ALL PAGES including hidden details, notes, SKU/part numbers
 - Pricing: Capture unit prices, quantities, discounts, taxes, subtotals
 - Payment Terms: Extract payment methods, bank details, payment instructions
 - Additional Notes: Capture terms, conditions, special instructions, delivery notes
@@ -161,27 +182,31 @@ Return ONLY a valid JSON object with this EXACT structure (no markdown, no extra
   ""customerAddress"": ""SUPPLIER/VENDOR full address or null"",
   ""customerEmail"": ""SUPPLIER/VENDOR email or null"",
   ""customerPhone"": ""SUPPLIER/VENDOR phone or null"",
-  ""totalAmount"": decimal number (required),
+  ""totalAmount"": 0.00,
   ""notes"": ""string or null"",
   ""items"": [
     {
       ""description"": ""string (detailed description)"",
-      ""quantity"": integer (must be >= 1),
-      ""unitPrice"": decimal (price per unit)
+      ""quantity"": 1,
+      ""unitPrice"": 0.00
     }
   ],
-  ""confidence"": ""high/medium/low (your confidence in extraction)"",
-  ""warnings"": ""string or null (any issues noticed)""
+  ""pagesScanned"": 1,
+  ""multipleInvoicesDetected"": false,
+  ""totalInvoicesInDocument"": 1,
+  ""confidence"": ""high"",
+  ""warnings"": null
 }
 
 VALIDATION RULES:
 - All required fields must have values
-- Dates must be valid and logical (invoice date <= due date)
+- Dates must be valid and logical (invoice date should come before or equal to due date)
 - All amounts must be positive numbers
-- Quantity must be >= 1
-- Total should match sum of (quantity × unitPrice) for all items
-- If total doesn't match, note it in warnings
+- Quantity must be at least 1
+- Total should match sum of (quantity times unitPrice) for all items
+- If total does not match, note it in warnings
 - customerName should contain the SUPPLIER name (who is billing), not the buyer
+- If multiple invoices are detected, set multipleInvoicesDetected to true and include a warning
 
 Return ONLY the JSON object, nothing else.";
 
@@ -222,7 +247,7 @@ Return ONLY the JSON object, nothing else.";
                 var apiKey = await GetApiKeyAsync();
                 if (string.IsNullOrEmpty(apiKey))
                 {
-                    _logger.LogError("Google AI API key is not configured");
+                    _logger.LogError("OpenAI API key is not configured");
                     return null;
                 }
 
@@ -602,58 +627,59 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
         {
             try
             {
+                // Using OpenAI GPT-5.2 with vision capability
                 var requestBody = new
                 {
-                    contents = new[]
+                    model = "gpt-5.2",
+                    messages = new[]
                     {
                         new
                         {
-                            parts = new object[]
+                            role = "user",
+                            content = new object[]
                             {
-                                new { text = prompt },
+                                new { type = "text", text = prompt },
                                 new
                                 {
-                                    inline_data = new
+                                    type = "image_url",
+                                    image_url = new
                                     {
-                                        mime_type = mimeType,
-                                        data = base64Image
+                                        url = $"data:{mimeType};base64,{base64Image}"
                                     }
                                 }
                             }
                         }
                     },
-                    generationConfig = new
-                    {
-                        temperature = 0.1,
-                        topK = 40,
-                        topP = 0.95,
-                        maxOutputTokens = 8192  // Pro model supports high token output
-                    }
+                    max_tokens = 8192,
+                    temperature = 0.1
                 };
 
                 var jsonContent = JsonSerializer.Serialize(requestBody);
                 var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-                // Using Gemini 2.5 Pro - advanced model for AI Studio
-                var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key={apiKey}";
+                // Set the Authorization header for OpenAI API
+                _httpClient.DefaultRequestHeaders.Clear();
+                _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+
+                var url = "https://api.openai.com/v1/chat/completions";
                 var response = await _httpClient.PostAsync(url, content);
 
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    _logger.LogError($"Gemini API error: {response.StatusCode} - {errorContent}");
+                    _logger.LogError($"OpenAI API error: {response.StatusCode} - {errorContent}");
 
                     if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized ||
                         response.StatusCode == System.Net.HttpStatusCode.Forbidden)
                     {
-                        throw new InvalidOperationException($"Google AI API authentication failed. Please check your API key. Status: {response.StatusCode}");
+                        throw new InvalidOperationException($"OpenAI API authentication failed. Please check your API key. Status: {response.StatusCode}");
                     }
 
-                    throw new Exception($"Google AI API error ({response.StatusCode}): {errorContent}");
+                    throw new Exception($"OpenAI API error ({response.StatusCode}): {errorContent}");
                 }
 
                 var responseContent = await response.Content.ReadAsStringAsync();
-                _logger.LogInformation($"Gemini API response length: {responseContent.Length} characters");
+                _logger.LogInformation($"OpenAI API response length: {responseContent.Length} characters");
 
                 var result = JsonSerializer.Deserialize<JsonElement>(responseContent);
 
@@ -662,35 +688,34 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
                 {
                     var errorMessage = error.TryGetProperty("message", out var msg) ? msg.GetString() : "Unknown error";
                     _logger.LogError($"API returned error: {errorMessage}");
-                    throw new Exception($"Google AI API error: {errorMessage}");
+                    throw new Exception($"OpenAI API error: {errorMessage}");
                 }
 
-                if (result.TryGetProperty("candidates", out var candidates) &&
-                    candidates.GetArrayLength() > 0)
+                if (result.TryGetProperty("choices", out var choices) &&
+                    choices.GetArrayLength() > 0)
                 {
-                    var firstCandidate = candidates[0];
+                    var firstChoice = choices[0];
 
                     // Check finish reason
-                    if (firstCandidate.TryGetProperty("finishReason", out var finishReason))
+                    if (firstChoice.TryGetProperty("finish_reason", out var finishReason))
                     {
                         var reason = finishReason.GetString();
                         _logger.LogInformation($"API finish reason: {reason}");
 
-                        if (reason != "STOP")
+                        if (reason != "stop")
                         {
-                            _logger.LogWarning($"API stopped with reason: {reason}. Content may be blocked or incomplete.");
-                            if (reason == "SAFETY")
+                            _logger.LogWarning($"API stopped with reason: {reason}. Content may be incomplete.");
+                            if (reason == "content_filter")
                             {
                                 throw new Exception("Content was blocked by safety filters. Please try a different file.");
                             }
                         }
                     }
 
-                    if (firstCandidate.TryGetProperty("content", out var contentObj) &&
-                        contentObj.TryGetProperty("parts", out var parts) &&
-                        parts.GetArrayLength() > 0)
+                    if (firstChoice.TryGetProperty("message", out var message) &&
+                        message.TryGetProperty("content", out var contentText))
                     {
-                        var text = parts[0].GetProperty("text").GetString();
+                        var text = contentText.GetString();
                         _logger.LogInformation("Successfully extracted text from API response");
                         return CleanJsonResponse(text);
                     }
@@ -702,8 +727,8 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error calling Gemini Vision API");
-                throw new Exception($"Failed to call Google AI API: {ex.Message}", ex);
+                _logger.LogError(ex, "Error calling OpenAI Vision API");
+                throw new Exception($"Failed to call OpenAI API: {ex.Message}", ex);
             }
         }
 
@@ -711,32 +736,30 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
         {
             try
             {
+                // Using OpenAI GPT-5.2 for text processing
                 var requestBody = new
                 {
-                    contents = new[]
+                    model = "gpt-5.2",
+                    messages = new[]
                     {
                         new
                         {
-                            parts = new[]
-                            {
-                                new { text = prompt }
-                            }
+                            role = "user",
+                            content = prompt
                         }
                     },
-                    generationConfig = new
-                    {
-                        temperature = 0.1,
-                        topK = 40,
-                        topP = 0.95,
-                        maxOutputTokens = 2048  // Pro model output tokens
-                    }
+                    max_tokens = 8192,
+                    temperature = 0.1
                 };
 
                 var jsonContent = JsonSerializer.Serialize(requestBody);
                 var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-                // Using Gemini 2.5 Pro - advanced model for AI Studio
-                var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key={apiKey}";
+                // Set the Authorization header for OpenAI API
+                _httpClient.DefaultRequestHeaders.Clear();
+                _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+
+                var url = "https://api.openai.com/v1/chat/completions";
                 var response = await _httpClient.PostAsync(url, content);
 
                 if (!response.IsSuccessStatusCode)
@@ -747,15 +770,14 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
                 var responseContent = await response.Content.ReadAsStringAsync();
                 var result = JsonSerializer.Deserialize<JsonElement>(responseContent);
 
-                if (result.TryGetProperty("candidates", out var candidates) &&
-                    candidates.GetArrayLength() > 0)
+                if (result.TryGetProperty("choices", out var choices) &&
+                    choices.GetArrayLength() > 0)
                 {
-                    var firstCandidate = candidates[0];
-                    if (firstCandidate.TryGetProperty("content", out var contentObj) &&
-                        contentObj.TryGetProperty("parts", out var parts) &&
-                        parts.GetArrayLength() > 0)
+                    var firstChoice = choices[0];
+                    if (firstChoice.TryGetProperty("message", out var message) &&
+                        message.TryGetProperty("content", out var contentText))
                     {
-                        return CleanJsonResponse(parts[0].GetProperty("text").GetString());
+                        return CleanJsonResponse(contentText.GetString());
                     }
                 }
 
@@ -763,7 +785,7 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error calling Gemini Text API");
+                _logger.LogError(ex, "Error calling OpenAI Text API");
                 return null;
             }
         }
@@ -847,7 +869,8 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
                     CustomerEmail = ValidateEmail(data.CustomerEmail),
                     CustomerPhone = data.CustomerPhone?.Trim(),
                     TotalAmount = data.TotalAmount,
-                    Notes = BuildNotes(data.Notes, data.Confidence, data.Warnings),
+                    Notes = BuildNotes(data.Notes, data.Confidence, data.Warnings,
+                        data.MultipleInvoicesDetected, data.TotalInvoicesInDocument ?? 1, data.PagesScanned ?? 1),
                     InvoiceType = "Supplier", // Imported/uploaded invoices are from suppliers (AP - Accounts Payable)
                     Status = "Unpaid",
                     PaidAmount = 0,
@@ -993,7 +1016,8 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
             return null;
         }
 
-        private string? BuildNotes(string? originalNotes, string? confidence, string? warnings)
+        private string? BuildNotes(string? originalNotes, string? confidence, string? warnings,
+            bool multipleInvoicesDetected = false, int totalInvoicesInDocument = 1, int pagesScanned = 1)
         {
             var notesParts = new List<string>();
 
@@ -1005,6 +1029,13 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
 
             if (!string.IsNullOrWhiteSpace(warnings))
                 notesParts.Add($"[Warning: {warnings}]");
+
+            // Add multi-page/multi-invoice information
+            if (pagesScanned > 1)
+                notesParts.Add($"[Pages Scanned: {pagesScanned}]");
+
+            if (multipleInvoicesDetected && totalInvoicesInDocument > 1)
+                notesParts.Add($"[⚠️ {totalInvoicesInDocument - 1} additional invoice(s) detected - use Bulk Import mode to extract all]");
 
             return notesParts.Any() ? string.Join(" | ", notesParts) : null;
         }
@@ -1044,6 +1075,409 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
             using var memoryStream = new MemoryStream();
             await stream.CopyToAsync(memoryStream);
             return memoryStream.ToArray();
+        }
+
+        /// <summary>
+        /// Extract multiple invoices from a single PDF file containing many invoices.
+        /// Uses a simplified single-call approach for reliability.
+        /// </summary>
+        public async Task<MultiInvoiceExtractionResult> ExtractMultipleInvoicesFromPdfAsync(
+            Stream fileStream,
+            string fileName,
+            Func<int, int, string, Task>? progressCallback = null)
+        {
+            var startTime = DateTime.UtcNow;
+            var result = new MultiInvoiceExtractionResult();
+
+            try
+            {
+                var apiKey = await GetApiKeyAsync();
+                if (string.IsNullOrEmpty(apiKey))
+                {
+                    result.Errors.Add("OpenAI API key is not configured");
+                    return result;
+                }
+
+                await (progressCallback?.Invoke(5, 0, "Reading document...") ?? Task.CompletedTask);
+
+                // Read the file content
+                var fileBytes = await ReadStreamAsBytesAsync(fileStream);
+                var fileSizeMB = fileBytes.Length / 1024.0 / 1024.0;
+                _logger.LogInformation($"Processing multi-invoice PDF: {fileName}, Size: {fileSizeMB:F2} MB");
+
+                if (fileSizeMB > 7)
+                {
+                    result.Errors.Add($"File too large ({fileSizeMB:F2} MB). Maximum size for bulk processing is 7 MB. Please split the document.");
+                    return result;
+                }
+
+                var base64File = Convert.ToBase64String(fileBytes);
+                var mimeType = GetMimeType(fileName);
+
+                await (progressCallback?.Invoke(15, 0, "Extracting all invoices from document...") ?? Task.CompletedTask);
+
+                // Single API call to extract all invoices at once
+                var allInvoices = await ExtractAllInvoicesFromPdfAsync(base64File, mimeType, apiKey);
+
+                if (allInvoices == null || allInvoices.Count == 0)
+                {
+                    result.Errors.Add("Could not extract any invoices from the document.");
+                    return result;
+                }
+
+                result.Invoices = allInvoices;
+                result.TotalInvoicesDetected = allInvoices.Count;
+                result.SuccessfullyExtracted = allInvoices.Count;
+
+                await (progressCallback?.Invoke(90, result.SuccessfullyExtracted, "Finalizing extraction...") ?? Task.CompletedTask);
+
+                // Generate unique invoice numbers if duplicates exist
+                var invoiceNumbers = new HashSet<string>();
+                int counter = 1;
+                foreach (var invoice in result.Invoices)
+                {
+                    if (string.IsNullOrEmpty(invoice.InvoiceNumber) || invoiceNumbers.Contains(invoice.InvoiceNumber))
+                    {
+                        invoice.InvoiceNumber = $"BULK-{counter:D4}";
+                    }
+                    invoiceNumbers.Add(invoice.InvoiceNumber);
+                    counter++;
+                }
+
+                result.ProcessingTime = DateTime.UtcNow - startTime;
+                result.ProcessingSummary = $"Extracted {result.SuccessfullyExtracted} invoices in {result.ProcessingTime.TotalSeconds:F1} seconds.";
+
+                await (progressCallback?.Invoke(100, result.SuccessfullyExtracted, result.ProcessingSummary) ?? Task.CompletedTask);
+
+                _logger.LogInformation(result.ProcessingSummary);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in ExtractMultipleInvoicesFromPdfAsync");
+                result.Errors.Add($"Processing error: {ex.Message}");
+                result.ProcessingTime = DateTime.UtcNow - startTime;
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Extract all invoices from a PDF in a single API call
+        /// </summary>
+        private async Task<List<Invoice>> ExtractAllInvoicesFromPdfAsync(string base64File, string mimeType, string apiKey)
+        {
+            var prompt = @"Extract ALL invoices from this PDF document. This document contains multiple invoices.
+
+For EACH invoice found, extract:
+- Invoice number
+- Invoice date (YYYY-MM-DD format)
+- Due date (YYYY-MM-DD format) 
+- Supplier/Vendor name (who sent the invoice)
+- Supplier address, phone, email if available
+- Total amount
+- Line items with description, quantity, unit price
+
+Return a JSON array with ALL invoices found. Each invoice object should have this structure:
+{
+  ""invoiceNumber"": ""string"",
+  ""invoiceDate"": ""YYYY-MM-DD"",
+  ""dueDate"": ""YYYY-MM-DD"",
+  ""supplierName"": ""string"",
+  ""supplierAddress"": ""string or null"",
+  ""supplierPhone"": ""string or null"",
+  ""supplierEmail"": ""string or null"",
+  ""totalAmount"": number,
+  ""items"": [
+    {""description"": ""string"", ""quantity"": number, ""unitPrice"": number}
+  ],
+  ""notes"": ""string or null""
+}
+
+Return ONLY the JSON array, no other text. Example: [{...}, {...}, {...}]";
+
+            try
+            {
+                _logger.LogInformation("Calling OpenAI API to extract all invoices");
+                var response = await CallGeminiVisionApiAsync(prompt, base64File, mimeType, apiKey);
+
+                if (string.IsNullOrEmpty(response))
+                {
+                    _logger.LogWarning("Empty response from bulk invoice extraction");
+                    return new List<Invoice>();
+                }
+
+                _logger.LogInformation($"Received response of length {response.Length}");
+                return ParseMultiInvoiceResponse(response, 1);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error extracting all invoices from PDF");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Detect the number of invoices in a multi-invoice PDF document
+        /// </summary>
+        private async Task<(int count, List<string> pageRanges)> DetectInvoiceCountAsync(
+            string base64File, string mimeType, string apiKey)
+        {
+            var prompt = @"Analyze this PDF document and determine:
+1. How many separate invoices are contained in this document
+2. The page ranges for each invoice (if detectable)
+
+Look for:
+- Invoice number changes
+- New invoice headers
+- Page breaks with new company letterhead
+- 'Invoice', 'Bill', 'Tax Invoice' headers that indicate new invoices
+- Multiple 'Total' sections indicating separate invoices
+
+Return ONLY a JSON object with this exact structure:
+{
+  ""totalInvoices"": number,
+  ""pageRanges"": [""1-2"", ""3-4"", ...] or [] if not determinable,
+  ""confidence"": ""high/medium/low"",
+  ""notes"": ""any relevant observations""
+}
+
+Be thorough - some documents may contain hundreds of invoices on a single page (e.g., statement summaries).
+Return ONLY the JSON object, no other text.";
+
+            try
+            {
+                var response = await CallGeminiVisionApiAsync(prompt, base64File, mimeType, apiKey);
+
+                if (string.IsNullOrEmpty(response))
+                {
+                    _logger.LogWarning("Empty response from invoice count detection");
+                    return (1, new List<string>());
+                }
+
+                // Parse the JSON response
+                var jsonStart = response.IndexOf('{');
+                var jsonEnd = response.LastIndexOf('}');
+                if (jsonStart >= 0 && jsonEnd > jsonStart)
+                {
+                    var jsonResponse = response.Substring(jsonStart, jsonEnd - jsonStart + 1);
+                    using var doc = JsonDocument.Parse(jsonResponse);
+                    var root = doc.RootElement;
+
+                    var count = 1;
+                    if (root.TryGetProperty("totalInvoices", out var countProp))
+                    {
+                        if (countProp.ValueKind == JsonValueKind.Number)
+                            count = countProp.GetInt32();
+                        else if (countProp.ValueKind == JsonValueKind.String && int.TryParse(countProp.GetString(), out var parsed))
+                            count = parsed;
+                    }
+
+                    var pageRanges = new List<string>();
+                    if (root.TryGetProperty("pageRanges", out var rangesProp) && rangesProp.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var range in rangesProp.EnumerateArray())
+                        {
+                            if (range.ValueKind == JsonValueKind.String)
+                                pageRanges.Add(range.GetString() ?? "");
+                        }
+                    }
+
+                    _logger.LogInformation($"Invoice detection: {count} invoices, confidence: {GetJsonString(root, "confidence")}");
+                    return (count, pageRanges);
+                }
+
+                return (1, new List<string>());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error detecting invoice count");
+                return (1, new List<string>());
+            }
+        }
+
+        /// <summary>
+        /// Extract a batch of invoices from a specific range within the PDF
+        /// </summary>
+        private async Task<List<Invoice>> ExtractInvoiceBatchFromPdfAsync(
+            string base64File, string mimeType, string apiKey,
+            int startIndex, int endIndex, int totalInvoices)
+        {
+            var prompt = $@"This PDF document contains {totalInvoices} invoices. 
+Extract ONLY invoices #{startIndex} through #{endIndex} from this document.
+
+For each invoice in this range, extract all details and return a JSON array.
+Each invoice should have this structure:
+{{
+  ""invoiceIndex"": number (1-based position in document),
+  ""invoiceNumber"": ""string"",
+  ""invoiceDate"": ""YYYY-MM-DD"",
+  ""dueDate"": ""YYYY-MM-DD"" or null,
+  ""supplierName"": ""string"",
+  ""supplierAddress"": ""string"" or null,
+  ""supplierPhone"": ""string"" or null,
+  ""supplierEmail"": ""string"" or null,
+  ""customerName"": ""string"" or null,
+  ""customerAddress"": ""string"" or null,
+  ""items"": [
+    {{
+      ""description"": ""string"",
+      ""quantity"": number,
+      ""unitPrice"": number,
+      ""amount"": number
+    }}
+  ],
+  ""subtotal"": number,
+  ""taxAmount"": number or 0,
+  ""totalAmount"": number,
+  ""currency"": ""string"" or ""PGK"",
+  ""notes"": ""string"" or null
+}}
+
+IMPORTANT:
+- Extract EXACTLY invoices {startIndex} to {endIndex}
+- Count invoices carefully from the beginning of the document
+- Include all line items for each invoice
+- Use YYYY-MM-DD format for all dates
+- Return ONLY a JSON array of invoice objects, nothing else
+- If an invoice is unclear, still include it with available data
+
+Return the JSON array now:";
+
+            try
+            {
+                var response = await CallGeminiVisionApiAsync(prompt, base64File, mimeType, apiKey);
+
+                if (string.IsNullOrEmpty(response))
+                {
+                    _logger.LogWarning($"Empty response for batch {startIndex}-{endIndex}");
+                    return new List<Invoice>();
+                }
+
+                return ParseMultiInvoiceResponse(response, startIndex);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error extracting batch {startIndex}-{endIndex}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Parse the JSON response containing multiple invoices
+        /// </summary>
+        private List<Invoice> ParseMultiInvoiceResponse(string response, int batchStartIndex)
+        {
+            var invoices = new List<Invoice>();
+
+            try
+            {
+                // Find the JSON array in the response
+                var jsonStart = response.IndexOf('[');
+                var jsonEnd = response.LastIndexOf(']');
+
+                if (jsonStart < 0 || jsonEnd <= jsonStart)
+                {
+                    // Try to find a single invoice object
+                    jsonStart = response.IndexOf('{');
+                    jsonEnd = response.LastIndexOf('}');
+                    if (jsonStart >= 0 && jsonEnd > jsonStart)
+                    {
+                        // Wrap single object in array
+                        response = "[" + response.Substring(jsonStart, jsonEnd - jsonStart + 1) + "]";
+                        jsonStart = 0;
+                        jsonEnd = response.Length - 1;
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Could not find JSON array or object in response");
+                        return invoices;
+                    }
+                }
+
+                var jsonResponse = response.Substring(jsonStart, jsonEnd - jsonStart + 1);
+                using var doc = JsonDocument.Parse(jsonResponse);
+
+                var index = batchStartIndex;
+                foreach (var element in doc.RootElement.EnumerateArray())
+                {
+                    try
+                    {
+                        var invoice = new Invoice
+                        {
+                            InvoiceNumber = GetJsonString(element, "invoiceNumber") ?? $"INV-{index:D4}",
+                            InvoiceDate = ParseJsonDate(element, "invoiceDate") ?? DateTime.Now,
+                            DueDate = ParseJsonDate(element, "dueDate") ?? DateTime.Now.AddDays(30),
+                            CustomerName = GetJsonString(element, "customerName") ?? GetJsonString(element, "supplierName") ?? "Unknown",
+                            CustomerAddress = GetJsonString(element, "customerAddress") ?? GetJsonString(element, "supplierAddress"),
+                            CustomerPhone = GetJsonString(element, "customerPhone") ?? GetJsonString(element, "supplierPhone"),
+                            CustomerEmail = GetJsonString(element, "customerEmail") ?? GetJsonString(element, "supplierEmail"),
+                            TotalAmount = GetJsonDecimal(element, "totalAmount") ?? 0,
+                            SubTotal = GetJsonDecimal(element, "subtotal") ?? GetJsonDecimal(element, "totalAmount") ?? 0,
+                            GSTAmount = GetJsonDecimal(element, "taxAmount") ?? 0,
+                            Notes = GetJsonString(element, "notes") ?? $"Extracted from batch import (Invoice #{index})",
+                            Status = "Draft",
+                            CreatedDate = DateTime.Now,
+                            ModifiedDate = DateTime.Now,
+                            InvoiceType = "Payable" // Supplier invoices are payable
+                        };
+
+                        // Handle supplier info if present
+                        var supplierName = GetJsonString(element, "supplierName");
+                        if (!string.IsNullOrEmpty(supplierName))
+                        {
+                            invoice.Supplier = new Supplier
+                            {
+                                SupplierName = supplierName,
+                                Address = GetJsonString(element, "supplierAddress"),
+                                Phone = GetJsonString(element, "supplierPhone"),
+                                Email = GetJsonString(element, "supplierEmail")
+                            };
+                        }
+
+                        // Extract line items
+                        if (element.TryGetProperty("items", out var itemsArray) && itemsArray.ValueKind == JsonValueKind.Array)
+                        {
+                            invoice.InvoiceItems = new List<InvoiceItem>();
+                            foreach (var item in itemsArray.EnumerateArray())
+                            {
+                                var invoiceItem = new InvoiceItem
+                                {
+                                    Description = GetJsonString(item, "description") ?? "Item",
+                                    Quantity = (int)(GetJsonDecimal(item, "quantity") ?? 1),
+                                    UnitPrice = GetJsonDecimal(item, "unitPrice") ?? GetJsonDecimal(item, "amount") ?? 0
+                                };
+                                // TotalPrice is computed automatically from Quantity * UnitPrice
+                                invoice.InvoiceItems.Add(invoiceItem);
+                            }
+                        }
+
+                        // Recalculate totals if items exist
+                        if (invoice.InvoiceItems != null && invoice.InvoiceItems.Count > 0)
+                        {
+                            invoice.SubTotal = invoice.InvoiceItems.Sum(i => i.TotalPrice);
+                            if (invoice.TotalAmount == 0)
+                            {
+                                invoice.TotalAmount = invoice.SubTotal + invoice.GSTAmount;
+                            }
+                        }
+
+                        // PaidAmount defaults to 0, BalanceAmount is computed from TotalAmount - PaidAmount
+                        invoices.Add(invoice);
+                        index++;
+                    }
+                    catch (Exception itemEx)
+                    {
+                        _logger.LogWarning(itemEx, $"Error parsing invoice at index {index}");
+                        index++;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error parsing multi-invoice response");
+            }
+
+            return invoices;
         }
 
         private string GetMimeType(string fileName)
@@ -1124,6 +1558,10 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
             public List<InvoiceItemDto>? Items { get; set; }
             public string? Confidence { get; set; }
             public string? Warnings { get; set; }
+            // Multi-page detection fields
+            public int? PagesScanned { get; set; }
+            public bool MultipleInvoicesDetected { get; set; }
+            public int? TotalInvoicesInDocument { get; set; }
         }
 
         private class InvoiceItemDto

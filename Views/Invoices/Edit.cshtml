@@ -4,6 +4,7 @@
     ViewData["Title"] = "Edit Invoice";
     var availablePayments = ViewBag.AvailablePayments as List<Payment> ?? new List<Payment>();
     var suppliers = ViewBag.Suppliers as List<Supplier> ?? new List<Supplier>();
+    var customers = ViewBag.Customers as List<Customer> ?? new List<Customer>();
     var isSupplierInvoice = Model.InvoiceType == "Supplier" || Model.SupplierId.HasValue;
 }
 @functions {
@@ -140,7 +141,7 @@
                 <div class="col-md-6">
                     <h5 class="mb-3" id="partyInfoHeader">@(isSupplierInvoice ? "Supplier" : "Customer") Information
                     </h5>
-                    <small class="text-muted d-block mb-3" id="partyInfoHint">@(isSupplierInvoice ? "Supplier details                   (who is billing you)" : "Customer details (who you are billing)")</small>
+                    <small class="text-muted d-block mb-3" id="partyInfoHint">@(isSupplierInvoice ? "Supplier details                      (who is billing you)" : "Customer details (who you are billing)")</small>
 
                     <!-- Supplier Selection (shown when Supplier invoice type) -->
                     <div class="mb-3" id="supplierSelectSection" style="@(isSupplierInvoice ? "" : "display:none")">
@@ -168,26 +169,62 @@
                             list</small>
                     </div>
 
+                    <!-- Customer Selection (shown when Customer invoice type) -->
+                    <div class="mb-3" id="customerSelectSection" style="@(!isSupplierInvoice ? "" : "display:none")">
+                        <label asp-for="CustomerId" class="form-label">Customer</label>
+                        <select asp-for="CustomerId" class="form-select" id="customerSelect"
+                            onchange="updateCustomerInfo()">
+                            <option value="">-- Select Customer --</option>
+                            @foreach (var customer in customers)
+                            {
+                                if (Model.CustomerId == customer.Id)
+                                {
+                                    <option value="@customer.Id" data-name="@customer.CustomerName"
+                                        data-address="@customer.Address" data-email="@customer.Email"
+                                        data-phone="@customer.Phone" selected>@customer.CustomerName</option>
+                                }
+                                else
+                                {
+                                    <option value="@customer.Id" data-name="@customer.CustomerName"
+                                        data-address="@customer.Address" data-email="@customer.Email"
+                                        data-phone="@customer.Phone">@customer.CustomerName</option>
+                                }
+                            }
+                        </select>
+                        <small class="form-text text-muted">Or enter manually below if customer is not in the
+                            list</small>
+                    </div>
+
                     <div class="mb-3">
                         <label asp-for="CustomerName" class="form-label" id="customerNameLabel">@(isSupplierInvoice ?
                                                         "Supplier Name (Manual Entry)" : "Customer Name")</label>
                         <div class="input-group">
                             <input asp-for="CustomerName" class="form-control" id="CustomerName" />
-                            <button type="button" class="btn btn-success" id="createSupplierBtn" 
-                                    onclick="createNewSupplier()" title="Create new supplier from entered details"
-                                    style="@(isSupplierInvoice ? "" : "display:none")">
+                            <button type="button" class="btn btn-success" id="createSupplierBtn"
+                                onclick="createNewSupplier()" title="Create new supplier from entered details"
+                                style="@(isSupplierInvoice && !Model.SupplierId.HasValue ? "" : "display:none")">
                                 <i class="bi bi-plus-circle"></i> Create Supplier
+                            </button>
+                            <button type="button" class="btn btn-primary" id="createCustomerBtn"
+                                onclick="createNewCustomer()" title="Create new customer from entered details"
+                                style="@(!isSupplierInvoice && !Model.CustomerId.HasValue ? "" : "display:none")">
+                                <i class="bi bi-plus-circle"></i> Create Customer
                             </button>
                         </div>
                         <span asp-validation-for="CustomerName" class="text-danger"></span>
-                        <small class="form-text text-muted" id="createSupplierHint" style="@(isSupplierInvoice ? "" : "display:none")">
+                        <small class="form-text text-muted" id="createSupplierHint"
+                            style="@(isSupplierInvoice && !Model.SupplierId.HasValue ? "" : "display:none")">
                             Click "Create Supplier" to add this as a new supplier to your supplier list
+                        </small>
+                        <small class="form-text text-muted" id="createCustomerHint"
+                            style="@(!isSupplierInvoice && !Model.CustomerId.HasValue ? "" : "display:none")">
+                            Click "Create Customer" to add this as a new customer to your customer list
                         </small>
                     </div>
 
                     <div class="mb-3">
                         <label asp-for="CustomerAddress" class="form-label"
-                            id="customerAddressLabel">@(isSupplierInvoice ? "Supplier Address" : "Customer                   Address")</label>
+                            id="customerAddressLabel">@(isSupplierInvoice ? "Supplier Address" : "Customer                           Address")</label>
                         <textarea asp-for="CustomerAddress" class="form-control" rows="2"
                             id="CustomerAddress"></textarea>
                         <span asp-validation-for="CustomerAddress" class="text-danger"></span>
@@ -497,32 +534,32 @@ else if (Model.BalanceAmount <= 0)
             const itemsContainer = document.getElementById('invoiceItems');
             console.log('Adding item with index:', itemCounter);
             const newItem = `
-                                                                <div class="row mb-3 invoice-item">
-                                                                    <input type="hidden" name="items[${itemCounter}].Id" value="0" />
-                                                                    <input type="hidden" name="items[${itemCounter}].InvoiceId" value="@Model.Id" />
-                                                                    <div class="col-md-5">
-                                                                        <label class="form-label">Description</label>
-                                                                        <input type="text" name="items[${itemCounter}].Description" class="form-control item-description" required />
-                                                                    </div>
-                                                                    <div class="col-md-2">
-                                                                        <label class="form-label">Quantity</label>
-                                                                        <input type="number" name="items[${itemCounter}].Quantity" class="form-control item-quantity" min="1" value="1" onchange="calculateLineTotal(this)" required />
-                                                                    </div>
-                                                                    <div class="col-md-2">
-                                                                        <label class="form-label">Unit Price</label>
-                                                                        <input type="number" name="items[${itemCounter}].UnitPrice" class="form-control item-price" step="0.0001" min="0" value="0" onchange="calculateLineTotal(this)" required />
-                                                                    </div>
-                                                                    <div class="col-md-2">
-                                                                        <label class="form-label">Total</label>
-                                                                        <input type="text" class="form-control line-total" value="0.00" readonly />
-                                                                    </div>
-                                                                    <div class="col-md-1 d-flex align-items-end">
-                                                                        <button type="button" class="btn btn-danger btn-sm w-100" onclick="removeItem(this)">
-                                                                            <i class="bi bi-trash"></i>
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-                                                            `;
+                                                                                    <div class="row mb-3 invoice-item">
+                                                                                        <input type="hidden" name="items[${itemCounter}].Id" value="0" />
+                                                                                        <input type="hidden" name="items[${itemCounter}].InvoiceId" value="@Model.Id" />
+                                                                                        <div class="col-md-5">
+                                                                                            <label class="form-label">Description</label>
+                                                                                            <input type="text" name="items[${itemCounter}].Description" class="form-control item-description" required />
+                                                                                        </div>
+                                                                                        <div class="col-md-2">
+                                                                                            <label class="form-label">Quantity</label>
+                                                                                            <input type="number" name="items[${itemCounter}].Quantity" class="form-control item-quantity" min="1" value="1" onchange="calculateLineTotal(this)" required />
+                                                                                        </div>
+                                                                                        <div class="col-md-2">
+                                                                                            <label class="form-label">Unit Price</label>
+                                                                                            <input type="number" name="items[${itemCounter}].UnitPrice" class="form-control item-price" step="0.0001" min="0" value="0" onchange="calculateLineTotal(this)" required />
+                                                                                        </div>
+                                                                                        <div class="col-md-2">
+                                                                                            <label class="form-label">Total</label>
+                                                                                            <input type="text" class="form-control line-total" value="0.00" readonly />
+                                                                                        </div>
+                                                                                        <div class="col-md-1 d-flex align-items-end">
+                                                                                            <button type="button" class="btn btn-danger btn-sm w-100" onclick="removeItem(this)">
+                                                                                                <i class="bi bi-trash"></i>
+                                                                                            </button>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                `;
             itemsContainer.insertAdjacentHTML('beforeend', newItem);
             itemCounter++;
             console.log('Item added, new counter:', itemCounter);
@@ -646,14 +683,14 @@ else if (Model.BalanceAmount <= 0)
                 amountInput.value = suggested.toFixed(2);
 
                 detailsSpan.innerHTML = `
-                                                                    <strong>Payment Number:</strong> ${number}<br />
-                                                                    <strong>Date:</strong> ${date}<br />
-                                                                    <strong>Method:</strong> ${method}<br />
-                                                                    <strong>Total Payment:</strong> $${totalAmount.toFixed(2)}<br />
-                                                                    <strong>Unallocated:</strong> $${unallocated.toFixed(2)}<br />
-                                                                    <strong>Invoice Balance:</strong> $${invoiceBalance.toFixed(2)}<br />
-                                                                    <strong>Suggested Amount:</strong> $${suggested.toFixed(2)}
-                                                                `;
+                                                                                        <strong>Payment Number:</strong> ${number}<br />
+                                                                                        <strong>Date:</strong> ${date}<br />
+                                                                                        <strong>Method:</strong> ${method}<br />
+                                                                                        <strong>Total Payment:</strong> $${totalAmount.toFixed(2)}<br />
+                                                                                        <strong>Unallocated:</strong> $${unallocated.toFixed(2)}<br />
+                                                                                        <strong>Invoice Balance:</strong> $${invoiceBalance.toFixed(2)}<br />
+                                                                                        <strong>Suggested Amount:</strong> $${suggested.toFixed(2)}
+                                                                                    `;
                 infoDiv.style.display = 'block';
             } else {
                 infoDiv.style.display = 'none';
@@ -676,6 +713,9 @@ else if (Model.BalanceAmount <= 0)
         // Supplier auto-fill function
         function updateSupplierInfo() {
             const select = document.getElementById('supplierSelect');
+            const createBtn = document.getElementById('createSupplierBtn');
+            const createHint = document.getElementById('createSupplierHint');
+
             if (select && select.value) {
                 const selectedOption = select.options[select.selectedIndex];
                 const nameInput = document.getElementById('CustomerName');
@@ -683,10 +723,30 @@ else if (Model.BalanceAmount <= 0)
                 const emailInput = document.getElementById('CustomerEmail');
                 const phoneInput = document.getElementById('CustomerPhone');
 
-                if (nameInput) nameInput.value = selectedOption.getAttribute('data-name') || '';
-                if (addressInput) addressInput.value = selectedOption.getAttribute('data-address') || '';
-                if (emailInput) emailInput.value = selectedOption.getAttribute('data-email') || '';
-                if (phoneInput) phoneInput.value = selectedOption.getAttribute('data-phone') || '';
+                // Get data from selected option
+                const name = selectedOption.getAttribute('data-name') || '';
+                const address = selectedOption.getAttribute('data-address') || '';
+                const email = selectedOption.getAttribute('data-email') || '';
+                const phone = selectedOption.getAttribute('data-phone') || '';
+
+                // Always fill the fields when a supplier is selected
+                if (nameInput) nameInput.value = name;
+                if (addressInput) addressInput.value = address;
+                if (emailInput) emailInput.value = email;
+                if (phoneInput) phoneInput.value = phone;
+
+                // Hide create button when supplier is selected from dropdown
+                if (createBtn) createBtn.style.display = 'none';
+                if (createHint) createHint.style.display = 'none';
+
+                console.log('Supplier selected:', name, address, email, phone);
+            } else {
+                // Show create button when no supplier selected (manual entry mode)
+                const invoiceType = document.getElementById('invoiceTypeSelect')?.value;
+                if (invoiceType === 'Supplier') {
+                    if (createBtn) createBtn.style.display = '';
+                    if (createHint) createHint.style.display = '';
+                }
             }
         }
 
@@ -750,6 +810,11 @@ else if (Model.BalanceAmount <= 0)
                     // Show success message
                     alert(result.message);
 
+                    // Hide create button since supplier is now selected
+                    createBtn.style.display = 'none';
+                    const createHint = document.getElementById('createSupplierHint');
+                    if (createHint) createHint.style.display = 'none';
+
                     // Change button to indicate success
                     createBtn.innerHTML = '<i class="bi bi-check-circle"></i> Created!';
                     createBtn.classList.remove('btn-success');
@@ -781,6 +846,102 @@ else if (Model.BalanceAmount <= 0)
             }
         }
 
+        // Create new customer from entered details
+        async function createNewCustomer() {
+            const nameInput = document.getElementById('CustomerName');
+            const addressInput = document.getElementById('CustomerAddress');
+            const emailInput = document.getElementById('CustomerEmail');
+            const phoneInput = document.getElementById('CustomerPhone');
+            const customerSelect = document.getElementById('customerSelect');
+
+            const customerName = nameInput?.value?.trim();
+            if (!customerName) {
+                alert('Please enter a customer name first');
+                nameInput?.focus();
+                return;
+            }
+
+            // Confirm creation
+            if (!confirm(`Create new customer "${customerName}"?`)) {
+                return;
+            }
+
+            const createBtn = document.getElementById('createCustomerBtn');
+            const originalHtml = createBtn.innerHTML;
+            createBtn.disabled = true;
+            createBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Creating...';
+
+            try {
+                const response = await fetch('@Url.Action("CreateCustomerFromInvoice", "Invoices")', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value
+                    },
+                    body: JSON.stringify({
+                        customerName: customerName,
+                        address: addressInput?.value || '',
+                        email: emailInput?.value || '',
+                        phone: phoneInput?.value || ''
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Add new option to customer dropdown
+                    const newOption = document.createElement('option');
+                    newOption.value = result.customerId;
+                    newOption.text = result.customerName;
+                    newOption.setAttribute('data-name', customerName);
+                    newOption.setAttribute('data-address', addressInput?.value || '');
+                    newOption.setAttribute('data-email', emailInput?.value || '');
+                    newOption.setAttribute('data-phone', phoneInput?.value || '');
+                    newOption.selected = true;
+                    customerSelect.appendChild(newOption);
+
+                    // Update dropdown selection
+                    customerSelect.value = result.customerId;
+
+                    // Show success message
+                    alert(result.message);
+
+                    // Hide create button since customer is now selected
+                    createBtn.style.display = 'none';
+                    const createHint = document.getElementById('createCustomerHint');
+                    if (createHint) createHint.style.display = 'none';
+
+                    // Change button to indicate success temporarily
+                    createBtn.innerHTML = '<i class="bi bi-check-circle"></i> Created!';
+                    createBtn.classList.remove('btn-primary');
+                    createBtn.classList.add('btn-outline-success');
+                    setTimeout(() => {
+                        createBtn.innerHTML = originalHtml;
+                        createBtn.classList.remove('btn-outline-success');
+                        createBtn.classList.add('btn-primary');
+                        createBtn.disabled = false;
+                    }, 2000);
+                } else {
+                    if (result.existingId) {
+                        // Customer already exists, select it
+                        if (confirm(result.message + '\n\nWould you like to select the existing customer?')) {
+                            customerSelect.value = result.existingId;
+                            updateCustomerInfo();
+                        }
+                    } else {
+                        alert('Error: ' + result.message);
+                    }
+                    createBtn.innerHTML = originalHtml;
+                    createBtn.disabled = false;
+                }
+            } catch (error) {
+                console.error('Error creating customer:', error);
+                alert('Error creating customer. Please try again.');
+                createBtn.innerHTML = originalHtml;
+                createBtn.disabled = false;
+            }
+        }
+
         // Handle Invoice Type change
         function updateInvoiceType() {
             const invoiceTypeSelect = document.getElementById('invoiceTypeSelect');
@@ -798,11 +959,31 @@ else if (Model.BalanceAmount <= 0)
                 supplierSection.style.display = isSupplier ? 'block' : 'none';
             }
 
-            // Show/hide Create Supplier button and hint
+            // Show/hide customer dropdown section
+            const customerSection = document.getElementById('customerSelectSection');
+            if (customerSection) {
+                customerSection.style.display = isSupplier ? 'none' : 'block';
+            }
+
+            // Get dropdown selections to determine if Create buttons should show
+            const supplierSelect = document.getElementById('supplierSelect');
+            const customerSelect = document.getElementById('customerSelect');
+            const hasSupplierSelected = supplierSelect && supplierSelect.value;
+            const hasCustomerSelected = customerSelect && customerSelect.value;
+
+            // Show/hide Create Supplier button and hint (only if supplier type AND no supplier selected)
             const createSupplierBtn = document.getElementById('createSupplierBtn');
             const createSupplierHint = document.getElementById('createSupplierHint');
-            if (createSupplierBtn) createSupplierBtn.style.display = isSupplier ? '' : 'none';
-            if (createSupplierHint) createSupplierHint.style.display = isSupplier ? '' : 'none';
+            const showSupplierCreate = isSupplier && !hasSupplierSelected;
+            if (createSupplierBtn) createSupplierBtn.style.display = showSupplierCreate ? '' : 'none';
+            if (createSupplierHint) createSupplierHint.style.display = showSupplierCreate ? '' : 'none';
+
+            // Show/hide Create Customer button and hint (only if customer type AND no customer selected)
+            const createCustomerBtn = document.getElementById('createCustomerBtn');
+            const createCustomerHint = document.getElementById('createCustomerHint');
+            const showCustomerCreate = !isSupplier && !hasCustomerSelected;
+            if (createCustomerBtn) createCustomerBtn.style.display = showCustomerCreate ? '' : 'none';
+            if (createCustomerHint) createCustomerHint.style.display = showCustomerCreate ? '' : 'none';
 
             // Update labels
             const nameLabel = document.getElementById('customerNameLabel');
@@ -815,10 +996,53 @@ else if (Model.BalanceAmount <= 0)
             if (emailLabel) emailLabel.textContent = isSupplier ? 'Supplier Email' : 'Customer Email';
             if (phoneLabel) phoneLabel.textContent = isSupplier ? 'Supplier Phone' : 'Customer Phone';
 
-            // Clear supplier selection when switching to Customer type
-            if (!isSupplier) {
-                const supplierSelect = document.getElementById('supplierSelect');
+            // Clear the non-active selection and fields when switching types
+            if (isSupplier) {
+                if (customerSelect) customerSelect.value = '';
+            } else {
                 if (supplierSelect) supplierSelect.value = '';
+            }
+        }
+
+        // Update customer info from dropdown
+        function updateCustomerInfo() {
+            const customerSelect = document.getElementById('customerSelect');
+            const createBtn = document.getElementById('createCustomerBtn');
+            const createHint = document.getElementById('createCustomerHint');
+
+            if (customerSelect && customerSelect.value) {
+                const selectedOption = customerSelect.options[customerSelect.selectedIndex];
+                if (selectedOption && selectedOption.value) {
+                    const nameInput = document.getElementById('CustomerName');
+                    const addressInput = document.getElementById('CustomerAddress');
+                    const emailInput = document.getElementById('CustomerEmail');
+                    const phoneInput = document.getElementById('CustomerPhone');
+
+                    // Get data from selected option
+                    const name = selectedOption.getAttribute('data-name') || '';
+                    const address = selectedOption.getAttribute('data-address') || '';
+                    const email = selectedOption.getAttribute('data-email') || '';
+                    const phone = selectedOption.getAttribute('data-phone') || '';
+
+                    // Always fill the fields when a customer is selected
+                    if (nameInput) nameInput.value = name;
+                    if (addressInput) addressInput.value = address;
+                    if (emailInput) emailInput.value = email;
+                    if (phoneInput) phoneInput.value = phone;
+
+                    // Hide create button when customer is selected from dropdown
+                    if (createBtn) createBtn.style.display = 'none';
+                    if (createHint) createHint.style.display = 'none';
+
+                    console.log('Customer selected:', name, address, email, phone);
+                }
+            } else {
+                // Show create button when no customer selected (manual entry mode)
+                const invoiceType = document.getElementById('invoiceTypeSelect')?.value;
+                if (invoiceType === 'Customer') {
+                    if (createBtn) createBtn.style.display = '';
+                    if (createHint) createHint.style.display = '';
+                }
             }
         }
 
@@ -827,6 +1051,20 @@ else if (Model.BalanceAmount <= 0)
             const supplierSelect = document.getElementById('supplierSelect');
             if (supplierSelect) {
                 supplierSelect.addEventListener('change', updateSupplierInfo);
+                // Auto-populate if supplier is already selected on page load
+                if (supplierSelect.value) {
+                    updateSupplierInfo();
+                }
+            }
+
+            // Attach customer select change event
+            const customerSelect = document.getElementById('customerSelect');
+            if (customerSelect) {
+                customerSelect.addEventListener('change', updateCustomerInfo);
+                // Auto-populate if customer is already selected on page load
+                if (customerSelect.value) {
+                    updateCustomerInfo();
+                }
             }
 
             // Attach invoice type change event

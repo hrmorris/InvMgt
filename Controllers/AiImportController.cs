@@ -484,6 +484,651 @@ namespace InvoiceManagement.Controllers
             }
         }
 
+        // POST: AiImport/ProcessInvoiceAjax - AJAX endpoint for invoice processing with progress
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> ProcessInvoiceAjax(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return Json(new { success = false, message = "Please select a file to upload." });
+            }
+
+            // Validate file extension
+            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (!_allowedExtensions.Contains(extension))
+            {
+                return Json(new { success = false, message = $"Invalid file type. Allowed types: {string.Join(", ", _allowedExtensions)}" });
+            }
+
+            // Validate file size
+            if (file.Length > _maxFileSize)
+            {
+                return Json(new { success = false, message = "File size exceeds 500MB limit." });
+            }
+
+            try
+            {
+                // Store the document first
+                var importedDocument = await _documentService.StoreDocumentAsync(
+                    file,
+                    "Invoice",
+                    User.Identity?.Name ?? "System"
+                );
+
+                // Process with AI using the file stream
+                Invoice? extractedInvoice;
+                using (var stream = file.OpenReadStream())
+                {
+                    extractedInvoice = await _aiService.ExtractInvoiceFromFileAsync(stream, file.FileName);
+                }
+
+                if (extractedInvoice == null)
+                {
+                    // Update document status
+                    await _documentService.UpdateDocumentExtractedDataAsync(
+                        importedDocument.Id, null, null, null, null, null
+                    );
+
+                    return Json(new { success = false, message = "Could not extract invoice data from the document. Please try a clearer image or PDF." });
+                }
+
+                // Update document with extracted data
+                await _documentService.UpdateDocumentExtractedDataAsync(
+                    importedDocument.Id,
+                    null, // extractedText
+                    null, // accountNumber
+                    null, // bankName
+                    extractedInvoice.Supplier?.SupplierName,
+                    extractedInvoice.CustomerName
+                );
+
+                // Try to match supplier by name
+                Supplier? matchedSupplier = null;
+                if (extractedInvoice.Supplier != null && !string.IsNullOrEmpty(extractedInvoice.Supplier.SupplierName))
+                {
+                    matchedSupplier = await _entityLookupService.FindSupplierByNameAsync(extractedInvoice.Supplier.SupplierName);
+                }
+
+                // Try to match customer by name
+                Customer? matchedCustomer = null;
+                if (!string.IsNullOrEmpty(extractedInvoice.CustomerName))
+                {
+                    matchedCustomer = await _entityLookupService.FindCustomerByNameAsync(extractedInvoice.CustomerName);
+                }
+
+                // Store extracted invoice data in the ImportedDocument's ProcessingNotes field as JSON
+                var extractedJson = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    InvoiceNumber = extractedInvoice.InvoiceNumber ?? "",
+                    InvoiceDate = extractedInvoice.InvoiceDate,
+                    DueDate = extractedInvoice.DueDate,
+                    CustomerName = extractedInvoice.CustomerName ?? "",
+                    CustomerAddress = extractedInvoice.CustomerAddress ?? "",
+                    CustomerEmail = extractedInvoice.CustomerEmail ?? "",
+                    CustomerPhone = extractedInvoice.CustomerPhone ?? "",
+                    SubTotal = extractedInvoice.SubTotal,
+                    GSTAmount = extractedInvoice.GSTAmount,
+                    TotalAmount = extractedInvoice.TotalAmount,
+                    Notes = extractedInvoice.Notes ?? "",
+                    InvoiceType = extractedInvoice.InvoiceType ?? "Payable",
+                    ExtractedSupplierName = extractedInvoice.Supplier?.SupplierName ?? "",
+                    ExtractedCustomerName = extractedInvoice.CustomerName ?? "",
+                    MatchedSupplierId = matchedSupplier?.Id,
+                    MatchedSupplierName = matchedSupplier?.SupplierName,
+                    MatchedCustomerId = matchedCustomer?.Id,
+                    MatchedCustomerName = matchedCustomer?.CustomerName,
+                    MatchConfidence = matchedSupplier != null || matchedCustomer != null ? "High" : "None",
+                    Items = extractedInvoice.InvoiceItems?.Select(i => new
+                    {
+                        Description = i.Description ?? "",
+                        Quantity = i.Quantity,
+                        UnitPrice = i.UnitPrice
+                    }).ToList()
+                });
+
+                // Update the document with extracted data
+                var doc = await _context.ImportedDocuments.FindAsync(importedDocument.Id);
+                if (doc != null)
+                {
+                    doc.ProcessingNotes = extractedJson;
+                    doc.ProcessingStatus = "Extracted";
+                    await _context.SaveChangesAsync();
+                }
+
+                return Json(new
+                {
+                    success = true,
+                    documentId = importedDocument.Id,
+                    redirectUrl = Url.Action("ReviewInvoiceById", "AiImport", new { id = importedDocument.Id })
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing invoice with AI via AJAX");
+                return Json(new { success = false, message = $"Error processing document: {ex.Message}" });
+            }
+        }
+
+        // GET: AiImport/ReviewInvoiceById - Review page for AJAX processing
+        public async Task<IActionResult> ReviewInvoiceById(int id)
+        {
+            var document = await _context.ImportedDocuments.FindAsync(id);
+            if (document == null)
+            {
+                TempData["Error"] = "Document not found.";
+                return RedirectToAction(nameof(Invoice));
+            }
+
+            if (string.IsNullOrEmpty(document.ProcessingNotes))
+            {
+                TempData["Error"] = "No extracted data found. Please try processing the document again.";
+                return RedirectToAction(nameof(Invoice));
+            }
+
+            try
+            {
+                var extractedData = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(document.ProcessingNotes);
+
+                // Get all suppliers and customers for dropdown
+                var suppliers = await _entityLookupService.GetAllSuppliersAsync();
+                var customers = await _entityLookupService.GetAllCustomersAsync();
+
+                // Parse items from extracted data
+                var items = new List<AiImportInvoiceItemViewModel>();
+                if (extractedData.TryGetProperty("Items", out var itemsElement) && itemsElement.ValueKind == System.Text.Json.JsonValueKind.Array)
+                {
+                    foreach (var item in itemsElement.EnumerateArray())
+                    {
+                        items.Add(new AiImportInvoiceItemViewModel
+                        {
+                            Description = item.TryGetProperty("Description", out var desc) ? desc.GetString() ?? "" : "",
+                            Quantity = item.TryGetProperty("Quantity", out var qty) ? qty.GetDecimal() : 0,
+                            UnitPrice = item.TryGetProperty("UnitPrice", out var price) ? price.GetDecimal() : 0
+                        });
+                    }
+                }
+
+                var viewModel = new AiImportInvoiceViewModel
+                {
+                    DocumentId = document.Id,
+                    OriginalFileName = document.OriginalFileName,
+                    InvoiceNumber = extractedData.TryGetProperty("InvoiceNumber", out var invNum) ? invNum.GetString() ?? "" : "",
+                    InvoiceDate = extractedData.TryGetProperty("InvoiceDate", out var invDate) && invDate.ValueKind != System.Text.Json.JsonValueKind.Null ? invDate.GetDateTime() : DateTime.Now,
+                    DueDate = extractedData.TryGetProperty("DueDate", out var dueDate) && dueDate.ValueKind != System.Text.Json.JsonValueKind.Null ? dueDate.GetDateTime() : DateTime.Now.AddDays(30),
+                    CustomerName = extractedData.TryGetProperty("CustomerName", out var custName) ? custName.GetString() ?? "" : "",
+                    CustomerAddress = extractedData.TryGetProperty("CustomerAddress", out var custAddr) ? custAddr.GetString() ?? "" : "",
+                    CustomerEmail = extractedData.TryGetProperty("CustomerEmail", out var custEmail) ? custEmail.GetString() ?? "" : "",
+                    CustomerPhone = extractedData.TryGetProperty("CustomerPhone", out var custPhone) ? custPhone.GetString() ?? "" : "",
+                    SubTotal = extractedData.TryGetProperty("SubTotal", out var subTotal) ? subTotal.GetDecimal() : 0,
+                    GSTAmount = extractedData.TryGetProperty("GSTAmount", out var gst) ? gst.GetDecimal() : 0,
+                    TotalAmount = extractedData.TryGetProperty("TotalAmount", out var total) ? total.GetDecimal() : 0,
+                    Notes = extractedData.TryGetProperty("Notes", out var notes) ? notes.GetString() ?? "" : "",
+                    InvoiceType = extractedData.TryGetProperty("InvoiceType", out var invType) ? invType.GetString() ?? "Payable" : "Payable",
+                    ExtractedSupplierName = extractedData.TryGetProperty("ExtractedSupplierName", out var extSupp) ? extSupp.GetString() ?? "" : "",
+                    ExtractedCustomerName = extractedData.TryGetProperty("ExtractedCustomerName", out var extCust) ? extCust.GetString() ?? "" : "",
+                    MatchedSupplierId = extractedData.TryGetProperty("MatchedSupplierId", out var matchSuppId) && matchSuppId.ValueKind != System.Text.Json.JsonValueKind.Null ? matchSuppId.GetInt32() : null,
+                    MatchedSupplierName = extractedData.TryGetProperty("MatchedSupplierName", out var matchSuppName) ? matchSuppName.GetString() : null,
+                    MatchedCustomerId = extractedData.TryGetProperty("MatchedCustomerId", out var matchCustId) && matchCustId.ValueKind != System.Text.Json.JsonValueKind.Null ? matchCustId.GetInt32() : null,
+                    MatchedCustomerName = extractedData.TryGetProperty("MatchedCustomerName", out var matchCustName) ? matchCustName.GetString() : null,
+                    MatchConfidence = extractedData.TryGetProperty("MatchConfidence", out var conf) ? conf.GetString() ?? "None" : "None",
+                    Items = items,
+                    AvailableSuppliers = suppliers.ToList(),
+                    AvailableCustomers = customers.ToList()
+                };
+
+                TempData["Success"] = "Invoice data extracted successfully. Please review and confirm.";
+                return View("ReviewInvoice", viewModel);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error parsing extracted invoice data");
+                TempData["Error"] = "Error loading extracted data. Please try processing the document again.";
+                return RedirectToAction(nameof(Invoice));
+            }
+        }
+
+        // POST: AiImport/ProcessBulkInvoicesAjax - AJAX endpoint for bulk invoice extraction from single PDF
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        [RequestSizeLimit(500_000_000)] // 500MB limit
+        public async Task<IActionResult> ProcessBulkInvoicesAjax(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return Json(new { success = false, message = "Please select a file to upload." });
+            }
+
+            // Validate file extension - only PDF for bulk processing
+            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (extension != ".pdf")
+            {
+                return Json(new { success = false, message = "Bulk import only supports PDF files containing multiple invoices." });
+            }
+
+            // Validate file size
+            if (file.Length > _maxFileSize)
+            {
+                return Json(new { success = false, message = "File size exceeds 500MB limit." });
+            }
+
+            try
+            {
+                _logger.LogInformation($"Starting bulk invoice extraction from: {file.FileName}");
+
+                // Store the document first
+                var importedDocument = await _documentService.StoreDocumentAsync(
+                    file,
+                    "Invoice-Bulk",
+                    User.Identity?.Name ?? "System"
+                );
+
+                // Process with AI using the file stream
+                MultiInvoiceExtractionResult result;
+                using (var stream = file.OpenReadStream())
+                {
+                    result = await _aiService.ExtractMultipleInvoicesFromPdfAsync(
+                        stream,
+                        file.FileName,
+                        async (percent, count, message) =>
+                        {
+                            // Progress callback - for now just log
+                            _logger.LogInformation($"Bulk extraction progress: {percent}% - {message} (Extracted: {count})");
+                        }
+                    );
+                }
+
+                if (result.Invoices == null || result.Invoices.Count == 0)
+                {
+                    // Update document status
+                    await _documentService.UpdateDocumentExtractedDataAsync(
+                        importedDocument.Id, null, null, null, null, null
+                    );
+
+                    var errorMsg = result.Errors.Count > 0
+                        ? string.Join("; ", result.Errors)
+                        : "Could not extract any invoices from the document.";
+                    return Json(new { success = false, message = errorMsg });
+                }
+
+                // Store extracted invoices data in ProcessingNotes
+                var extractedJson = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    TotalDetected = result.TotalInvoicesDetected,
+                    TotalExtracted = result.SuccessfullyExtracted,
+                    FailedCount = result.FailedExtractions,
+                    ProcessingTime = result.ProcessingTime.TotalSeconds,
+                    Summary = result.ProcessingSummary,
+                    Warnings = result.Warnings,
+                    Errors = result.Errors,
+                    Invoices = result.Invoices.Select(inv => new
+                    {
+                        inv.InvoiceNumber,
+                        inv.InvoiceDate,
+                        inv.DueDate,
+                        inv.CustomerName,
+                        inv.CustomerAddress,
+                        inv.CustomerEmail,
+                        inv.CustomerPhone,
+                        inv.SubTotal,
+                        inv.GSTAmount,
+                        inv.TotalAmount,
+                        inv.Notes,
+                        inv.InvoiceType,
+                        SupplierName = inv.Supplier?.SupplierName,
+                        Items = inv.InvoiceItems?.Select(i => new
+                        {
+                            i.Description,
+                            i.Quantity,
+                            i.UnitPrice,
+                            i.TotalPrice
+                        }).ToList()
+                    }).ToList()
+                });
+
+                // Update the document with extracted data
+                var doc = await _context.ImportedDocuments.FindAsync(importedDocument.Id);
+                if (doc != null)
+                {
+                    doc.ProcessingNotes = extractedJson;
+                    doc.ProcessingStatus = "Extracted";
+                    await _context.SaveChangesAsync();
+                }
+
+                _logger.LogInformation($"Bulk extraction complete: {result.SuccessfullyExtracted} invoices from {file.FileName}");
+
+                return Json(new
+                {
+                    success = true,
+                    totalExtracted = result.SuccessfullyExtracted,
+                    totalDetected = result.TotalInvoicesDetected,
+                    failed = result.FailedExtractions,
+                    warnings = result.Warnings,
+                    processingTime = result.ProcessingTime.TotalSeconds,
+                    redirectUrl = Url.Action("ReviewBulkInvoices", "AiImport", new { id = importedDocument.Id })
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in bulk invoice extraction");
+                return Json(new { success = false, message = $"Error processing document: {ex.Message}" });
+            }
+        }
+
+        // GET: AiImport/ReviewBulkInvoices - Review page for bulk extracted invoices
+        public async Task<IActionResult> ReviewBulkInvoices(int id)
+        {
+            var document = await _context.ImportedDocuments.FindAsync(id);
+            if (document == null)
+            {
+                TempData["Error"] = "Document not found.";
+                return RedirectToAction(nameof(Invoice));
+            }
+
+            if (string.IsNullOrEmpty(document.ProcessingNotes))
+            {
+                TempData["Error"] = "No extracted data found. Please try processing the document again.";
+                return RedirectToAction(nameof(Invoice));
+            }
+
+            try
+            {
+                var extractedData = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(document.ProcessingNotes);
+
+                // Get suppliers and customers for matching
+                var suppliers = await _entityLookupService.GetAllSuppliersAsync();
+                var customers = await _entityLookupService.GetAllCustomersAsync();
+
+                var invoices = new List<AiImportInvoiceViewModel>();
+
+                if (extractedData.TryGetProperty("Invoices", out var invoicesArray) &&
+                    invoicesArray.ValueKind == System.Text.Json.JsonValueKind.Array)
+                {
+                    int index = 1;
+                    foreach (var inv in invoicesArray.EnumerateArray())
+                    {
+                        try
+                        {
+                            var items = new List<AiImportInvoiceItemViewModel>();
+                            if (inv.TryGetProperty("Items", out var itemsElement) &&
+                                itemsElement.ValueKind == System.Text.Json.JsonValueKind.Array)
+                            {
+                                foreach (var item in itemsElement.EnumerateArray())
+                                {
+                                    items.Add(new AiImportInvoiceItemViewModel
+                                    {
+                                        Description = GetJsonStringValue(item, "Description") ?? "",
+                                        Quantity = GetJsonDecimalValue(item, "Quantity") ?? 0,
+                                        UnitPrice = GetJsonDecimalValue(item, "UnitPrice") ?? 0
+                                    });
+                                }
+                            }
+
+                            var supplierName = GetJsonStringValue(inv, "SupplierName");
+                            var customerName = GetJsonStringValue(inv, "CustomerName");
+
+                            // Try to match supplier
+                            Supplier? matchedSupplier = null;
+                            if (!string.IsNullOrEmpty(supplierName))
+                            {
+                                matchedSupplier = suppliers.FirstOrDefault(s =>
+                                    s.SupplierName.Contains(supplierName, StringComparison.OrdinalIgnoreCase) ||
+                                    supplierName.Contains(s.SupplierName, StringComparison.OrdinalIgnoreCase));
+                            }
+
+                            // Try to match customer
+                            Customer? matchedCustomer = null;
+                            if (!string.IsNullOrEmpty(customerName))
+                            {
+                                matchedCustomer = customers.FirstOrDefault(c =>
+                                    c.CustomerName.Contains(customerName, StringComparison.OrdinalIgnoreCase) ||
+                                    customerName.Contains(c.CustomerName, StringComparison.OrdinalIgnoreCase));
+                            }
+
+                            invoices.Add(new AiImportInvoiceViewModel
+                            {
+                                DocumentId = document.Id,
+                                OriginalFileName = document.OriginalFileName,
+                                InvoiceNumber = GetJsonStringValue(inv, "InvoiceNumber") ?? $"INV-{index:D4}",
+                                InvoiceDate = GetJsonDateValue(inv, "InvoiceDate") ?? DateTime.Now,
+                                DueDate = GetJsonDateValue(inv, "DueDate") ?? DateTime.Now.AddDays(30),
+                                CustomerName = customerName ?? "",
+                                CustomerAddress = GetJsonStringValue(inv, "CustomerAddress") ?? "",
+                                CustomerEmail = GetJsonStringValue(inv, "CustomerEmail") ?? "",
+                                CustomerPhone = GetJsonStringValue(inv, "CustomerPhone") ?? "",
+                                SubTotal = GetJsonDecimalValue(inv, "SubTotal") ?? 0,
+                                GSTAmount = GetJsonDecimalValue(inv, "GSTAmount") ?? 0,
+                                TotalAmount = GetJsonDecimalValue(inv, "TotalAmount") ?? 0,
+                                Notes = GetJsonStringValue(inv, "Notes") ?? "",
+                                InvoiceType = GetJsonStringValue(inv, "InvoiceType") ?? "Payable",
+                                ExtractedSupplierName = supplierName ?? "",
+                                ExtractedCustomerName = customerName ?? "",
+                                MatchedSupplierId = matchedSupplier?.Id,
+                                MatchedSupplierName = matchedSupplier?.SupplierName,
+                                MatchedCustomerId = matchedCustomer?.Id,
+                                MatchedCustomerName = matchedCustomer?.CustomerName,
+                                MatchConfidence = matchedSupplier != null || matchedCustomer != null ? "High" : "None",
+                                Items = items,
+                                AvailableSuppliers = suppliers.ToList(),
+                                AvailableCustomers = customers.ToList()
+                            });
+                            index++;
+                        }
+                        catch (Exception invEx)
+                        {
+                            _logger.LogWarning(invEx, $"Error parsing invoice at index {index}");
+                            index++;
+                        }
+                    }
+                }
+
+                // Summary info
+                var totalExtracted = extractedData.TryGetProperty("TotalExtracted", out var te) ? te.GetInt32() : invoices.Count;
+                var totalDetected = extractedData.TryGetProperty("TotalDetected", out var td) ? td.GetInt32() : invoices.Count;
+                var summary = extractedData.TryGetProperty("Summary", out var sum) ? sum.GetString() : "";
+
+                // Check for duplicate invoice numbers
+                var invoiceNumbers = invoices.Select(i => i.InvoiceNumber).ToList();
+                var existingInvoices = await _context.Invoices
+                    .Where(i => invoiceNumbers.Contains(i.InvoiceNumber))
+                    .Select(i => i.InvoiceNumber)
+                    .ToListAsync();
+
+                var duplicateCount = existingInvoices.Count;
+                var duplicateNumbers = existingInvoices.Take(5).ToList(); // Show first 5 duplicates
+
+                ViewBag.TotalExtracted = totalExtracted;
+                ViewBag.TotalDetected = totalDetected;
+                ViewBag.Summary = summary;
+                ViewBag.DocumentId = document.Id;
+                ViewBag.FileName = document.OriginalFileName;
+                ViewBag.DuplicateCount = duplicateCount;
+                ViewBag.DuplicateNumbers = duplicateNumbers;
+
+                TempData["Success"] = $"Successfully extracted {invoices.Count} invoices from the PDF. Please review and save.";
+                return View("ReviewBulkInvoices", invoices);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error parsing bulk extracted invoice data");
+                TempData["Error"] = "Error loading extracted data. Please try processing the document again.";
+                return RedirectToAction(nameof(Invoice));
+            }
+        }
+
+        // POST: AiImport/SaveBulkInvoices - Save multiple invoices from bulk extraction
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveBulkInvoices(List<AiImportInvoiceViewModel> invoices, int documentId, bool overwriteExisting = false)
+        {
+            if (invoices == null || invoices.Count == 0)
+            {
+                TempData["Error"] = "No invoices to save.";
+                return RedirectToAction(nameof(Invoice));
+            }
+
+            // Filter only selected invoices
+            var selectedInvoices = invoices.Where(i => i.Selected).ToList();
+            if (selectedInvoices.Count == 0)
+            {
+                TempData["Error"] = "No invoices were selected for saving.";
+                return RedirectToAction(nameof(Invoice));
+            }
+
+            try
+            {
+                var savedCount = 0;
+                var updatedCount = 0;
+                var errors = new List<string>();
+
+                foreach (var model in selectedInvoices)
+                {
+                    try
+                    {
+                        // Check if invoice number already exists
+                        var invoiceNumber = model.InvoiceNumber;
+                        var existingInvoice = await _context.Invoices
+                            .Include(i => i.InvoiceItems)
+                            .FirstOrDefaultAsync(i => i.InvoiceNumber == invoiceNumber);
+
+                        Invoice invoice;
+                        bool isUpdate = false;
+
+                        if (existingInvoice != null)
+                        {
+                            if (overwriteExisting)
+                            {
+                                // Overwrite existing invoice
+                                invoice = existingInvoice;
+                                isUpdate = true;
+                                _logger.LogInformation($"Overwriting existing invoice {invoiceNumber}");
+
+                                // Remove existing line items
+                                if (existingInvoice.InvoiceItems != null && existingInvoice.InvoiceItems.Any())
+                                {
+                                    _context.InvoiceItems.RemoveRange(existingInvoice.InvoiceItems);
+                                }
+                            }
+                            else
+                            {
+                                // Generate unique invoice number with suffix
+                                var baseNumber = invoiceNumber;
+                                var suffix = 1;
+                                while (await _context.Invoices.AnyAsync(i => i.InvoiceNumber == invoiceNumber))
+                                {
+                                    invoiceNumber = $"{baseNumber}-{suffix:D2}";
+                                    suffix++;
+                                }
+                                _logger.LogInformation($"Invoice number {baseNumber} already exists, using {invoiceNumber} instead");
+                                invoice = new Invoice();
+                            }
+                        }
+                        else
+                        {
+                            invoice = new Invoice();
+                        }
+
+                        // Set invoice properties
+                        invoice.InvoiceNumber = invoiceNumber;
+                        invoice.InvoiceDate = model.InvoiceDate ?? DateTime.Now;
+                        invoice.DueDate = model.DueDate ?? DateTime.Now.AddDays(30);
+                        invoice.CustomerName = model.CustomerName;
+                        invoice.CustomerAddress = model.CustomerAddress;
+                        invoice.CustomerEmail = model.CustomerEmail;
+                        invoice.CustomerPhone = model.CustomerPhone;
+                        invoice.SubTotal = model.SubTotal;
+                        invoice.GSTAmount = model.GSTAmount;
+                        invoice.GSTEnabled = model.GSTAmount > 0;
+                        invoice.GSTRate = model.GSTAmount > 0 && model.SubTotal > 0 ? (model.GSTAmount / model.SubTotal) * 100 : 0;
+                        invoice.TotalAmount = model.TotalAmount;
+                        invoice.Notes = model.Notes + $" (Bulk imported from: {documentId})";
+                        invoice.InvoiceType = model.InvoiceType ?? "Payable";
+                        invoice.ModifiedDate = DateTime.Now;
+
+                        if (!isUpdate)
+                        {
+                            invoice.PaidAmount = 0;
+                            invoice.Status = "Draft";
+                            invoice.CreatedDate = DateTime.Now;
+                        }
+
+                        // Set supplier if matched
+                        if (model.SelectedSupplierId.HasValue)
+                            invoice.SupplierId = model.SelectedSupplierId.Value;
+                        else if (model.MatchedSupplierId.HasValue)
+                            invoice.SupplierId = model.MatchedSupplierId.Value;
+
+                        // Set customer if matched
+                        if (model.SelectedCustomerId.HasValue)
+                            invoice.CustomerId = model.SelectedCustomerId.Value;
+                        else if (model.MatchedCustomerId.HasValue)
+                            invoice.CustomerId = model.MatchedCustomerId.Value;
+
+                        if (!isUpdate)
+                        {
+                            _context.Invoices.Add(invoice);
+                        }
+                        await _context.SaveChangesAsync();
+
+                        // Add line items
+                        if (model.Items != null && model.Items.Count > 0)
+                        {
+                            foreach (var item in model.Items)
+                            {
+                                var invoiceItem = new InvoiceItem
+                                {
+                                    InvoiceId = invoice.Id,
+                                    Description = item.Description,
+                                    Quantity = (int)item.Quantity,
+                                    UnitPrice = item.UnitPrice
+                                };
+                                _context.InvoiceItems.Add(invoiceItem);
+                            }
+                            await _context.SaveChangesAsync();
+                        }
+
+                        if (isUpdate)
+                            updatedCount++;
+                        else
+                            savedCount++;
+                    }
+                    catch (Exception itemEx)
+                    {
+                        errors.Add($"Invoice {model.InvoiceNumber}: {itemEx.Message}");
+                        _logger.LogError(itemEx, $"Error saving invoice {model.InvoiceNumber}");
+                    }
+                }
+
+                // Update document status
+                var doc = await _context.ImportedDocuments.FindAsync(documentId);
+                if (doc != null)
+                {
+                    doc.ProcessingStatus = "Completed";
+                    await _context.SaveChangesAsync();
+                }
+
+                if (errors.Count > 0)
+                {
+                    TempData["Warning"] = $"Saved {savedCount}, updated {updatedCount} of {selectedInvoices.Count} invoices. Errors: {string.Join("; ", errors.Take(3))}";
+                }
+                else
+                {
+                    var message = savedCount > 0 ? $"Created {savedCount} new invoices" : "";
+                    if (updatedCount > 0)
+                        message += (message.Length > 0 ? " and " : "") + $"Updated {updatedCount} existing invoices";
+                    TempData["Success"] = message + ".";
+                }
+
+                return RedirectToAction("Index", "Invoices");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error saving bulk invoices");
+                TempData["Error"] = $"Error saving invoices: {ex.Message}";
+                return RedirectToAction("ReviewBulkInvoices", new { id = documentId });
+            }
+        }
+
         // POST: AiImport/SaveInvoice
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -1438,6 +2083,49 @@ namespace InvoiceManagement.Controllers
             return View(document);
         }
 
+        // POST: AiImport/UpdateDocumentName
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> UpdateDocumentName([FromForm] int id, [FromForm] string fileName)
+        {
+            try
+            {
+                _logger.LogInformation($"UpdateDocumentName called with id={id}, fileName={fileName}");
+
+                var document = await _context.ImportedDocuments.FindAsync(id);
+                if (document == null)
+                {
+                    _logger.LogWarning($"Document {id} not found");
+                    return Json(new { success = false, message = "Document not found." });
+                }
+
+                if (string.IsNullOrWhiteSpace(fileName))
+                {
+                    return Json(new { success = false, message = "File name cannot be empty." });
+                }
+
+                // Preserve the file extension if not included
+                var currentExtension = Path.GetExtension(document.OriginalFileName);
+                var newExtension = Path.GetExtension(fileName);
+                if (string.IsNullOrEmpty(newExtension) && !string.IsNullOrEmpty(currentExtension))
+                {
+                    fileName = fileName + currentExtension;
+                }
+
+                document.OriginalFileName = fileName.Trim();
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Document {id} name updated to {fileName}");
+
+                return Json(new { success = true, message = "File name updated successfully.", newName = document.OriginalFileName });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating document name");
+                return Json(new { success = false, message = "Error updating file name: " + ex.Message });
+            }
+        }
+
         // POST: AiImport/UpdateDocumentSupplier
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -1612,6 +2300,99 @@ namespace InvoiceManagement.Controllers
             }
 
             return "";
+        }
+
+        /// <summary>
+        /// Safely extract a string value from a JsonElement
+        /// </summary>
+        private static string? GetJsonStringValue(System.Text.Json.JsonElement element, string propertyName)
+        {
+            try
+            {
+                if (element.TryGetProperty(propertyName, out var prop))
+                {
+                    if (prop.ValueKind == System.Text.Json.JsonValueKind.String)
+                        return prop.GetString();
+                    if (prop.ValueKind == System.Text.Json.JsonValueKind.Number)
+                        return prop.ToString();
+                    if (prop.ValueKind == System.Text.Json.JsonValueKind.Null)
+                        return null;
+                }
+                return null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Safely extract a decimal value from a JsonElement
+        /// </summary>
+        private static decimal? GetJsonDecimalValue(System.Text.Json.JsonElement element, string propertyName)
+        {
+            try
+            {
+                if (element.TryGetProperty(propertyName, out var prop))
+                {
+                    if (prop.ValueKind == System.Text.Json.JsonValueKind.Number)
+                        return prop.GetDecimal();
+                    if (prop.ValueKind == System.Text.Json.JsonValueKind.String)
+                    {
+                        if (decimal.TryParse(prop.GetString(), out var parsed))
+                            return parsed;
+                    }
+                }
+                return null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Safely extract a DateTime value from a JsonElement
+        /// </summary>
+        private static DateTime? GetJsonDateValue(System.Text.Json.JsonElement element, string propertyName)
+        {
+            try
+            {
+                if (element.TryGetProperty(propertyName, out var prop))
+                {
+                    if (prop.ValueKind == System.Text.Json.JsonValueKind.String)
+                    {
+                        var dateStr = prop.GetString();
+                        if (!string.IsNullOrEmpty(dateStr))
+                        {
+                            if (DateTime.TryParse(dateStr, out var parsed))
+                                return parsed;
+                        }
+                    }
+                    else if (prop.ValueKind == System.Text.Json.JsonValueKind.Number)
+                    {
+                        // Could be a Unix timestamp or similar
+                        return null;
+                    }
+                    else if (prop.ValueKind != System.Text.Json.JsonValueKind.Null)
+                    {
+                        // Try GetDateTime for properly formatted ISO dates
+                        try
+                        {
+                            return prop.GetDateTime();
+                        }
+                        catch
+                        {
+                            return null;
+                        }
+                    }
+                }
+                return null;
+            }
+            catch
+            {
+                return null;
+            }
         }
     }
 }

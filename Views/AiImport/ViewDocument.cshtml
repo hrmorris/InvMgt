@@ -8,10 +8,27 @@
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="mb-1">
-                <i class="bi @(isPdf ? "bi-file-pdf text-danger" : isImage ? "bi-file-image text-primary" : "bi-file-earmark") me-2"></i>
-                @Model.OriginalFileName
+            <h2 class="mb-1" id="documentTitle">
+                <i
+                    class="bi @(isPdf ? "bi-file-pdf text-danger" : isImage ? "bi-file-image text-primary" : "bi-file-earmark") me-2"></i>
+                <span id="fileNameDisplay">@Model.OriginalFileName</span>
+                <button type="button" class="btn btn-sm btn-outline-secondary ms-2" id="editNameBtn"
+                    title="Edit file name">
+                    <i class="bi bi-pencil"></i>
+                </button>
             </h2>
+            <!-- Inline edit form (hidden by default) -->
+            <div id="editNameForm" class="d-none mb-2">
+                <div class="input-group" style="max-width: 500px;">
+                    <input type="text" class="form-control" id="fileNameInput" value="@Model.OriginalFileName" />
+                    <button type="button" class="btn btn-success" id="saveNameBtn" title="Save">
+                        <i class="bi bi-check-lg"></i>
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="cancelNameBtn" title="Cancel">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+            </div>
             <p class="text-muted mb-0">
                 Uploaded: @Model.UploadDate.ToString("dd/MM/yyyy HH:mm") |
                 Size: @(Model.FileSize > 0 ? $"{Model.FileSize / 1024.0:N1} KB" : "-") |
@@ -24,13 +41,15 @@
             </a>
             @if (Model.InvoiceId.HasValue)
             {
-                <a asp-controller="Invoices" asp-action="Details" asp-route-id="@Model.InvoiceId" class="btn btn-outline-secondary">
+                <a asp-controller="Invoices" asp-action="Details" asp-route-id="@Model.InvoiceId"
+                    class="btn btn-outline-secondary">
                     <i class="bi bi-receipt me-1"></i>View Invoice
                 </a>
             }
             @if (Model.PaymentId.HasValue)
             {
-                <a asp-controller="Payments" asp-action="Details" asp-route-id="@Model.PaymentId" class="btn btn-outline-secondary">
+                <a asp-controller="Payments" asp-action="Details" asp-route-id="@Model.PaymentId"
+                    class="btn btn-outline-secondary">
                     <i class="bi bi-credit-card me-1"></i>View Payment
                 </a>
             }
@@ -50,19 +69,16 @@
                     @if (isPdf)
                     {
                         <div class="ratio" style="--bs-aspect-ratio: 141.4%;">
-                            <iframe src="@Url.Action("PreviewDocument", new { id = Model.Id })" 
-                                    class="border-0" 
-                                    style="width: 100%; min-height: 800px;">
+                            <iframe src="@Url.Action("PreviewDocument", new { id = Model.Id })" class="border-0"
+                                style="width: 100%; min-height: 800px;">
                             </iframe>
                         </div>
                     }
                     else if (isImage)
                     {
                         <div class="text-center p-4 bg-secondary bg-opacity-10">
-                            <img src="@Url.Action("PreviewDocument", new { id = Model.Id })" 
-                                 alt="@Model.OriginalFileName" 
-                                 class="img-fluid shadow-lg" 
-                                 style="max-height: 800px; object-fit: contain;">
+                            <img src="@Url.Action("PreviewDocument", new { id = Model.Id })" alt="@Model.OriginalFileName"
+                                class="img-fluid shadow-lg" style="max-height: 800px; object-fit: contain;">
                         </div>
                     }
                     else
@@ -87,8 +103,9 @@
                 </div>
                 <div class="card-body">
                     <dl class="mb-0">
-                        <dt>File Name</dt>
-                        <dd class="text-break">@Model.OriginalFileName</dd>
+                        <dt>File Name <button type="button" class="btn btn-sm btn-link p-0 ms-1" id="editNameBtn2"
+                                title="Edit file name"><i class="bi bi-pencil"></i></button></dt>
+                        <dd class="text-break" id="fileNameDisplaySidebar">@Model.OriginalFileName</dd>
 
                         <dt>Content Type</dt>
                         <dd>@(Model.ContentType ?? "Unknown")</dd>
@@ -101,7 +118,8 @@
 
                         <dt>Status</dt>
                         <dd>
-                            <span class="badge @(Model.ProcessingStatus == "Processed" ? "bg-success" : Model.ProcessingStatus == "Error" ? "bg-danger" : "bg-warning")">
+                            <span
+                                class="badge @(Model.ProcessingStatus == "Processed" ? "bg-success" : Model.ProcessingStatus == "Error" ? "bg-danger" : "bg-warning")">
                                 @Model.ProcessingStatus
                             </span>
                         </dd>
@@ -124,7 +142,8 @@
                 </div>
             </div>
 
-            @if (!string.IsNullOrEmpty(Model.ExtractedSupplierName) || !string.IsNullOrEmpty(Model.ExtractedCustomerName) || !string.IsNullOrEmpty(Model.ExtractedBankName))
+            @if (!string.IsNullOrEmpty(Model.ExtractedSupplierName) ||
+                        !string.IsNullOrEmpty(Model.ExtractedCustomerName) || !string.IsNullOrEmpty(Model.ExtractedBankName))
             {
                 <div class="card shadow mb-3">
                     <div class="card-header bg-success text-white">
@@ -179,13 +198,15 @@
                 <div class="card-body">
                     @if (Model.InvoiceId.HasValue)
                     {
-                        <a asp-controller="Invoices" asp-action="Details" asp-route-id="@Model.InvoiceId" class="btn btn-outline-primary w-100 mb-2">
+                        <a asp-controller="Invoices" asp-action="Details" asp-route-id="@Model.InvoiceId"
+                            class="btn btn-outline-primary w-100 mb-2">
                             <i class="bi bi-receipt me-2"></i>View Linked Invoice
                         </a>
                     }
                     @if (Model.PaymentId.HasValue)
                     {
-                        <a asp-controller="Payments" asp-action="Details" asp-route-id="@Model.PaymentId" class="btn btn-outline-success w-100 mb-2">
+                        <a asp-controller="Payments" asp-action="Details" asp-route-id="@Model.PaymentId"
+                            class="btn btn-outline-success w-100 mb-2">
                             <i class="bi bi-credit-card me-2"></i>View Linked Payment
                         </a>
                     }
@@ -200,3 +221,106 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const documentId = @Model.Id;
+            const editNameBtn = document.getElementById('editNameBtn');
+            const editNameBtn2 = document.getElementById('editNameBtn2');
+            const editNameForm = document.getElementById('editNameForm');
+            const fileNameDisplay = document.getElementById('fileNameDisplay');
+            const fileNameDisplaySidebar = document.getElementById('fileNameDisplaySidebar');
+            const fileNameInput = document.getElementById('fileNameInput');
+            const saveNameBtn = document.getElementById('saveNameBtn');
+            const cancelNameBtn = document.getElementById('cancelNameBtn');
+            const documentTitle = document.getElementById('documentTitle');
+
+            function showEditForm() {
+                documentTitle.classList.add('d-none');
+                editNameForm.classList.remove('d-none');
+                fileNameInput.focus();
+                fileNameInput.select();
+            }
+
+            function hideEditForm() {
+                documentTitle.classList.remove('d-none');
+                editNameForm.classList.add('d-none');
+                fileNameInput.value = fileNameDisplay.textContent;
+            }
+
+            async function saveFileName() {
+                const newName = fileNameInput.value.trim();
+                if (!newName) {
+                    alert('File name cannot be empty.');
+                    return;
+                }
+
+                saveNameBtn.disabled = true;
+                saveNameBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+                try {
+                    const formData = new FormData();
+                    formData.append('id', documentId);
+                    formData.append('fileName', newName);
+
+                    const response = await fetch('@Url.Action("UpdateDocumentName", "AiImport")', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        fileNameDisplay.textContent = result.newName;
+                        fileNameDisplaySidebar.textContent = result.newName;
+                        fileNameInput.value = result.newName;
+                        hideEditForm();
+
+                        // Show success toast
+                        const toast = document.createElement('div');
+                        toast.className = 'position-fixed bottom-0 end-0 p-3';
+                        toast.style.zIndex = '11';
+                        toast.innerHTML = `
+                                    <div class="toast show bg-success text-white" role="alert">
+                                        <div class="toast-body">
+                                            <i class="bi bi-check-circle me-2"></i>${result.message}
+                                        </div>
+                                    </div>
+                                `;
+                        document.body.appendChild(toast);
+                        setTimeout(() => toast.remove(), 3000);
+                    } else {
+                        alert(result.message);
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error updating file name. Please try again.');
+                } finally {
+                    saveNameBtn.disabled = false;
+                    saveNameBtn.innerHTML = '<i class="bi bi-check-lg"></i>';
+                }
+            }
+
+            // Event listeners
+            editNameBtn.addEventListener('click', showEditForm);
+            editNameBtn2.addEventListener('click', showEditForm);
+            cancelNameBtn.addEventListener('click', hideEditForm);
+            saveNameBtn.addEventListener('click', saveFileName);
+
+            // Save on Enter key
+            fileNameInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    saveFileName();
+                } else if (e.key === 'Escape') {
+                    hideEditForm();
+                }
+            });
+        });
+    </script>
+}

@@ -15,16 +15,18 @@ namespace InvoiceManagement.Controllers
         private readonly IPdfService _pdfService;
         private readonly IPaymentService _paymentService;
         private readonly ISupplierService _supplierService;
+        private readonly ICustomerService _customerService;
         private readonly ILogger<InvoicesController> _logger;
         private readonly ApplicationDbContext _context;
 
-        public InvoicesController(IInvoiceService invoiceService, IImportService importService, IPdfService pdfService, IPaymentService paymentService, ISupplierService supplierService, ILogger<InvoicesController> logger, ApplicationDbContext context)
+        public InvoicesController(IInvoiceService invoiceService, IImportService importService, IPdfService pdfService, IPaymentService paymentService, ISupplierService supplierService, ICustomerService customerService, ILogger<InvoicesController> logger, ApplicationDbContext context)
         {
             _invoiceService = invoiceService;
             _importService = importService;
             _pdfService = pdfService;
             _paymentService = paymentService;
             _supplierService = supplierService;
+            _customerService = customerService;
             _logger = logger;
             _context = context;
         }
@@ -185,6 +187,10 @@ namespace InvoiceManagement.Controllers
             var suppliers = await _supplierService.GetAllSuppliersAsync();
             ViewBag.Suppliers = suppliers.Where(s => s.Status == "Active").OrderBy(s => s.SupplierName).ToList();
 
+            // Get customers for dropdown
+            var customers = await _customerService.GetAllCustomersAsync();
+            ViewBag.Customers = customers.Where(c => c.Status == "Active").OrderBy(c => c.CustomerName).ToList();
+
             return View(invoice);
         }
 
@@ -214,6 +220,38 @@ namespace InvoiceManagement.Controllers
             ModelState.Remove("SubTotal");
             ModelState.Remove("GSTAmount");
             ModelState.Remove("Supplier"); // Navigation property, not posted
+            ModelState.Remove("Customer"); // Navigation property, not posted
+
+            // For Supplier invoices, CustomerName is not required - use supplier info instead
+            if (invoice.InvoiceType == "Supplier" && invoice.SupplierId.HasValue)
+            {
+                ModelState.Remove("CustomerName");
+                // Get supplier name to use as CustomerName if empty
+                if (string.IsNullOrWhiteSpace(invoice.CustomerName))
+                {
+                    var supplier = await _context.Suppliers.FindAsync(invoice.SupplierId.Value);
+                    if (supplier != null)
+                    {
+                        invoice.CustomerName = supplier.SupplierName;
+                        invoice.CustomerAddress = supplier.Address;
+                        invoice.CustomerEmail = supplier.Email;
+                        invoice.CustomerPhone = supplier.Phone;
+                    }
+                }
+            }
+
+            // For Customer invoices, populate from customer if selected
+            if (invoice.InvoiceType == "Customer" && invoice.CustomerId.HasValue && string.IsNullOrWhiteSpace(invoice.CustomerName))
+            {
+                var customer = await _context.Customers.FindAsync(invoice.CustomerId.Value);
+                if (customer != null)
+                {
+                    invoice.CustomerName = customer.CustomerName;
+                    invoice.CustomerAddress = customer.Address;
+                    invoice.CustomerEmail = customer.Email;
+                    invoice.CustomerPhone = customer.Phone;
+                }
+            }
 
             // Ensure items list is not null and remove any empty items
             if (items != null)
@@ -252,6 +290,10 @@ namespace InvoiceManagement.Controllers
                 // Get suppliers for dropdown
                 var suppliers = await _supplierService.GetAllSuppliersAsync();
                 ViewBag.Suppliers = suppliers.Where(s => s.Status == "Active").OrderBy(s => s.SupplierName).ToList();
+
+                // Get customers for dropdown
+                var customers = await _customerService.GetAllCustomersAsync();
+                ViewBag.Customers = customers.Where(c => c.Status == "Active").OrderBy(c => c.CustomerName).ToList();
 
                 return View(existingInvoice);
             }
@@ -331,6 +373,10 @@ namespace InvoiceManagement.Controllers
             // Get suppliers for dropdown
             var suppliersForView = await _supplierService.GetAllSuppliersAsync();
             ViewBag.Suppliers = suppliersForView.Where(s => s.Status == "Active").OrderBy(s => s.SupplierName).ToList();
+
+            // Get customers for dropdown
+            var customersForView = await _customerService.GetAllCustomersAsync();
+            ViewBag.Customers = customersForView.Where(c => c.Status == "Active").OrderBy(c => c.CustomerName).ToList();
 
             return View(invoiceToReturn);
         }
@@ -605,11 +651,67 @@ namespace InvoiceManagement.Controllers
                 return Json(new { success = false, message = $"Error creating supplier: {ex.Message}" });
             }
         }
+
+        // POST: Invoices/CreateCustomerFromInvoice
+        [HttpPost]
+        public async Task<IActionResult> CreateCustomerFromInvoice([FromBody] CreateCustomerRequest request)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(request.CustomerName))
+                {
+                    return Json(new { success = false, message = "Customer name is required" });
+                }
+
+                // Check if customer already exists
+                var existingCustomer = await _context.Customers
+                    .FirstOrDefaultAsync(c => c.CustomerName.ToLower() == request.CustomerName.ToLower());
+
+                if (existingCustomer != null)
+                {
+                    return Json(new { success = false, message = $"Customer '{request.CustomerName}' already exists", existingId = existingCustomer.Id });
+                }
+
+                var customer = new Customer
+                {
+                    CustomerName = request.CustomerName,
+                    Address = request.Address,
+                    Email = request.Email,
+                    Phone = request.Phone,
+                    Status = "Active",
+                    CreatedDate = DateTime.Now
+                };
+
+                _context.Customers.Add(customer);
+                await _context.SaveChangesAsync();
+
+                return Json(new
+                {
+                    success = true,
+                    customerId = customer.Id,
+                    customerName = customer.CustomerName,
+                    message = $"Customer '{customer.CustomerName}' created successfully!"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating customer from invoice");
+                return Json(new { success = false, message = $"Error creating customer: {ex.Message}" });
+            }
+        }
     }
 
     public class CreateSupplierRequest
     {
         public string SupplierName { get; set; } = string.Empty;
+        public string? Address { get; set; }
+        public string? Email { get; set; }
+        public string? Phone { get; set; }
+    }
+
+    public class CreateCustomerRequest
+    {
+        public string CustomerName { get; set; } = string.Empty;
         public string? Address { get; set; }
         public string? Email { get; set; }
         public string? Phone { get; set; }

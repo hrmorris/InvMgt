@@ -49,7 +49,7 @@ namespace InvoiceManagement.Models
         [StringLength(50)]
         public string ProcessingStatus { get; set; } = "Pending"; // Pending, Processed, Error
 
-        [StringLength(1000)]
+        // No length limit for ProcessingNotes to support bulk invoice JSON data
         public string? ProcessingNotes { get; set; }
 
         public DateTime UploadDate { get; set; } = DateTime.Now;

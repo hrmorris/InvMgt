@@ -31,8 +31,13 @@ steps:
       - '0'
       - '--max-instances'
       - '10'
-      - '--set-env-vars'
-      - 'ASPNETCORE_ENVIRONMENT=Production,GoogleAI__ApiKey=$_GOOGLE_AI_API_KEY'
+      - '--update-env-vars'
+      - 'ASPNETCORE_ENVIRONMENT=Production,OpenAI__ApiKey=${_OPENAI_API_KEY}'
+
+# Substitution variables - set these in Cloud Build trigger or command line
+# Example: gcloud builds submit --substitutions=_OPENAI_API_KEY=your-api-key
+substitutions:
+  _OPENAI_API_KEY: ''  # Set via Cloud Build trigger or --substitutions flag
 
 images:
   - 'gcr.io/$PROJECT_ID/invoice-management:$COMMIT_SHA'

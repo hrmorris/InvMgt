@@ -1,0 +1,413 @@
+@model List<InvoiceManagement.Models.ViewModels.AiImportInvoiceViewModel>
+@{
+    ViewData["Title"] = "Review Bulk Extracted Invoices";
+    var totalExtracted = ViewBag.TotalExtracted ?? Model.Count;
+    var totalDetected = ViewBag.TotalDetected ?? Model.Count;
+    var summary = ViewBag.Summary ?? "";
+    var documentId = ViewBag.DocumentId ?? 0;
+    var fileName = ViewBag.FileName ?? "Document";
+    var duplicateCount = ViewBag.DuplicateCount ?? 0;
+    var duplicateNumbers = ViewBag.DuplicateNumbers as List<string> ?? new List<string>();
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <div>
+        <h1 class="h2"><i class="bi bi-files text-success"></i> Review Bulk Extracted Invoices</h1>
+        <p class="text-muted mb-0">
+            <i class="bi bi-file-pdf text-danger"></i> @fileName
+        </p>
+    </div>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-action="Invoice" class="btn btn-outline-secondary me-2">
+            <i class="bi bi-arrow-left"></i> Back
+        </a>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>@TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- Duplicate Invoice Warning Modal -->
+@if (duplicateCount > 0)
+{
+    <div class="modal fade" id="duplicateModal" tabindex="-1" aria-labelledby="duplicateModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title" id="duplicateModalLabel">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>Duplicate Invoices Detected
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>@duplicateCount invoice(s)</strong> already exist in the database:</p>
+                    <ul class="list-group mb-3">
+                        @foreach (var num in duplicateNumbers)
+                        {
+                            <li class="list-group-item list-group-item-warning">
+                                <i class="bi bi-file-text me-2"></i>Invoice #@num
+                            </li>
+                        }
+                        @if (duplicateCount > 5)
+                        {
+                            <li class="list-group-item list-group-item-light text-muted">
+                                <i class="bi bi-three-dots me-2"></i>and @(duplicateCount - 5) more...
+                            </li>
+                        }
+                    </ul>
+                    <p class="mb-0">How would you like to handle duplicates?</p>
+                </div>
+                <div class="modal-footer justify-content-between">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-plus-circle me-1"></i>Create New (add suffix)
+                    </button>
+                    <button type="button" class="btn btn-warning" id="enableOverwriteBtn">
+                        <i class="bi bi-arrow-repeat me-1"></i>Overwrite Existing
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Summary Card -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-3 text-center border-end">
+                        <h1 class="display-4 mb-0">@Model.Count</h1>
+                        <small>Invoices Extracted</small>
+                    </div>
+                    <div class="col-md-3 text-center border-end">
+                        <h3 class="mb-0">@Model.Sum(i => i.TotalAmount).ToString("N2")</h3>
+                        <small>Total Value</small>
+                    </div>
+                    <div class="col-md-3 text-center border-end">
+                        <h3 class="mb-0">@Model.Count(i => i.MatchedSupplierId.HasValue || i.MatchedCustomerId.HasValue)
+                        </h3>
+                        <small>Auto-Matched</small>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <h3 class="mb-0">@Model.Count(i => !i.MatchedSupplierId.HasValue &&
+                                                        !i.MatchedCustomerId.HasValue)</h3>
+                        <small>Need Review</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form asp-action="SaveBulkInvoices" method="post" id="bulkSaveForm">
+    <input type="hidden" name="documentId" value="@documentId" />
+
+    <!-- Action Buttons -->
+    <div class="d-flex justify-content-between flex-wrap mb-3">
+        <div class="d-flex align-items-center mb-2 mb-md-0">
+            <button type="button" class="btn btn-outline-primary me-2" id="selectAllBtn">
+                <i class="bi bi-check-all"></i> Select All
+            </button>
+            <button type="button" class="btn btn-outline-secondary me-3" id="deselectAllBtn">
+                <i class="bi bi-x-lg"></i> Deselect All
+            </button>
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="overwriteExisting" name="overwriteExisting"
+                    value="true">
+                <label class="form-check-label" for="overwriteExisting">
+                    <i class="bi bi-arrow-repeat text-warning"></i> Overwrite existing invoices
+                </label>
+            </div>
+        </div>
+        <div class="d-flex align-items-center">
+            <span class="text-muted me-3" id="selectedCount">@Model.Count invoices selected</span>
+            <button type="submit" class="btn btn-success btn-lg">
+                <i class="bi bi-save me-2"></i>Save Selected Invoices
+            </button>
+        </div>
+    </div>
+
+    <!-- Invoice Cards -->
+    <div class="row" id="invoiceCards">
+        @for (int i = 0; i < Model.Count; i++)
+        {
+            var invoice = Model[i];
+            var isMatched = invoice.MatchedSupplierId.HasValue || invoice.MatchedCustomerId.HasValue;
+            <div class="col-md-6 col-lg-4 mb-3 invoice-card-wrapper">
+                <div class="card h-100 @(isMatched ? "border-success" : "border-warning")">
+                    <div
+                        class="card-header d-flex justify-content-between align-items-center @(isMatched ? "bg-success" : "bg-warning") @(isMatched ? "text-white" : "text-dark")">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input invoice-checkbox" id="select_@i"
+                                name="invoices[@i].Selected" value="true" checked>
+                            <label class="form-check-label fw-bold" for="select_@i">
+                                #@(i + 1) - @invoice.InvoiceNumber
+                            </label>
+                        </div>
+                        @if (isMatched)
+                        {
+                            <span class="badge bg-white text-success"><i class="bi bi-check-circle"></i> Matched</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-white text-warning"><i class="bi bi-exclamation-triangle"></i> Review</span>
+                        }
+                    </div>
+                    <div class="card-body">
+                        <!-- Hidden fields for form submission -->
+                        <input type="hidden" name="invoices[@i].InvoiceNumber" value="@invoice.InvoiceNumber" />
+                        <input type="hidden" name="invoices[@i].InvoiceDate"
+                            value="@invoice.InvoiceDate?.ToString("yyyy-MM-dd")" />
+                        <input type="hidden" name="invoices[@i].DueDate" value="@invoice.DueDate?.ToString("yyyy-MM-dd")" />
+                        <input type="hidden" name="invoices[@i].CustomerName" value="@invoice.CustomerName" />
+                        <input type="hidden" name="invoices[@i].CustomerAddress" value="@invoice.CustomerAddress" />
+                        <input type="hidden" name="invoices[@i].CustomerEmail" value="@invoice.CustomerEmail" />
+                        <input type="hidden" name="invoices[@i].CustomerPhone" value="@invoice.CustomerPhone" />
+                        <input type="hidden" name="invoices[@i].SubTotal" value="@invoice.SubTotal" />
+                        <input type="hidden" name="invoices[@i].GSTAmount" value="@invoice.GSTAmount" />
+                        <input type="hidden" name="invoices[@i].TotalAmount" value="@invoice.TotalAmount" />
+                        <input type="hidden" name="invoices[@i].Notes" value="@invoice.Notes" />
+                        <input type="hidden" name="invoices[@i].InvoiceType" value="@invoice.InvoiceType" />
+                        <input type="hidden" name="invoices[@i].MatchedSupplierId" value="@invoice.MatchedSupplierId" />
+                        <input type="hidden" name="invoices[@i].MatchedCustomerId" value="@invoice.MatchedCustomerId" />
+
+                        @if (invoice.Items != null)
+                        {
+                            for (int j = 0; j < invoice.Items.Count; j++)
+                            {
+                                <input type="hidden" name="invoices[@i].Items[@j].Description"
+                                    value="@invoice.Items[j].Description" />
+                                <input type="hidden" name="invoices[@i].Items[@j].Quantity" value="@invoice.Items[j].Quantity" />
+                                <input type="hidden" name="invoices[@i].Items[@j].UnitPrice" value="@invoice.Items[j].UnitPrice" />
+                            }
+                        }
+
+                        <table class="table table-sm mb-2">
+                            <tr>
+                                <td class="text-muted" style="width: 40%;">Date:</td>
+                                <td><strong>@invoice.InvoiceDate?.ToString("dd/MM/yyyy")</strong></td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Due:</td>
+                                <td>@invoice.DueDate?.ToString("dd/MM/yyyy")</td>
+                            </tr>
+                            @if (!string.IsNullOrEmpty(invoice.ExtractedSupplierName))
+                            {
+                                <tr>
+                                    <td class="text-muted">Supplier:</td>
+                                    <td>
+                                        @invoice.ExtractedSupplierName
+                                        @if (invoice.MatchedSupplierId.HasValue)
+                                        {
+                                            <i class="bi bi-check-circle-fill text-success ms-1"
+                                                title="Matched to: @invoice.MatchedSupplierName"></i>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                            @if (!string.IsNullOrEmpty(invoice.CustomerName))
+                            {
+                                <tr>
+                                    <td class="text-muted">Customer:</td>
+                                    <td>
+                                        @invoice.CustomerName
+                                        @if (invoice.MatchedCustomerId.HasValue)
+                                        {
+                                            <i class="bi bi-check-circle-fill text-success ms-1"
+                                                title="Matched to: @invoice.MatchedCustomerName"></i>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                            <tr>
+                                <td class="text-muted">Items:</td>
+                                <td>@(invoice.Items?.Count ?? 0) line items</td>
+                            </tr>
+                        </table>
+
+                        <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                            <span class="text-muted">Total:</span>
+                            <span class="fs-5 fw-bold text-primary">@invoice.TotalAmount.ToString("N2")</span>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-transparent">
+                        <button type="button" class="btn btn-sm btn-outline-primary w-100" data-bs-toggle="collapse"
+                            data-bs-target="#details_@i">
+                            <i class="bi bi-chevron-down"></i> View Details
+                        </button>
+                        <div class="collapse mt-2" id="details_@i">
+                            @if (invoice.Items != null && invoice.Items.Count > 0)
+                            {
+                                <table class="table table-sm table-striped mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Description</th>
+                                            <th class="text-end">Qty</th>
+                                            <th class="text-end">Price</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var item in invoice.Items)
+                                        {
+                                            <tr>
+                                                <td class="small">@item.Description</td>
+                                                <td class="text-end">@item.Quantity</td>
+                                                <td class="text-end">@item.UnitPrice.ToString("N2")</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            }
+                            else
+                            {
+                                <p class="text-muted small mb-0">No line items extracted</p>
+                            }
+
+                            @if (!string.IsNullOrEmpty(invoice.Notes))
+                            {
+                                <div class="mt-2 small text-muted">
+                                    <strong>Notes:</strong> @invoice.Notes
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Bottom Action Bar -->
+    <div class="card bg-light sticky-bottom mt-3">
+        <div class="card-body d-flex justify-content-between align-items-center py-2">
+            <div>
+                <span class="fw-bold" id="bottomSelectedCount">@Model.Count invoices</span>
+                <span class="text-muted">| Total: </span>
+                <span class="fw-bold text-primary" id="selectedTotal">@Model.Sum(i =>
+                                        i.TotalAmount).ToString("N2")</span>
+            </div>
+            <button type="submit" class="btn btn-success">
+                <i class="bi bi-save me-2"></i>Save Selected to Database
+            </button>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const checkboxes = document.querySelectorAll('.invoice-checkbox');
+            const selectAllBtn = document.getElementById('selectAllBtn');
+            const deselectAllBtn = document.getElementById('deselectAllBtn');
+            const selectedCountEl = document.getElementById('selectedCount');
+            const bottomSelectedCountEl = document.getElementById('bottomSelectedCount');
+            const selectedTotalEl = document.getElementById('selectedTotal');
+            const overwriteCheckbox = document.getElementById('overwriteExisting');
+
+            const invoiceTotals = [@string.Join(",", Model.Select(i => i.TotalAmount.ToString(System.Globalization.CultureInfo.InvariantCulture)))];
+
+            // Show duplicate modal if duplicates detected
+            @if (duplicateCount > 0)
+            {
+                <text>
+                const duplicateModal = new bootstrap.Modal(document.getElementById('duplicateModal'));
+                duplicateModal.show();
+
+                // Handle overwrite button click
+                document.getElementById('enableOverwriteBtn').addEventListener('click', function() {
+                    overwriteCheckbox.checked = true;
+                    // Update toggle visual state
+                    const toggleLabel = document.querySelector('label[for="overwriteExisting"]');
+                    if (toggleLabel) {
+                        toggleLabel.classList.add('text-warning', 'fw-bold');
+                    }
+                    duplicateModal.hide();
+                    
+                    // Show confirmation
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert alert-warning alert-dismissible fade show';
+                    alertDiv.innerHTML = '<i class="bi bi-arrow-repeat me-2"></i><strong>Overwrite mode enabled.</strong> Existing invoices with the same numbers will be updated. <button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+                    document.querySelector('.row.mb-4').insertAdjacentElement('afterend', alertDiv);
+                });
+                </text>
+            }
+
+            function updateCounts() {
+                let count = 0;
+                let total = 0;
+
+                checkboxes.forEach((cb, index) => {
+                    if (cb.checked) {
+                        count++;
+                        total += invoiceTotals[index];
+                    }
+                });
+
+                selectedCountEl.textContent = count + ' invoices selected';
+                bottomSelectedCountEl.textContent = count + ' invoices';
+                selectedTotalEl.textContent = total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+
+            checkboxes.forEach(cb => {
+                cb.addEventListener('change', updateCounts);
+            });
+
+            selectAllBtn.addEventListener('click', function () {
+                checkboxes.forEach(cb => cb.checked = true);
+                updateCounts();
+            });
+
+            deselectAllBtn.addEventListener('click', function () {
+                checkboxes.forEach(cb => cb.checked = false);
+                updateCounts();
+            });
+
+            // Remove unchecked invoices before submit
+            document.getElementById('bulkSaveForm').addEventListener('submit', function (e) {
+                const wrappers = document.querySelectorAll('.invoice-card-wrapper');
+                wrappers.forEach((wrapper, index) => {
+                    const checkbox = wrapper.querySelector('.invoice-checkbox');
+                    if (!checkbox.checked) {
+                        // Remove hidden inputs for unchecked invoices
+                        const inputs = wrapper.querySelectorAll('input[type="hidden"]');
+                        inputs.forEach(input => input.disabled = true);
+                    }
+                });
+            });
+        });
+    </script>
+}
+
+<style>
+    .sticky-bottom {
+        position: sticky;
+        bottom: 0;
+        z-index: 1000;
+    }
+
+    .invoice-card-wrapper .card {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .invoice-card-wrapper .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+
+    .invoice-checkbox:not(:checked)~.form-check-label {
+        opacity: 0.6;
+    }
+</style>

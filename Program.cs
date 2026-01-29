@@ -45,18 +45,32 @@ builder.Services.AddSession(options =>
     options.IdleTimeout = TimeSpan.FromHours(2);
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
+    options.Cookie.Name = ".InvMgt.Session"; // Unique cookie name
 });
 
-// Configure Data Protection to persist keys in-memory for containerized environments
-// This ensures anti-forgery tokens work properly in Cloud Run
-builder.Services.AddDataProtection()
-    .SetApplicationName("InvoiceManagement")
-    .SetDefaultKeyLifetime(TimeSpan.FromDays(90));
+// Configure Data Protection to persist keys for containerized environments
+// This ensures anti-forgery tokens and session cookies work properly across Cloud Run instances
+if (databaseProvider == "PostgreSQL")
+{
+    // For production, use database-backed key storage
+    builder.Services.AddDataProtection()
+        .SetApplicationName("InvoiceManagement")
+        .SetDefaultKeyLifetime(TimeSpan.FromDays(90))
+        .PersistKeysToDbContext<ApplicationDbContext>();
+}
+else
+{
+    // For development, use file system
+    builder.Services.AddDataProtection()
+        .SetApplicationName("InvoiceManagement")
+        .SetDefaultKeyLifetime(TimeSpan.FromDays(90));
+}
 
 // Configure anti-forgery to work with Cloud Run's load balancing
 builder.Services.AddAntiforgery(options =>
 {
     options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+    options.Cookie.Name = ".InvMgt.Antiforgery"; // Unique cookie name
     options.SuppressXFrameOptionsHeader = false;
 });
 
@@ -77,7 +91,12 @@ builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IImportService, ImportService>();
 builder.Services.AddScoped<IPdfService, PdfService>();
-builder.Services.AddHttpClient<IAiProcessingService, AiProcessingService>();
+
+// Configure HttpClient for AI Processing with extended timeout for large documents
+builder.Services.AddHttpClient<IAiProcessingService, AiProcessingService>(client =>
+{
+    client.Timeout = TimeSpan.FromMinutes(10); // 10 minute timeout for large PDF processing
+});
 
 // Register procurement services
 builder.Services.AddScoped<IRequisitionService, RequisitionService>();
@@ -115,7 +134,30 @@ using (var scope = app.Services.CreateScope())
     {
         // Ensure database is created and migrations applied
         db.Database.Migrate();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Schema update note: {ex.Message}");
+    }
 
+    // Fix ProcessingNotes column type for PostgreSQL (must be TEXT for bulk invoice data)
+    // This runs AFTER migrations, outside the try-catch so it always executes
+    if (isPostgres)
+    {
+        try
+        {
+            Console.WriteLine("Updating ProcessingNotes column to TEXT...");
+            db.Database.ExecuteSqlRaw(@"ALTER TABLE ""ImportedDocuments"" ALTER COLUMN ""ProcessingNotes"" TYPE TEXT;");
+            Console.WriteLine("ProcessingNotes column updated to TEXT successfully");
+        }
+        catch (Exception colEx)
+        {
+            Console.WriteLine($"ProcessingNotes column update note: {colEx.Message}");
+        }
+    }
+
+    try
+    {
         // Initialize default system settings (including GoogleAIApiKey)
         await adminService.InitializeDefaultSettingsAsync();
         Console.WriteLine("System settings initialized successfully");
@@ -161,6 +203,24 @@ if (app.Environment.IsDevelopment())
 app.UseStaticFiles();
 
 app.UseRouting();
+
+// Middleware to clear corrupted session cookies (happens after deployment with new data protection keys)
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (Exception ex) when (ex.Message.Contains("key") && ex.Message.Contains("not found"))
+    {
+        // Clear all cookies and redirect to start fresh
+        foreach (var cookie in context.Request.Cookies.Keys)
+        {
+            context.Response.Cookies.Delete(cookie);
+        }
+        context.Response.Redirect("/");
+    }
+});
 
 app.UseSession();
 

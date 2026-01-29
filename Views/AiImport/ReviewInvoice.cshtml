@@ -54,7 +54,8 @@
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label asp-for="InvoiceNumber" class="form-label">Invoice Number <span class="text-danger">*</span></label>
+                                <label asp-for="InvoiceNumber" class="form-label">Invoice Number <span
+                                        class="text-danger">*</span></label>
                                 <input asp-for="InvoiceNumber" class="form-control" required />
                             </div>
                             <div class="col-md-6 mb-3">
@@ -66,23 +67,23 @@
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label asp-for="InvoiceDate" class="form-label">Invoice Date</label>
-                                <input asp-for="InvoiceDate" type="date" class="form-control" 
-                                       value="@(Model.InvoiceDate?.ToString("yyyy-MM-dd"))" />
+                                <input asp-for="InvoiceDate" type="date" class="form-control"
+                                    value="@(Model.InvoiceDate?.ToString("yyyy-MM-dd"))" />
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label asp-for="DueDate" class="form-label">Due Date</label>
-                                <input asp-for="DueDate" type="date" class="form-control" 
-                                       value="@(Model.DueDate?.ToString("yyyy-MM-dd"))" />
+                                <input asp-for="DueDate" type="date" class="form-control"
+                                    value="@(Model.DueDate?.ToString("yyyy-MM-dd"))" />
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="card shadow-sm mb-4">
-                    <div class="card-header bg-secondary text-white">
+                    <div class="card-header bg-secondary text-white" id="customerInfoHeader">
                         <h5 class="mb-0"><i class="bi bi-person me-2"></i>Customer/Client Information</h5>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body" id="customerInfoSection">
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label asp-for="CustomerName" class="form-label">Customer Name</label>
@@ -126,15 +127,16 @@
                                         {
                                             <tr>
                                                 <td>
-                                                    <input asp-for="Items[i].Description" class="form-control form-control-sm" />
+                                                    <input asp-for="Items[i].Description"
+                                                        class="form-control form-control-sm" />
                                                 </td>
                                                 <td>
-                                                    <input asp-for="Items[i].Quantity" type="number" step="0.01" 
-                                                           class="form-control form-control-sm text-end item-qty" />
+                                                    <input asp-for="Items[i].Quantity" type="number" step="0.01"
+                                                        class="form-control form-control-sm text-end item-qty" />
                                                 </td>
                                                 <td>
-                                                    <input asp-for="Items[i].UnitPrice" type="number" step="0.01" 
-                                                           class="form-control form-control-sm text-end item-price" />
+                                                    <input asp-for="Items[i].UnitPrice" type="number" step="0.01"
+                                                        class="form-control form-control-sm text-end item-price" />
                                                 </td>
                                                 <td class="text-end align-middle item-total">
                                                     @((Model.Items[i].Quantity * Model.Items[i].UnitPrice).ToString("N2"))
@@ -169,14 +171,17 @@
                                 <label asp-for="GSTAmount" class="form-label">GST Amount</label>
                                 <div class="input-group">
                                     <span class="input-group-text">K</span>
-                                    <input asp-for="GSTAmount" type="number" step="0.01" class="form-control text-end" />
+                                    <input asp-for="GSTAmount" type="number" step="0.01"
+                                        class="form-control text-end" />
                                 </div>
                             </div>
                             <div class="col-md-4 mb-3">
-                                <label asp-for="TotalAmount" class="form-label">Total Amount <span class="text-danger">*</span></label>
+                                <label asp-for="TotalAmount" class="form-label">Total Amount <span
+                                        class="text-danger">*</span></label>
                                 <div class="input-group">
                                     <span class="input-group-text">K</span>
-                                    <input asp-for="TotalAmount" type="number" step="0.01" class="form-control text-end fw-bold" required />
+                                    <input asp-for="TotalAmount" type="number" step="0.01"
+                                        class="form-control text-end fw-bold" required />
                                 </div>
                             </div>
                         </div>
@@ -188,8 +193,8 @@
                         <h5 class="mb-0"><i class="bi bi-sticky me-2"></i>Notes</h5>
                     </div>
                     <div class="card-body">
-                        <textarea asp-for="Notes" class="form-control" rows="3" 
-                                  placeholder="Any additional notes about this invoice..."></textarea>
+                        <textarea asp-for="Notes" class="form-control" rows="3"
+                            placeholder="Any additional notes about this invoice..."></textarea>
                     </div>
                 </div>
             </div>
@@ -197,8 +202,10 @@
             <!-- Right Column: Entity Matching -->
             <div class="col-lg-4">
                 <!-- Supplier Matching -->
-                <div class="card shadow-sm mb-4 @(Model.MatchedSupplierId.HasValue ? "border-success" : "border-warning")">
-                    <div class="card-header @(Model.MatchedSupplierId.HasValue ? "bg-success text-white" : "bg-warning")">
+                <div class="card shadow-sm mb-4 @(Model.MatchedSupplierId.HasValue ? "border-success" : "border-warning")"
+                    id="supplierCard">>
+                    <div
+                        class="card-header @(Model.MatchedSupplierId.HasValue ? "bg-success text-white" : "bg-warning")">
                         <h5 class="mb-0">
                             <i class="bi bi-building me-2"></i>Supplier Matching
                             @if (Model.MatchedSupplierId.HasValue)
@@ -238,8 +245,7 @@
                                 {
                                     @foreach (var supplier in Model.AvailableSuppliers)
                                     {
-                                        <option value="@supplier.Id" 
-                                                selected="@(supplier.Id == Model.MatchedSupplierId)">
+                                        <option value="@supplier.Id" selected="@(supplier.Id == Model.MatchedSupplierId)">
                                             @supplier.SupplierName (@supplier.SupplierCode)
                                         </option>
                                     }
@@ -260,8 +266,10 @@
                 </div>
 
                 <!-- Customer Matching -->
-                <div class="card shadow-sm mb-4 @(Model.MatchedCustomerId.HasValue ? "border-success" : "border-warning")">
-                    <div class="card-header @(Model.MatchedCustomerId.HasValue ? "bg-success text-white" : "bg-warning")">
+                <div class="card shadow-sm mb-4 @(Model.MatchedCustomerId.HasValue ? "border-success" : "border-warning")"
+                    id="customerCard">>
+                    <div
+                        class="card-header @(Model.MatchedCustomerId.HasValue ? "bg-success text-white" : "bg-warning")">
                         <h5 class="mb-0">
                             <i class="bi bi-person-circle me-2"></i>Customer Matching
                             @if (Model.MatchedCustomerId.HasValue)
@@ -301,8 +309,7 @@
                                 {
                                     @foreach (var customer in Model.AvailableCustomers)
                                     {
-                                        <option value="@customer.Id" 
-                                                selected="@(customer.Id == Model.MatchedCustomerId)">
+                                        <option value="@customer.Id" selected="@(customer.Id == Model.MatchedCustomerId)">
                                             @customer.CustomerName (@customer.CustomerCode)
                                         </option>
                                     }
@@ -340,21 +347,193 @@
 
 @section Scripts {
     <script>
-        // Calculate item totals on input change
-        document.querySelectorAll('.item-qty, .item-price').forEach(function(input) {
-            input.addEventListener('input', function() {
-                var row = this.closest('tr');
-                var qty = parseFloat(row.querySelector('.item-qty').value) || 0;
-                var price = parseFloat(row.querySelector('.item-price').value) || 0;
-                row.querySelector('.item-total').textContent = (qty * price).toFixed(2);
-                
-                // Recalculate subtotal
-                var subtotal = 0;
-                document.querySelectorAll('.item-total').forEach(function(cell) {
-                    subtotal += parseFloat(cell.textContent) || 0;
-                });
-                document.getElementById('SubTotal').value = subtotal.toFixed(2);
+        document.addEventListener('DOMContentLoaded', function () {
+            const supplierSelect = document.getElementById('SelectedSupplierId');
+            const customerSelect = document.getElementById('SelectedCustomerId');
+            const invoiceTypeSelect = document.getElementById('InvoiceType');
+            const supplierCard = document.getElementById('supplierCard');
+            const customerCard = document.getElementById('customerCard');
+            const customerInfoSection = document.getElementById('customerInfoSection');
+            const customerInfoHeader = document.getElementById('customerInfoHeader');
+
+            // Function to update UI based on invoice type
+            function updateInvoiceTypeUI() {
+                const invoiceType = invoiceTypeSelect.value;
+                const isPayable = invoiceType === 'Payable';
+
+                // Update header text
+                if (customerInfoHeader) {
+                    customerInfoHeader.innerHTML = isPayable
+                        ? '<i class="bi bi-building me-2"></i>Supplier/Vendor Information'
+                        : '<i class="bi bi-person me-2"></i>Customer/Client Information';
+                }
+
+                // Highlight the relevant card
+                if (isPayable) {
+                    supplierCard?.classList.add('border-primary', 'border-2');
+                    supplierCard?.classList.remove('border-secondary');
+                    customerCard?.classList.remove('border-primary', 'border-2');
+                    customerCard?.classList.add('border-secondary');
+                } else {
+                    customerCard?.classList.add('border-primary', 'border-2');
+                    customerCard?.classList.remove('border-secondary');
+                    supplierCard?.classList.remove('border-primary', 'border-2');
+                    supplierCard?.classList.add('border-secondary');
+                }
+            }
+
+            // When supplier is selected
+            supplierSelect?.addEventListener('change', function () {
+                if (this.value) {
+                    // Set invoice type to Payable
+                    invoiceTypeSelect.value = 'Payable';
+
+                    // Get supplier name from selected option
+                    const selectedOption = this.options[this.selectedIndex];
+                    const supplierName = selectedOption.text.split(' (')[0];
+
+                    // Update customer name field with supplier info for reference
+                    const customerNameField = document.getElementById('CustomerName');
+                    if (customerNameField && !customerNameField.value) {
+                        customerNameField.value = supplierName;
+                    }
+
+                    // Clear customer selection (can only have one)
+                    if (customerSelect) {
+                        customerSelect.value = '';
+                    }
+
+                    // Update UI
+                    updateInvoiceTypeUI();
+
+                    // Show visual feedback
+                    showToast('Supplier selected - Invoice set to Payable (Expense)', 'success');
+                }
             });
+
+            // When customer is selected
+            customerSelect?.addEventListener('change', function () {
+                if (this.value) {
+                    // Set invoice type to Receivable
+                    invoiceTypeSelect.value = 'Receivable';
+
+                    // Get customer name from selected option
+                    const selectedOption = this.options[this.selectedIndex];
+                    const customerName = selectedOption.text.split(' (')[0];
+
+                    // Update customer name field
+                    const customerNameField = document.getElementById('CustomerName');
+                    if (customerNameField) {
+                        customerNameField.value = customerName;
+                    }
+
+                    // Clear supplier selection (can only have one)
+                    if (supplierSelect) {
+                        supplierSelect.value = '';
+                    }
+
+                    // Update UI
+                    updateInvoiceTypeUI();
+
+                    // Show visual feedback
+                    showToast('Customer selected - Invoice set to Receivable (Income)', 'success');
+                }
+            });
+
+            // When invoice type is manually changed
+            invoiceTypeSelect?.addEventListener('change', function () {
+                updateInvoiceTypeUI();
+
+                // If changing to Payable and no supplier selected, prompt
+                if (this.value === 'Payable' && !supplierSelect?.value) {
+                    supplierCard?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    supplierSelect?.focus();
+                }
+                // If changing to Receivable and no customer selected, prompt
+                else if (this.value === 'Receivable' && !customerSelect?.value) {
+                    customerCard?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    customerSelect?.focus();
+                }
+            });
+
+            // Toast notification function
+            function showToast(message, type = 'info') {
+                // Remove existing toast
+                const existingToast = document.querySelector('.auto-toast');
+                if (existingToast) existingToast.remove();
+
+                const toast = document.createElement('div');
+                toast.className = `auto-toast alert alert-${type === 'success' ? 'success' : 'info'} position-fixed shadow-lg`;
+                toast.style.cssText = 'top: 80px; right: 20px; z-index: 9999; max-width: 350px; animation: slideIn 0.3s ease;';
+                toast.innerHTML = `
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-${type === 'success' ? 'check-circle-fill' : 'info-circle-fill'} me-2"></i>
+                            <span>${message}</span>
+                        </div>
+                    `;
+                document.body.appendChild(toast);
+
+                setTimeout(() => {
+                    toast.style.animation = 'slideOut 0.3s ease';
+                    setTimeout(() => toast.remove(), 300);
+                }, 3000);
+            }
+
+            // Calculate item totals on input change
+            document.querySelectorAll('.item-qty, .item-price').forEach(function (input) {
+                input.addEventListener('input', function () {
+                    var row = this.closest('tr');
+                    var qty = parseFloat(row.querySelector('.item-qty').value) || 0;
+                    var price = parseFloat(row.querySelector('.item-price').value) || 0;
+                    row.querySelector('.item-total').textContent = (qty * price).toFixed(2);
+
+                    // Recalculate subtotal
+                    var subtotal = 0;
+                    document.querySelectorAll('.item-total').forEach(function (cell) {
+                        subtotal += parseFloat(cell.textContent) || 0;
+                    });
+                    document.getElementById('SubTotal').value = subtotal.toFixed(2);
+                });
+            });
+
+            // Initialize UI state
+            updateInvoiceTypeUI();
         });
     </script>
+
+    <style>
+        @@keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @@keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+
+        .border-2 {
+            border-width: 2px !important;
+        }
+
+        #supplierCard.border-primary .card-header,
+        #customerCard.border-primary .card-header {
+            background-color: #0d6efd !important;
+            color: white !important;
+        }
+    </style>
 }

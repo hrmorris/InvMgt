@@ -10,7 +10,8 @@
 </div>
 
 <div class="alert alert-info">
-    <i class="bi bi-info-circle"></i> <strong>AI Import:</strong> This invoice was extracted by Gemini 2.5 Pro. You can edit any field before saving to the database.
+    <i class="bi bi-info-circle"></i> <strong>AI Import:</strong> This invoice was extracted by OpenAI GPT-5.2. You can
+    edit any field before saving to the database.
 </div>
 
 <form asp-action="UpdateInvoice" asp-route-index="@index" method="post">
@@ -20,7 +21,7 @@
                 <!-- Invoice Information -->
                 <div class="col-md-6">
                     <h5 class="mb-3">Invoice Information</h5>
-                    
+
                     <div class="mb-3">
                         <label asp-for="InvoiceNumber" class="form-label"></label>
                         <input asp-for="InvoiceNumber" class="form-control" required />
@@ -49,7 +50,7 @@
                 <!-- Customer Information -->
                 <div class="col-md-6">
                     <h5 class="mb-3">Customer Information</h5>
-                    
+
                     <div class="mb-3">
                         <label asp-for="CustomerName" class="form-label"></label>
                         <input asp-for="CustomerName" class="form-control" required />
@@ -79,7 +80,7 @@
             <!-- Line Items -->
             <hr />
             <h5 class="mb-3">Line Items</h5>
-            
+
             <div id="invoiceItems">
                 @if (Model.InvoiceItems != null && Model.InvoiceItems.Any())
                 {
@@ -88,19 +89,26 @@
                         <div class="row mb-3 invoice-item">
                             <div class="col-md-5">
                                 <label class="form-label">Description</label>
-                                <input type="text" name="InvoiceItems[@i].Description" value="@Model.InvoiceItems.ElementAt(i).Description" class="form-control item-description" required />
+                                <input type="text" name="InvoiceItems[@i].Description"
+                                    value="@Model.InvoiceItems.ElementAt(i).Description" class="form-control item-description"
+                                    required />
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label">Quantity</label>
-                                <input type="number" name="InvoiceItems[@i].Quantity" value="@Model.InvoiceItems.ElementAt(i).Quantity" class="form-control item-quantity" min="1" onchange="calculateLineTotal(this)" required />
+                                <input type="number" name="InvoiceItems[@i].Quantity"
+                                    value="@Model.InvoiceItems.ElementAt(i).Quantity" class="form-control item-quantity" min="1"
+                                    onchange="calculateLineTotal(this)" required />
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label">Unit Price</label>
-                                <input type="number" name="InvoiceItems[@i].UnitPrice" value="@Model.InvoiceItems.ElementAt(i).UnitPrice" class="form-control item-price" step="0.01" min="0" onchange="calculateLineTotal(this)" required />
+                                <input type="number" name="InvoiceItems[@i].UnitPrice"
+                                    value="@Model.InvoiceItems.ElementAt(i).UnitPrice" class="form-control item-price"
+                                    step="0.01" min="0" onchange="calculateLineTotal(this)" required />
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label">Total</label>
-                                <input type="text" value="@Model.InvoiceItems.ElementAt(i).TotalPrice.ToString("N2")" class="form-control line-total" readonly />
+                                <input type="text" value="@Model.InvoiceItems.ElementAt(i).TotalPrice.ToString("N2")"
+                                    class="form-control line-total" readonly />
                             </div>
                             <div class="col-md-1 d-flex align-items-end">
                                 <button type="button" class="btn btn-danger btn-sm w-100" onclick="removeItem(this)">
@@ -135,30 +143,30 @@
         function addNewItem() {
             const itemsContainer = document.getElementById('invoiceItems');
             const newItem = `
-                <div class="row mb-3 invoice-item">
-                    <div class="col-md-5">
-                        <label class="form-label">Description</label>
-                        <input type="text" name="InvoiceItems[${itemCounter}].Description" class="form-control item-description" required />
+                    <div class="row mb-3 invoice-item">
+                        <div class="col-md-5">
+                            <label class="form-label">Description</label>
+                            <input type="text" name="InvoiceItems[${itemCounter}].Description" class="form-control item-description" required />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Quantity</label>
+                            <input type="number" name="InvoiceItems[${itemCounter}].Quantity" class="form-control item-quantity" min="1" value="1" onchange="calculateLineTotal(this)" required />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Unit Price</label>
+                            <input type="number" name="InvoiceItems[${itemCounter}].UnitPrice" class="form-control item-price" step="0.01" min="0" value="0" onchange="calculateLineTotal(this)" required />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Total</label>
+                            <input type="text" class="form-control line-total" value="0.00" readonly />
+                        </div>
+                        <div class="col-md-1 d-flex align-items-end">
+                            <button type="button" class="btn btn-danger btn-sm w-100" onclick="removeItem(this)">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
                     </div>
-                    <div class="col-md-2">
-                        <label class="form-label">Quantity</label>
-                        <input type="number" name="InvoiceItems[${itemCounter}].Quantity" class="form-control item-quantity" min="1" value="1" onchange="calculateLineTotal(this)" required />
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">Unit Price</label>
-                        <input type="number" name="InvoiceItems[${itemCounter}].UnitPrice" class="form-control item-price" step="0.01" min="0" value="0" onchange="calculateLineTotal(this)" required />
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">Total</label>
-                        <input type="text" class="form-control line-total" value="0.00" readonly />
-                    </div>
-                    <div class="col-md-1 d-flex align-items-end">
-                        <button type="button" class="btn btn-danger btn-sm w-100" onclick="removeItem(this)">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </div>
-                </div>
-            `;
+                `;
             itemsContainer.insertAdjacentHTML('beforeend', newItem);
             itemCounter++;
             calculateGrandTotal();
@@ -192,9 +200,9 @@
         }
 
         // Add event listeners to existing items
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             document.querySelectorAll('.item-quantity, .item-price').forEach(input => {
-                input.addEventListener('change', function() {
+                input.addEventListener('change', function () {
                     calculateLineTotal(this);
                 });
             });
@@ -203,4 +211,3 @@
     </script>
     @await Html.PartialAsync("_ValidationScriptsPartial")
 }
-

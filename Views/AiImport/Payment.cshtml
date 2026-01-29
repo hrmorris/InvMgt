@@ -28,7 +28,7 @@
             <div class="card-body">
                 <form id="paymentImportForm" enctype="multipart/form-data">
                     @Html.AntiForgeryToken()
-                    
+
                     <div class="alert alert-info">
                         <h6><i class="bi bi-lightbulb"></i> How it works:</h6>
                         <ol class="mb-0">
@@ -42,20 +42,16 @@
                     <!-- File Upload Area -->
                     <div class="mb-4">
                         <label for="file" class="form-label fw-bold">Select Payment Document</label>
-                        <div class="upload-area border border-2 border-dashed rounded p-4 text-center" 
-                             id="uploadArea" style="border-color: #28a745 !important; cursor: pointer;">
+                        <div class="upload-area border border-2 border-dashed rounded p-4 text-center" id="uploadArea"
+                            style="border-color: #28a745 !important; cursor: pointer;">
                             <i class="bi bi-cloud-arrow-up display-4 text-success"></i>
                             <p class="mt-2 mb-0">
                                 <strong>Click to select</strong> or drag and drop
                             </p>
                             <p class="text-muted small mb-0">PDF, JPG, PNG, GIF, WebP (max 500MB)</p>
                         </div>
-                        <input type="file" 
-                               class="form-control d-none" 
-                               id="file" 
-                               name="file" 
-                               accept=".pdf,.jpg,.jpeg,.png,.gif,.webp"
-                               required />
+                        <input type="file" class="form-control d-none" id="file" name="file"
+                            accept=".pdf,.jpg,.jpeg,.png,.gif,.webp" required />
                         <div id="fileInfo" class="mt-2 d-none">
                             <div class="d-flex align-items-center p-2 bg-light rounded">
                                 <i class="bi bi-file-earmark-text text-success fs-4 me-2"></i>
@@ -77,24 +73,29 @@
                         </div>
                         <div class="card-body">
                             <div class="form-check mb-2">
-                                <input type="checkbox" class="form-check-input" id="deepAnalysis" name="deepAnalysis" checked />
+                                <input type="checkbox" class="form-check-input" id="deepAnalysis" name="deepAnalysis"
+                                    checked />
                                 <label class="form-check-label" for="deepAnalysis">
                                     <strong>Deep Document Analysis</strong>
-                                    <br/><small class="text-muted">Extract all text, tables, and structured data</small>
+                                    <br /><small class="text-muted">Extract all text, tables, and structured
+                                        data</small>
                                 </label>
                             </div>
                             <div class="form-check mb-2">
-                                <input type="checkbox" class="form-check-input" id="autoMatch" name="autoMatch" checked />
+                                <input type="checkbox" class="form-check-input" id="autoMatch" name="autoMatch"
+                                    checked />
                                 <label class="form-check-label" for="autoMatch">
                                     <strong>Auto-Match Entities</strong>
-                                    <br/><small class="text-muted">Match to suppliers/customers by bank account</small>
+                                    <br /><small class="text-muted">Match to suppliers/customers by bank account</small>
                                 </label>
                             </div>
                             <div class="form-check">
-                                <input type="checkbox" class="form-check-input" id="detectInvoices" name="detectInvoices" checked />
+                                <input type="checkbox" class="form-check-input" id="detectInvoices"
+                                    name="detectInvoices" checked />
                                 <label class="form-check-label" for="detectInvoices">
                                     <strong>Detect Related Invoices</strong>
-                                    <br/><small class="text-muted">Find invoices that may relate to this payment</small>
+                                    <br /><small class="text-muted">Find invoices that may relate to this
+                                        payment</small>
                                 </label>
                             </div>
                         </div>
@@ -117,7 +118,8 @@
             </div>
             <div class="card-body">
                 <ul class="list-unstyled mb-0">
-                    <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Payment/Receipt Number</li>
+                    <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Payment/Receipt Number
+                    </li>
                     <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Payment Date</li>
                     <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Amount Paid</li>
                     <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Payment Method</li>
@@ -147,49 +149,53 @@
     </div>
 </div>
 
-<!-- Progress Modal -->
+<!-- Progress Modal with Circular Progress -->
 <div class="modal fade" id="progressModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-success text-white">
                 <h5 class="modal-title">
-                    <i class="bi bi-cpu me-2"></i>AI Processing Document
+                    <i class="bi bi-cpu me-2"></i>AI Processing Payment Document
                 </h5>
             </div>
             <div class="modal-body">
-                <!-- Progress Bar -->
-                <div class="mb-4">
-                    <div class="d-flex justify-content-between mb-1">
-                        <span class="fw-bold">Progress</span>
-                        <span class="fw-bold" id="progressPercent">0%</span>
-                    </div>
-                    <div class="progress" style="height: 25px;">
-                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" 
-                             role="progressbar" 
-                             id="progressBar"
-                             style="width: 0%;" 
-                             aria-valuenow="0" 
-                             aria-valuemin="0" 
-                             aria-valuemax="100">
+                <div class="row">
+                    <!-- Circular Progress -->
+                    <div class="col-md-5 text-center">
+                        <div class="progress-circle-container mb-3">
+                            <svg class="progress-circle" viewBox="0 0 120 120">
+                                <circle class="progress-circle-bg" cx="60" cy="60" r="54" />
+                                <circle class="progress-circle-fill" cx="60" cy="60" r="54" id="progressCircle" />
+                            </svg>
+                            <div class="progress-circle-text">
+                                <span class="progress-percent" id="progressPercent">0%</span>
+                                <span class="progress-label">Processing</span>
+                            </div>
+                        </div>
+
+                        <!-- Current Activity -->
+                        <div class="current-activity mt-3">
+                            <div class="d-flex align-items-center justify-content-center">
+                                <div class="spinner-border spinner-border-sm text-success me-2" id="activitySpinner">
+                                </div>
+                                <span id="currentActivity" class="text-muted fw-medium">Initializing...</span>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Current Activity -->
-                <div class="mb-3">
-                    <div class="d-flex align-items-center">
-                        <div class="spinner-border spinner-border-sm text-success me-2" id="activitySpinner"></div>
-                        <span id="currentActivity" class="text-muted">Initializing...</span>
-                    </div>
-                </div>
-
-                <!-- Activity Log -->
-                <div class="card">
-                    <div class="card-header py-2">
-                        <small class="fw-bold"><i class="bi bi-list-check me-1"></i>Activity Log</small>
-                    </div>
-                    <div class="card-body p-2" style="max-height: 200px; overflow-y: auto;" id="activityLog">
-                        <!-- Activities will be added here -->
+                    <!-- Activity Log -->
+                    <div class="col-md-7">
+                        <div class="card h-100">
+                            <div class="card-header py-2 bg-light">
+                                <small class="fw-bold"><i class="bi bi-list-check me-1"></i>AI Import Activity
+                                    Log</small>
+                            </div>
+                            <div class="card-body p-0" style="max-height: 280px; overflow-y: auto;" id="activityLog">
+                                <div class="list-group list-group-flush" id="activityList">
+                                    <!-- Activities will be added here -->
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -220,191 +226,303 @@
 </div>
 
 @section Scripts {
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('paymentImportForm');
-    const fileInput = document.getElementById('file');
-    const uploadArea = document.getElementById('uploadArea');
-    const fileInfo = document.getElementById('fileInfo');
-    const fileName = document.getElementById('fileName');
-    const fileSize = document.getElementById('fileSize');
-    const removeFile = document.getElementById('removeFile');
-    const processBtn = document.getElementById('processBtn');
-    
-    const progressModal = new bootstrap.Modal(document.getElementById('progressModal'));
-    const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
-    
-    // File upload area click
-    uploadArea.addEventListener('click', () => fileInput.click());
-    
-    // Drag and drop
-    uploadArea.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        uploadArea.classList.add('bg-light');
-    });
-    
-    uploadArea.addEventListener('dragleave', () => {
-        uploadArea.classList.remove('bg-light');
-    });
-    
-    uploadArea.addEventListener('drop', (e) => {
-        e.preventDefault();
-        uploadArea.classList.remove('bg-light');
-        if (e.dataTransfer.files.length) {
-            fileInput.files = e.dataTransfer.files;
-            showFileInfo(e.dataTransfer.files[0]);
-        }
-    });
-    
-    // File input change
-    fileInput.addEventListener('change', function() {
-        if (this.files.length) {
-            showFileInfo(this.files[0]);
-        }
-    });
-    
-    // Remove file
-    removeFile.addEventListener('click', function() {
-        fileInput.value = '';
-        fileInfo.classList.add('d-none');
-        uploadArea.classList.remove('d-none');
-    });
-    
-    function showFileInfo(file) {
-        fileName.textContent = file.name;
-        fileSize.textContent = formatFileSize(file.size);
-        fileInfo.classList.remove('d-none');
-        uploadArea.classList.add('d-none');
-    }
-    
-    function formatFileSize(bytes) {
-        if (bytes < 1024) return bytes + ' bytes';
-        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-    }
-    
-    // Form submission with progress
-    form.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        if (!fileInput.files.length) {
-            alert('Please select a file to upload.');
-            return;
-        }
-        
-        const formData = new FormData(form);
-        
-        // Show progress modal
-        progressModal.show();
-        resetProgress();
-        
-        // Simulate progress stages
-        const stages = [
-            { percent: 5, activity: 'Uploading document...', status: 'Uploading' },
-            { percent: 15, activity: 'Document uploaded successfully', status: 'Uploaded' },
-            { percent: 20, activity: 'Analyzing document structure...', status: 'Analyzing' },
-            { percent: 30, activity: 'Extracting text content...', status: 'Extracting' },
-            { percent: 40, activity: 'Identifying payment information...', status: 'Processing' },
-            { percent: 50, activity: 'Detecting bank details...', status: 'Processing' },
-            { percent: 60, activity: 'Extracting amounts and dates...', status: 'Processing' },
-            { percent: 70, activity: 'Matching supplier/customer by bank account...', status: 'Matching' },
-            { percent: 80, activity: 'Searching for related invoices...', status: 'Matching' },
-            { percent: 90, activity: 'Validating extracted data...', status: 'Validating' },
-            { percent: 95, activity: 'Preparing review page...', status: 'Finalizing' }
-        ];
-        
-        let stageIndex = 0;
-        
-        // Progress simulation
-        const progressInterval = setInterval(() => {
-            if (stageIndex < stages.length) {
-                updateProgress(stages[stageIndex].percent, stages[stageIndex].activity, stages[stageIndex].status);
-                stageIndex++;
-            }
-        }, 800);
-        
-        try {
-            const response = await fetch('/AiImport/ProcessPayment', {
-                method: 'POST',
-                body: formData
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.getElementById('paymentImportForm');
+            const fileInput = document.getElementById('file');
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInfo = document.getElementById('fileInfo');
+            const fileName = document.getElementById('fileName');
+            const fileSize = document.getElementById('fileSize');
+            const removeFile = document.getElementById('removeFile');
+            const processBtn = document.getElementById('processBtn');
+
+            const progressModal = new bootstrap.Modal(document.getElementById('progressModal'));
+            const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+
+            // File upload area click
+            uploadArea.addEventListener('click', () => fileInput.click());
+
+            // Drag and drop
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('bg-light');
             });
-            
-            clearInterval(progressInterval);
-            
-            if (response.ok) {
-                const result = await response.json();
-                
-                if (result.success) {
-                    updateProgress(100, 'Analysis complete! Redirecting...', 'Complete');
-                    addActivity('✓ All data extracted successfully', 'success');
-                    
-                    setTimeout(() => {
-                        progressModal.hide();
-                        // Redirect to review page with extracted data
-                        window.location.href = result.redirectUrl;
-                    }, 1000);
-                } else {
+
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('bg-light');
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('bg-light');
+                if (e.dataTransfer.files.length) {
+                    fileInput.files = e.dataTransfer.files;
+                    showFileInfo(e.dataTransfer.files[0]);
+                }
+            });
+
+            // File input change
+            fileInput.addEventListener('change', function () {
+                if (this.files.length) {
+                    showFileInfo(this.files[0]);
+                }
+            });
+
+            // Remove file
+            removeFile.addEventListener('click', function () {
+                fileInput.value = '';
+                fileInfo.classList.add('d-none');
+                uploadArea.classList.remove('d-none');
+            });
+
+            function showFileInfo(file) {
+                fileName.textContent = file.name;
+                fileSize.textContent = formatFileSize(file.size);
+                fileInfo.classList.remove('d-none');
+                uploadArea.classList.add('d-none');
+            }
+
+            function formatFileSize(bytes) {
+                if (bytes < 1024) return bytes + ' bytes';
+                if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+                return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+            }
+
+            // Form submission with progress
+            form.addEventListener('submit', async function (e) {
+                e.preventDefault();
+
+                if (!fileInput.files.length) {
+                    alert('Please select a file to upload.');
+                    return;
+                }
+
+                const formData = new FormData(form);
+
+                // Show progress modal
+                progressModal.show();
+                resetProgress();
+
+                // Progress stages for payment processing
+                const stages = [
+                    { percent: 5, activity: 'Uploading document...', status: 'upload', icon: 'cloud-arrow-up' },
+                    { percent: 10, activity: 'Document uploaded successfully', status: 'success', icon: 'check-circle' },
+                    { percent: 15, activity: 'Initializing AI analysis engine...', status: 'processing', icon: 'cpu' },
+                    { percent: 22, activity: 'Analyzing document structure...', status: 'processing', icon: 'file-earmark-text' },
+                    { percent: 30, activity: 'Performing OCR text extraction...', status: 'processing', icon: 'body-text' },
+                    { percent: 40, activity: 'Identifying payment information...', status: 'processing', icon: 'credit-card' },
+                    { percent: 50, activity: 'Detecting bank details...', status: 'processing', icon: 'bank' },
+                    { percent: 58, activity: 'Extracting amounts and dates...', status: 'processing', icon: 'calendar-date' },
+                    { percent: 65, activity: 'Parsing payer/payee information...', status: 'processing', icon: 'person-badge' },
+                    { percent: 72, activity: 'Extracting reference numbers...', status: 'processing', icon: 'hash' },
+                    { percent: 80, activity: 'Matching supplier/customer by bank account...', status: 'matching', icon: 'diagram-3' },
+                    { percent: 87, activity: 'Searching for related invoices...', status: 'matching', icon: 'search' },
+                    { percent: 93, activity: 'Validating extracted data...', status: 'validating', icon: 'shield-check' },
+                    { percent: 97, activity: 'Preparing review page...', status: 'finalizing', icon: 'check2-all' }
+                ];
+
+                let stageIndex = 0;
+
+                // Progress simulation
+                const progressInterval = setInterval(() => {
+                    if (stageIndex < stages.length) {
+                        updateProgress(
+                            stages[stageIndex].percent,
+                            stages[stageIndex].activity,
+                            stages[stageIndex].status,
+                            stages[stageIndex].icon
+                        );
+                        stageIndex++;
+                    }
+                }, 600);
+
+                try {
+                    const response = await fetch('/AiImport/ProcessPayment', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    clearInterval(progressInterval);
+
+                    if (response.ok) {
+                        const result = await response.json();
+
+                        if (result.success) {
+                            updateProgress(100, 'Analysis complete! All data extracted successfully.', 'complete', 'trophy');
+                            addActivity('Payment data ready for review', 'success', 'clipboard-check');
+
+                            setTimeout(() => {
+                                progressModal.hide();
+                                window.location.href = result.redirectUrl;
+                            }, 1200);
+                        } else {
+                            progressModal.hide();
+                            document.getElementById('errorMessage').textContent = result.message || 'Failed to process document.';
+                            errorModal.show();
+                        }
+                    } else {
+                        throw new Error('Server error: ' + response.status);
+                    }
+                } catch (error) {
+                    clearInterval(progressInterval);
                     progressModal.hide();
-                    document.getElementById('errorMessage').textContent = result.message || 'Failed to process document.';
+                    document.getElementById('errorMessage').textContent = error.message || 'An error occurred while processing the document.';
                     errorModal.show();
                 }
-            } else {
-                throw new Error('Server error: ' + response.status);
+            });
+
+            function resetProgress() {
+                setCircleProgress(0);
+                document.getElementById('progressPercent').textContent = '0%';
+                document.getElementById('currentActivity').textContent = 'Initializing...';
+                document.getElementById('activityList').innerHTML = '';
+                document.getElementById('progressFooter').classList.add('d-none');
+                document.getElementById('activitySpinner').classList.remove('d-none');
             }
-        } catch (error) {
-            clearInterval(progressInterval);
-            progressModal.hide();
-            document.getElementById('errorMessage').textContent = error.message || 'An error occurred while processing the document.';
-            errorModal.show();
-        }
-    });
-    
-    function resetProgress() {
-        document.getElementById('progressBar').style.width = '0%';
-        document.getElementById('progressPercent').textContent = '0%';
-        document.getElementById('currentActivity').textContent = 'Initializing...';
-        document.getElementById('activityLog').innerHTML = '';
-        document.getElementById('progressFooter').classList.add('d-none');
-        document.getElementById('activitySpinner').classList.remove('d-none');
-    }
-    
-    function updateProgress(percent, activity, status) {
-        document.getElementById('progressBar').style.width = percent + '%';
-        document.getElementById('progressPercent').textContent = percent + '%';
-        document.getElementById('currentActivity').textContent = activity;
-        addActivity(activity, status === 'Complete' ? 'success' : 'info');
-        
-        if (percent >= 100) {
-            document.getElementById('activitySpinner').classList.add('d-none');
-        }
-    }
-    
-    function addActivity(text, type = 'info') {
-        const log = document.getElementById('activityLog');
-        const item = document.createElement('div');
-        item.className = 'small py-1 border-bottom';
-        
-        const icon = type === 'success' ? 'check-circle-fill text-success' : 
-                     type === 'error' ? 'x-circle-fill text-danger' : 
-                     'arrow-right text-primary';
-        
-        item.innerHTML = `<i class="bi bi-${icon} me-1"></i>${text}`;
-        log.appendChild(item);
-        log.scrollTop = log.scrollHeight;
-    }
-});
-</script>
+
+            function setCircleProgress(percent) {
+                const circle = document.getElementById('progressCircle');
+                const circumference = 2 * Math.PI * 54; // r = 54
+                const offset = circumference - (percent / 100) * circumference;
+                circle.style.strokeDasharray = circumference;
+                circle.style.strokeDashoffset = offset;
+            }
+
+            function updateProgress(percent, activity, status, icon = 'arrow-right') {
+                setCircleProgress(percent);
+                document.getElementById('progressPercent').textContent = percent + '%';
+                document.getElementById('currentActivity').textContent = activity;
+                addActivity(activity, status, icon);
+
+                if (percent >= 100) {
+                    document.getElementById('activitySpinner').classList.add('d-none');
+                }
+            }
+
+            function addActivity(text, status = 'processing', icon = 'arrow-right') {
+                const list = document.getElementById('activityList');
+                const item = document.createElement('div');
+
+                let statusClass = 'text-success';
+                let bgClass = '';
+
+                if (status === 'success' || status === 'complete') {
+                    statusClass = 'text-success';
+                    bgClass = 'list-group-item-success';
+                } else if (status === 'error') {
+                    statusClass = 'text-danger';
+                    bgClass = 'list-group-item-danger';
+                } else if (status === 'matching') {
+                    statusClass = 'text-info';
+                } else if (status === 'validating') {
+                    statusClass = 'text-warning';
+                } else if (status === 'upload') {
+                    statusClass = 'text-primary';
+                }
+
+                const timestamp = new Date().toLocaleTimeString();
+
+                item.className = `list-group-item py-2 ${bgClass}`;
+                item.innerHTML = `
+                        <div class="d-flex align-items-start">
+                            <i class="bi bi-${icon} ${statusClass} me-2 mt-1"></i>
+                            <div class="flex-grow-1">
+                                <div class="small">${text}</div>
+                                <small class="text-muted">${timestamp}</small>
+                            </div>
+                            ${status === 'success' || status === 'complete' ? '<i class="bi bi-check-circle-fill text-success"></i>' : ''}
+                        </div>
+                    `;
+
+                list.appendChild(item);
+                document.getElementById('activityLog').scrollTop = document.getElementById('activityLog').scrollHeight;
+            }
+        });
+    </script>
 }
 
 <style>
-.upload-area {
-    transition: all 0.3s ease;
-}
-.upload-area:hover {
-    background-color: #f8f9fa;
-}
-.border-dashed {
-    border-style: dashed !important;
-}
-</style>
+    .upload-area {
+        transition: all 0.3s ease;
+    }
 
+    .upload-area:hover {
+        background-color: #f8f9fa;
+    }
+
+    .border-dashed {
+        border-style: dashed !important;
+    }
+
+    /* Circular Progress Styles */
+    .progress-circle-container {
+        position: relative;
+        width: 160px;
+        height: 160px;
+        margin: 0 auto;
+    }
+
+    .progress-circle {
+        transform: rotate(-90deg);
+        width: 100%;
+        height: 100%;
+    }
+
+    .progress-circle-bg {
+        fill: none;
+        stroke: #e9ecef;
+        stroke-width: 8;
+    }
+
+    .progress-circle-fill {
+        fill: none;
+        stroke: #198754;
+        stroke-width: 8;
+        stroke-linecap: round;
+        stroke-dasharray: 339.292;
+        stroke-dashoffset: 339.292;
+        transition: stroke-dashoffset 0.5s ease;
+    }
+
+    .progress-circle-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+    }
+
+    .progress-percent {
+        display: block;
+        font-size: 2rem;
+        font-weight: bold;
+        color: #198754;
+    }
+
+    .progress-label {
+        display: block;
+        font-size: 0.75rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .current-activity {
+        min-height: 40px;
+    }
+
+    #activityList .list-group-item {
+        border-left: 3px solid transparent;
+        transition: all 0.2s ease;
+    }
+
+    #activityList .list-group-item:last-child {
+        border-left-color: #198754;
+        background-color: #f8f9fa;
+    }
+
+    #activityList .list-group-item-success:last-child {
+        border-left-color: #198754;
+    }
+</style>

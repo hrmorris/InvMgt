@@ -27,7 +27,8 @@
 </div>
 
 <div class="alert alert-info">
-    <i class="bi bi-info-circle"></i> <strong>AI Import:</strong> This payment was extracted by Gemini 2.5 Pro. You can edit any field before saving to the database.
+    <i class="bi bi-info-circle"></i> <strong>AI Import:</strong> This payment was extracted by OpenAI GPT-5.2. You can
+    edit any field before saving to the database.
 </div>
 
 <form asp-action="UpdatePayment" asp-route-index="@index" method="post">
@@ -37,7 +38,7 @@
                 <!-- Payment Information -->
                 <div class="col-md-6">
                     <h5 class="mb-3">Payment Information</h5>
-                    
+
                     <div class="mb-3">
                         <label asp-for="PaymentNumber" class="form-label"></label>
                         <input asp-for="PaymentNumber" class="form-control" required />
@@ -74,7 +75,7 @@
                 <!-- Additional Information -->
                 <div class="col-md-6">
                     <h5 class="mb-3">Additional Information</h5>
-                    
+
                     <div class="mb-3">
                         <label asp-for="ReferenceNumber" class="form-label"></label>
                         <input asp-for="ReferenceNumber" class="form-control" />
@@ -92,13 +93,15 @@
                                 foreach (var invoice in unpaidInvoices)
                                 {
                                     <option value="@invoice.Id">
-                                        @invoice.InvoiceNumber - @invoice.CustomerName (@FormatCurrency(invoice.BalanceAmount) due)
+                                        @invoice.InvoiceNumber - @invoice.CustomerName (@FormatCurrency(invoice.BalanceAmount)
+                                        due)
                                     </option>
                                 }
                             }
                         </select>
                         <small class="form-text text-muted">
-                            <i class="bi bi-info-circle"></i> Leave blank to save as unallocated payment. You can allocate it to one or more invoices later from the Payments section.
+                            <i class="bi bi-info-circle"></i> Leave blank to save as unallocated payment. You can
+                            allocate it to one or more invoices later from the Payments section.
                         </small>
                         <span asp-validation-for="InvoiceId" class="text-danger"></span>
                     </div>
@@ -126,4 +129,3 @@
 @section Scripts {
     @await Html.PartialAsync("_ValidationScriptsPartial")
 }
-
