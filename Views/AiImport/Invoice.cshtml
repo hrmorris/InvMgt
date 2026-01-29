@@ -97,16 +97,27 @@
 
                     <!-- File Upload Area -->
                     <div class="mb-4">
-                        <label for="file" class="form-label fw-bold">Select Invoice File(s)</label>
+                        <label for="file" class="form-label fw-bold d-flex align-items-center">
+                            Select Invoice File(s)
+                            <span class="badge bg-primary ms-2"><i class="bi bi-files me-1"></i>Multi-File</span>
+                        </label>
                         <div class="upload-area border border-2 border-dashed rounded p-4 text-center" id="uploadArea"
                             style="border-color: #0d6efd !important; cursor: pointer;">
-                            <i class="bi bi-cloud-arrow-up display-4 text-primary"></i>
-                            <p class="mt-2 mb-0">
+                            <div class="d-flex justify-content-center align-items-center mb-2">
+                                <i class="bi bi-file-earmark-pdf text-danger fs-2 me-1" style="opacity: 0.7;"></i>
+                                <i class="bi bi-cloud-arrow-up display-4 text-primary mx-2"></i>
+                                <i class="bi bi-file-earmark-image text-success fs-2 ms-1" style="opacity: 0.7;"></i>
+                            </div>
+                            <p class="mt-2 mb-1">
                                 <strong>Click to select</strong> or drag and drop
                             </p>
-                            <p class="text-muted small mb-0">PDF, JPG, PNG, GIF, WebP (max 500MB per file)</p>
-                            <p class="text-muted small mb-0"><i class="bi bi-info-circle"></i> You can select multiple
-                                files</p>
+                            <p class="text-muted small mb-2">PDF, JPG, PNG, GIF, WebP (max 500MB per file)</p>
+                            <div
+                                class="d-inline-flex align-items-center bg-primary bg-opacity-10 rounded-pill px-3 py-1">
+                                <i class="bi bi-plus-circle-fill text-primary me-2"></i>
+                                <span class="text-primary fw-medium small">Select multiple files at once
+                                    (Ctrl+Click)</span>
+                            </div>
                         </div>
                         <input type="file" class="form-control d-none" id="file" name="files"
                             accept=".pdf,.jpg,.jpeg,.png,.gif,.webp" multiple required />
@@ -114,9 +125,14 @@
                             <div id="fileList">
                                 <!-- File items will be added here dynamically -->
                             </div>
-                            <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="addMoreFiles">
-                                <i class="bi bi-plus-circle"></i> Add More Files
-                            </button>
+                            <div class="d-flex gap-2 mt-2">
+                                <button type="button" class="btn btn-outline-primary" id="addMoreFiles">
+                                    <i class="bi bi-plus-circle me-1"></i> Add More Files
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" id="clearAllFiles">
+                                    <i class="bi bi-x-circle me-1"></i> Clear All
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -357,6 +373,13 @@
             // Add more files button
             addMoreFiles.addEventListener('click', () => fileInput.click());
 
+            // Clear all files button
+            document.getElementById('clearAllFiles').addEventListener('click', () => {
+                selectedFiles = [];
+                renderFileList();
+                updateProcessButton();
+            });
+
             // Drag and drop
             uploadArea.addEventListener('dragover', (e) => {
                 e.preventDefault();
@@ -417,17 +440,17 @@
                     const icon = file.name.toLowerCase().endsWith('.pdf') ? 'file-earmark-pdf' : 'file-earmark-image';
                     const iconColor = file.name.toLowerCase().endsWith('.pdf') ? 'text-danger' : 'text-primary';
                     html += `
-                            <div class="d-flex align-items-center p-2 bg-light rounded mb-2">
-                                <i class="bi bi-${icon} ${iconColor} fs-4 me-2"></i>
-                                <div class="flex-grow-1">
-                                    <strong>${escapeHtml(file.name)}</strong>
-                                    <small class="text-muted d-block">${formatFileSize(file.size)}</small>
+                                <div class="d-flex align-items-center p-2 bg-light rounded mb-2">
+                                    <i class="bi bi-${icon} ${iconColor} fs-4 me-2"></i>
+                                    <div class="flex-grow-1">
+                                        <strong>${escapeHtml(file.name)}</strong>
+                                        <small class="text-muted d-block">${formatFileSize(file.size)}</small>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="window.removeFileAt(${index})">
+                                        <i class="bi bi-x"></i>
+                                    </button>
                                 </div>
-                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="window.removeFileAt(${index})">
-                                    <i class="bi bi-x"></i>
-                                </button>
-                            </div>
-                        `;
+                            `;
                 });
 
                 if (selectedFiles.length > 1) {
@@ -714,15 +737,15 @@
 
                 item.className = `list-group-item py-2 ${bgClass}`;
                 item.innerHTML = `
-                                        <div class="d-flex align-items-start">
-                                            <i class="bi bi-${icon} ${statusClass} me-2 mt-1"></i>
-                                            <div class="flex-grow-1">
-                                                <div class="small">${text}</div>
-                                                <small class="text-muted">${timestamp}</small>
+                                            <div class="d-flex align-items-start">
+                                                <i class="bi bi-${icon} ${statusClass} me-2 mt-1"></i>
+                                                <div class="flex-grow-1">
+                                                    <div class="small">${text}</div>
+                                                    <small class="text-muted">${timestamp}</small>
+                                                </div>
+                                                ${status === 'success' || status === 'complete' ? '<i class="bi bi-check-circle-fill text-success"></i>' : ''}
                                             </div>
-                                            ${status === 'success' || status === 'complete' ? '<i class="bi bi-check-circle-fill text-success"></i>' : ''}
-                                        </div>
-                                    `;
+                                        `;
 
                 list.appendChild(item);
                 document.getElementById('activityLog').scrollTop = document.getElementById('activityLog').scrollHeight;
