@@ -92,6 +92,14 @@ namespace InvoiceManagement.Controllers
                 return NotFound();
             }
 
+            // Get available unlinked documents for attachment
+            var availableDocuments = await _context.ImportedDocuments
+                .Where(d => d.InvoiceId == null && d.PaymentId == null && d.DocumentType == "Invoice")
+                .OrderByDescending(d => d.UploadDate)
+                .Take(50)
+                .ToListAsync();
+            ViewBag.AvailableDocuments = availableDocuments;
+
             return View(invoice);
         }
 
@@ -734,7 +742,7 @@ namespace InvoiceManagement.Controllers
         // POST: Invoices/LinkDocument - Link an existing document to an invoice
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> LinkDocument(int documentId, int invoiceId)
+        public async Task<IActionResult> LinkDocument(int documentId, int invoiceId, string? returnUrl = null)
         {
             try
             {
@@ -742,7 +750,7 @@ namespace InvoiceManagement.Controllers
                 if (document == null)
                 {
                     TempData["ErrorMessage"] = "Document not found.";
-                    return RedirectToAction("Edit", new { id = invoiceId });
+                    return RedirectToReturnUrl(returnUrl, invoiceId);
                 }
 
                 var invoice = await _context.Invoices.FindAsync(invoiceId);
@@ -756,14 +764,23 @@ namespace InvoiceManagement.Controllers
                 await _context.SaveChangesAsync();
 
                 TempData["SuccessMessage"] = $"Document '{document.OriginalFileName}' linked to invoice successfully.";
-                return RedirectToAction("Edit", new { id = invoiceId });
+                return RedirectToReturnUrl(returnUrl, invoiceId);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error linking document to invoice");
                 TempData["ErrorMessage"] = $"Error linking document: {ex.Message}";
-                return RedirectToAction("Edit", new { id = invoiceId });
+                return RedirectToReturnUrl(returnUrl, invoiceId);
             }
+        }
+
+        private IActionResult RedirectToReturnUrl(string? returnUrl, int invoiceId)
+        {
+            if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+            {
+                return Redirect(returnUrl);
+            }
+            return RedirectToAction("Edit", new { id = invoiceId });
         }
 
         // POST: Invoices/UnlinkDocument - Unlink a document from an invoice
