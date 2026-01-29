@@ -1028,11 +1028,18 @@ namespace InvoiceManagement.Controllers
                             invoice = new Invoice();
                         }
 
+                        // Determine the customer/supplier name
+                        var customerName = model.CustomerName;
+                        if (string.IsNullOrWhiteSpace(customerName))
+                        {
+                            customerName = model.ExtractedSupplierName ?? model.ExtractedCustomerName ?? "Unknown";
+                        }
+
                         // Set invoice properties
                         invoice.InvoiceNumber = invoiceNumber;
                         invoice.InvoiceDate = model.InvoiceDate ?? DateTime.Now;
                         invoice.DueDate = model.DueDate ?? DateTime.Now.AddDays(30);
-                        invoice.CustomerName = model.CustomerName;
+                        invoice.CustomerName = customerName;
                         invoice.CustomerAddress = model.CustomerAddress;
                         invoice.CustomerEmail = model.CustomerEmail;
                         invoice.CustomerPhone = model.CustomerPhone;
@@ -1136,13 +1143,21 @@ namespace InvoiceManagement.Controllers
         {
             try
             {
+                // Determine the customer/supplier name for the invoice
+                // For supplier invoices (Payable), use supplier name as CustomerName if CustomerName is empty
+                var customerName = model.CustomerName;
+                if (string.IsNullOrWhiteSpace(customerName))
+                {
+                    customerName = model.ExtractedSupplierName ?? model.ExtractedCustomerName ?? "Unknown";
+                }
+
                 // Create the invoice
                 var invoice = new Invoice
                 {
                     InvoiceNumber = model.InvoiceNumber,
                     InvoiceDate = model.InvoiceDate ?? DateTime.Now,
                     DueDate = model.DueDate ?? DateTime.Now.AddDays(30),
-                    CustomerName = model.CustomerName,
+                    CustomerName = customerName,
                     CustomerAddress = model.CustomerAddress,
                     CustomerEmail = model.CustomerEmail,
                     CustomerPhone = model.CustomerPhone,
