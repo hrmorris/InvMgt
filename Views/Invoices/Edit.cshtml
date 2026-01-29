@@ -116,12 +116,12 @@
 
                     <div class="mb-3">
                         <label asp-for="InvoiceType" class="form-label">Invoice Type</label>
-                        <select asp-for="InvoiceType" class="form-select" id="invoiceTypeSelect">
-                            <option value="Supplier" @(Model.InvoiceType == "Supplier" || Model.InvoiceType == "Payable"
-                                                                                     ? "selected" : "")>Supplier Invoice (Payable - from supplier to us)</option>
-                            <option value="Customer" @(Model.InvoiceType == "Customer" || Model.InvoiceType ==
-                                                                                     "Receivable" ? "selected" : "")>Customer Invoice (Receivable - from us to customer)
-                            </option>
+                        @{
+                            var normalizedType = (Model.InvoiceType == "Payable" || Model.InvoiceType == "Supplier") ? "Supplier" : "Customer";
+                        }
+                        <select name="InvoiceType" class="form-select" id="invoiceTypeSelect">
+                            <option value="Supplier" selected="@(normalizedType == "Supplier")">Supplier Invoice (Payable - from supplier to us)</option>
+                            <option value="Customer" selected="@(normalizedType == "Customer")">Customer Invoice (Receivable - from us to customer)</option>
                         </select>
                         <small class="form-text text-muted">Select Supplier if this invoice is FROM a supplier TO your
                             organization</small>
