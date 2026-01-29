@@ -440,6 +440,15 @@ namespace InvoiceManagement.Controllers
                 var suppliers = await _entityLookupService.GetAllSuppliersAsync();
                 var customers = await _entityLookupService.GetAllCustomersAsync();
 
+                // Rename the document file using the extracted invoice number
+                if (!string.IsNullOrWhiteSpace(extractedInvoice.InvoiceNumber))
+                {
+                    await _documentService.UpdateDocumentFilenameWithInvoiceNumberAsync(
+                        importedDocument.Id,
+                        extractedInvoice.InvoiceNumber
+                    );
+                }
+
                 var viewModel = new AiImportInvoiceViewModel
                 {
                     DocumentId = importedDocument.Id,
@@ -594,6 +603,15 @@ namespace InvoiceManagement.Controllers
                     doc.ProcessingNotes = extractedJson;
                     doc.ProcessingStatus = "Extracted";
                     await _context.SaveChangesAsync();
+                }
+
+                // Rename the document file using the extracted invoice number
+                if (!string.IsNullOrWhiteSpace(extractedInvoice.InvoiceNumber))
+                {
+                    await _documentService.UpdateDocumentFilenameWithInvoiceNumberAsync(
+                        importedDocument.Id,
+                        extractedInvoice.InvoiceNumber
+                    );
                 }
 
                 return Json(new

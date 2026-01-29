@@ -59,11 +59,22 @@
                                 <input asp-for="InvoiceNumber" class="form-control" required />
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label asp-for="InvoiceType" class="form-label">Invoice Type</label>
-                                <select asp-for="InvoiceType" class="form-select">
-                                    <option value="Payable">Payable (Expense)</option>
-                                    <option value="Receivable">Receivable (Income)</option>
-                                </select>
+                                <label class="form-label">Allocate To <span class="text-danger">*</span></label>
+                                <div class="btn-group w-100" role="group" aria-label="Allocation type">
+                                    <input type="radio" class="btn-check" name="allocationType" id="allocateSupplier"
+                                        value="Supplier" checked>
+                                    <label class="btn btn-outline-primary" for="allocateSupplier">
+                                        <i class="bi bi-building me-1"></i>Supplier
+                                    </label>
+                                    <input type="radio" class="btn-check" name="allocationType" id="allocateCustomer"
+                                        value="Customer">
+                                    <label class="btn btn-outline-success" for="allocateCustomer">
+                                        <i class="bi bi-person me-1"></i>Customer
+                                    </label>
+                                </div>
+                                <input type="hidden" asp-for="InvoiceType" />
+                                <small class="form-text text-muted mt-1 d-block">Choose whether this invoice is from a
+                                    supplier (expense) or to a customer (income)</small>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label asp-for="InvoiceDate" class="form-label">Invoice Date</label>
@@ -201,9 +212,34 @@
 
             <!-- Right Column: Entity Matching -->
             <div class="col-lg-4">
+                <!-- Allocation Summary -->
+                <div class="card shadow-sm mb-4 border-primary" id="allocationSummary">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="bi bi-link-45deg me-2"></i>Invoice Allocation</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="allocationStatus" class="text-center py-2">
+                            <div id="noAllocationWarning" class="alert alert-warning mb-0">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                Please select a supplier or customer below
+                            </div>
+                            <div id="supplierAllocated" class="alert alert-success mb-0 d-none">
+                                <i class="bi bi-building me-2"></i>
+                                <span>Allocated to Supplier: </span>
+                                <strong id="allocatedSupplierName"></strong>
+                            </div>
+                            <div id="customerAllocated" class="alert alert-info mb-0 d-none">
+                                <i class="bi bi-person me-2"></i>
+                                <span>Allocated to Customer: </span>
+                                <strong id="allocatedCustomerName"></strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Supplier Matching -->
                 <div class="card shadow-sm mb-4 @(Model.MatchedSupplierId.HasValue ? "border-success" : "border-warning")"
-                    id="supplierCard">>
+                    id="supplierCard">
                     <div
                         class="card-header @(Model.MatchedSupplierId.HasValue ? "bg-success text-white" : "bg-warning")">
                         <h5 class="mb-0">
@@ -267,7 +303,7 @@
 
                 <!-- Customer Matching -->
                 <div class="card shadow-sm mb-4 @(Model.MatchedCustomerId.HasValue ? "border-success" : "border-warning")"
-                    id="customerCard">>
+                    id="customerCard">
                     <div
                         class="card-header @(Model.MatchedCustomerId.HasValue ? "bg-success text-white" : "bg-warning")">
                         <h5 class="mb-0">
@@ -350,44 +386,96 @@
         document.addEventListener('DOMContentLoaded', function () {
             const supplierSelect = document.getElementById('SelectedSupplierId');
             const customerSelect = document.getElementById('SelectedCustomerId');
-            const invoiceTypeSelect = document.getElementById('InvoiceType');
+            const invoiceTypeInput = document.getElementById('InvoiceType');
             const supplierCard = document.getElementById('supplierCard');
             const customerCard = document.getElementById('customerCard');
             const customerInfoSection = document.getElementById('customerInfoSection');
             const customerInfoHeader = document.getElementById('customerInfoHeader');
 
-            // Function to update UI based on invoice type
-            function updateInvoiceTypeUI() {
-                const invoiceType = invoiceTypeSelect.value;
-                const isPayable = invoiceType === 'Payable';
+            // Allocation type radio buttons
+            const allocateSupplierRadio = document.getElementById('allocateSupplier');
+            const allocateCustomerRadio = document.getElementById('allocateCustomer');
+
+            // Allocation status elements
+            const noAllocationWarning = document.getElementById('noAllocationWarning');
+            const supplierAllocated = document.getElementById('supplierAllocated');
+            const customerAllocated = document.getElementById('customerAllocated');
+            const allocatedSupplierName = document.getElementById('allocatedSupplierName');
+            const allocatedCustomerName = document.getElementById('allocatedCustomerName');
+
+            // Function to update allocation status display
+            function updateAllocationStatus() {
+                const hasSupplier = supplierSelect && supplierSelect.value;
+                const hasCustomer = customerSelect && customerSelect.value;
+
+                // Hide all status indicators first
+                noAllocationWarning?.classList.add('d-none');
+                supplierAllocated?.classList.add('d-none');
+                customerAllocated?.classList.add('d-none');
+
+                if (hasSupplier) {
+                    const selectedOption = supplierSelect.options[supplierSelect.selectedIndex];
+                    const supplierName = selectedOption.text.split(' (')[0];
+                    allocatedSupplierName.textContent = supplierName;
+                    supplierAllocated?.classList.remove('d-none');
+                } else if (hasCustomer) {
+                    const selectedOption = customerSelect.options[customerSelect.selectedIndex];
+                    const customerName = selectedOption.text.split(' (')[0];
+                    allocatedCustomerName.textContent = customerName;
+                    customerAllocated?.classList.remove('d-none');
+                } else {
+                    noAllocationWarning?.classList.remove('d-none');
+                }
+            }
+
+            // Function to update UI based on allocation type
+            function updateAllocationTypeUI() {
+                const isSupplierAllocation = allocateSupplierRadio?.checked;
+
+                // Update hidden invoice type field
+                if (invoiceTypeInput) {
+                    invoiceTypeInput.value = isSupplierAllocation ? 'Payable' : 'Receivable';
+                }
 
                 // Update header text
                 if (customerInfoHeader) {
-                    customerInfoHeader.innerHTML = isPayable
-                        ? '<i class="bi bi-building me-2"></i>Supplier/Vendor Information'
-                        : '<i class="bi bi-person me-2"></i>Customer/Client Information';
+                    customerInfoHeader.innerHTML = isSupplierAllocation
+                        ? '<h5 class=\"mb-0\"><i class=\"bi bi-building me-2\"></i>Supplier/Vendor Information</h5>'
+                        : '<h5 class=\"mb-0\"><i class=\"bi bi-person me-2\"></i>Customer/Client Information</h5>';
                 }
 
-                // Highlight the relevant card
-                if (isPayable) {
+                // Show/hide and highlight the relevant cards
+                if (isSupplierAllocation) {
+                    supplierCard?.classList.remove('d-none');
                     supplierCard?.classList.add('border-primary', 'border-2');
-                    supplierCard?.classList.remove('border-secondary');
-                    customerCard?.classList.remove('border-primary', 'border-2');
-                    customerCard?.classList.add('border-secondary');
+                    customerCard?.classList.add('d-none');
+                    // Clear customer selection when switching to supplier
+                    if (customerSelect) customerSelect.value = '';
                 } else {
-                    customerCard?.classList.add('border-primary', 'border-2');
-                    customerCard?.classList.remove('border-secondary');
-                    supplierCard?.classList.remove('border-primary', 'border-2');
-                    supplierCard?.classList.add('border-secondary');
+                    customerCard?.classList.remove('d-none');
+                    customerCard?.classList.add('border-success', 'border-2');
+                    supplierCard?.classList.add('d-none');
+                    // Clear supplier selection when switching to customer
+                    if (supplierSelect) supplierSelect.value = '';
                 }
+
+                updateAllocationStatus();
             }
+
+            // When allocation type changes
+            allocateSupplierRadio?.addEventListener('change', function () {
+                updateAllocationTypeUI();
+                showToast('Switched to Supplier allocation (Payable/Expense invoice)', 'info');
+            });
+
+            allocateCustomerRadio?.addEventListener('change', function () {
+                updateAllocationTypeUI();
+                showToast('Switched to Customer allocation (Receivable/Income invoice)', 'info');
+            });
 
             // When supplier is selected
             supplierSelect?.addEventListener('change', function () {
                 if (this.value) {
-                    // Set invoice type to Payable
-                    invoiceTypeSelect.value = 'Payable';
-
                     // Get supplier name from selected option
                     const selectedOption = this.options[this.selectedIndex];
                     const supplierName = selectedOption.text.split(' (')[0];
@@ -398,25 +486,19 @@
                         customerNameField.value = supplierName;
                     }
 
-                    // Clear customer selection (can only have one)
-                    if (customerSelect) {
-                        customerSelect.value = '';
-                    }
-
-                    // Update UI
-                    updateInvoiceTypeUI();
+                    // Update allocation status
+                    updateAllocationStatus();
 
                     // Show visual feedback
-                    showToast('Supplier selected - Invoice set to Payable (Expense)', 'success');
+                    showToast('Supplier selected: ' + supplierName, 'success');
+                } else {
+                    updateAllocationStatus();
                 }
             });
 
             // When customer is selected
             customerSelect?.addEventListener('change', function () {
                 if (this.value) {
-                    // Set invoice type to Receivable
-                    invoiceTypeSelect.value = 'Receivable';
-
                     // Get customer name from selected option
                     const selectedOption = this.options[this.selectedIndex];
                     const customerName = selectedOption.text.split(' (')[0];
@@ -427,32 +509,13 @@
                         customerNameField.value = customerName;
                     }
 
-                    // Clear supplier selection (can only have one)
-                    if (supplierSelect) {
-                        supplierSelect.value = '';
-                    }
-
-                    // Update UI
-                    updateInvoiceTypeUI();
+                    // Update allocation status
+                    updateAllocationStatus();
 
                     // Show visual feedback
-                    showToast('Customer selected - Invoice set to Receivable (Income)', 'success');
-                }
-            });
-
-            // When invoice type is manually changed
-            invoiceTypeSelect?.addEventListener('change', function () {
-                updateInvoiceTypeUI();
-
-                // If changing to Payable and no supplier selected, prompt
-                if (this.value === 'Payable' && !supplierSelect?.value) {
-                    supplierCard?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    supplierSelect?.focus();
-                }
-                // If changing to Receivable and no customer selected, prompt
-                else if (this.value === 'Receivable' && !customerSelect?.value) {
-                    customerCard?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    customerSelect?.focus();
+                    showToast('Customer selected: ' + customerName, 'success');
+                } else {
+                    updateAllocationStatus();
                 }
             });
 
@@ -466,11 +529,11 @@
                 toast.className = `auto-toast alert alert-${type === 'success' ? 'success' : 'info'} position-fixed shadow-lg`;
                 toast.style.cssText = 'top: 80px; right: 20px; z-index: 9999; max-width: 350px; animation: slideIn 0.3s ease;';
                 toast.innerHTML = `
-                        <div class="d-flex align-items-center">
-                            <i class="bi bi-${type === 'success' ? 'check-circle-fill' : 'info-circle-fill'} me-2"></i>
-                            <span>${message}</span>
-                        </div>
-                    `;
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-${type === 'success' ? 'check-circle-fill' : 'info-circle-fill'} me-2"></i>
+                                <span>${message}</span>
+                            </div>
+                        `;
                 document.body.appendChild(toast);
 
                 setTimeout(() => {
@@ -496,8 +559,31 @@
                 });
             });
 
-            // Initialize UI state
-            updateInvoiceTypeUI();
+            // Initialize UI state based on current invoice type and matched entities
+            function initializeUI() {
+                const currentInvoiceType = invoiceTypeInput?.value || 'Payable';
+                const hasMatchedSupplier = supplierSelect?.value || '@Model.MatchedSupplierId' !== '';
+                const hasMatchedCustomer = customerSelect?.value || '@Model.MatchedCustomerId' !== '';
+
+                // Set initial allocation type based on invoice type or matched entity
+                if (currentInvoiceType === 'Receivable' || (hasMatchedCustomer && !hasMatchedSupplier)) {
+                    allocateCustomerRadio.checked = true;
+                } else {
+                    allocateSupplierRadio.checked = true;
+                }
+
+                // Pre-select matched entities
+                if ('@Model.MatchedSupplierId' && supplierSelect) {
+                    supplierSelect.value = '@Model.MatchedSupplierId';
+                }
+                if ('@Model.MatchedCustomerId' && customerSelect) {
+                    customerSelect.value = '@Model.MatchedCustomerId';
+                }
+
+                updateAllocationTypeUI();
+            }
+
+            initializeUI();
         });
     </script>
 

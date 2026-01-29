@@ -11,6 +11,7 @@ namespace InvoiceManagement.Services
         Task LinkDocumentToInvoiceAsync(int documentId, int invoiceId);
         Task LinkDocumentToPaymentAsync(int documentId, int paymentId);
         Task UpdateDocumentExtractedDataAsync(int documentId, string? extractedText, string? accountNumber, string? bankName, string? supplierName, string? customerName);
+        Task UpdateDocumentFilenameWithInvoiceNumberAsync(int documentId, string invoiceNumber);
         Task DeleteDocumentAsync(int id);
         Task<byte[]?> GetDocumentContentAsync(int id);
     }

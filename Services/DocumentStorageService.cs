@@ -37,7 +37,7 @@ namespace InvoiceManagement.Services
             _context.ImportedDocuments.Add(document);
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Stored document: {FileName}, Type: {DocumentType}, Size: {FileSize} bytes", 
+            _logger.LogInformation("Stored document: {FileName}, Type: {DocumentType}, Size: {FileSize} bytes",
                 document.OriginalFileName, documentType, document.FileSize);
 
             return document;
@@ -76,7 +76,7 @@ namespace InvoiceManagement.Services
                 document.ProcessingStatus = "Processed";
                 document.ProcessedDate = DateTime.Now;
                 await _context.SaveChangesAsync();
-                
+
                 _logger.LogInformation("Linked document {DocumentId} to invoice {InvoiceId}", documentId, invoiceId);
             }
         }
@@ -90,7 +90,7 @@ namespace InvoiceManagement.Services
                 document.ProcessingStatus = "Processed";
                 document.ProcessedDate = DateTime.Now;
                 await _context.SaveChangesAsync();
-                
+
                 _logger.LogInformation("Linked document {DocumentId} to payment {PaymentId}", documentId, paymentId);
             }
         }
@@ -109,6 +109,28 @@ namespace InvoiceManagement.Services
             }
         }
 
+        public async Task UpdateDocumentFilenameWithInvoiceNumberAsync(int documentId, string invoiceNumber)
+        {
+            var document = await _context.ImportedDocuments.FindAsync(documentId);
+            if (document != null && !string.IsNullOrWhiteSpace(invoiceNumber))
+            {
+                // Get the file extension from the original filename
+                var extension = Path.GetExtension(document.OriginalFileName);
+
+                // Clean the invoice number for use in filename (remove invalid chars)
+                var cleanInvoiceNumber = string.Join("", invoiceNumber.Where(c => !Path.GetInvalidFileNameChars().Contains(c)));
+
+                // Create new filename in format: InvNo_invoicenumber.extension
+                var newFileName = $"InvNo_{cleanInvoiceNumber}{extension}";
+
+                document.OriginalFileName = newFileName;
+                document.FileName = $"{Guid.NewGuid()}_{newFileName}";
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Updated document {DocumentId} filename to {NewFileName}", documentId, newFileName);
+            }
+        }
+
         public async Task DeleteDocumentAsync(int id)
         {
             var document = await _context.ImportedDocuments.FindAsync(id);
@@ -116,7 +138,7 @@ namespace InvoiceManagement.Services
             {
                 _context.ImportedDocuments.Remove(document);
                 await _context.SaveChangesAsync();
-                
+
                 _logger.LogInformation("Deleted document {DocumentId}: {FileName}", id, document.OriginalFileName);
             }
         }
