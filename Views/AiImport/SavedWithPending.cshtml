@@ -1,0 +1,125 @@
+@{
+    ViewData["Title"] = "Invoice Saved";
+    var pendingCount = ViewBag.PendingCount as int? ?? 0;
+    var pendingDocuments = ViewBag.PendingDocuments as IEnumerable<dynamic>;
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <!-- Success Card -->
+            <div class="card shadow-lg border-0 mb-4">
+                <div class="card-body text-center py-5">
+                    <div class="mb-4">
+                        <div class="bg-success rounded-circle d-inline-flex align-items-center justify-content-center"
+                            style="width: 80px; height: 80px;">
+                            <i class="bi bi-check-lg text-white" style="font-size: 3rem;"></i>
+                        </div>
+                    </div>
+                    <h2 class="text-success mb-3">Invoice Saved Successfully!</h2>
+                    @if (TempData["Success"] != null)
+                    {
+                        <p class="text-muted">@TempData["Success"]</p>
+                    }
+                </div>
+            </div>
+
+            <!-- Pending Documents Alert -->
+            @if (pendingCount > 0)
+            {
+                <div class="card shadow border-warning mb-4">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            @pendingCount More Invoice(s) Pending Review
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-3">You have <strong>@pendingCount</strong> more imported invoice document(s) waiting to
+                            be reviewed and saved.</p>
+
+                        @if (pendingDocuments != null && pendingDocuments.Any())
+                        {
+                            <div class="table-responsive mb-3">
+                                <table class="table table-sm table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Document</th>
+                                            <th>Uploaded</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var doc in pendingDocuments)
+                                        {
+                                            <tr>
+                                                <td>
+                                                    <i class="bi bi-file-earmark-text text-primary me-1"></i>
+                                                    @doc.OriginalFileName
+                                                </td>
+                                                <td class="text-muted">
+                                                    @(((DateTime)doc.UploadedDate).ToString("dd MMM yyyy HH:mm"))
+                                                </td>
+                                                <td>
+                                                    <a href="@Url.Action("EditInvoice", "AiImport", new { documentId = doc.Id })"
+                                                        class="btn btn-sm btn-outline-primary">
+                                                        <i class="bi bi-pencil"></i> Review
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                            @if (pendingCount > 5)
+                            {
+                                <p class="text-muted small mb-0">Showing first 5 of @pendingCount documents</p>
+                            }
+                        }
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="card shadow">
+                    <div class="card-body">
+                        <h5 class="card-title mb-4">What would you like to do?</h5>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <a href="@Url.Action("Documents", "AiImport", new { status = "Extracted" })"
+                                    class="btn btn-primary btn-lg w-100 py-3">
+                                    <i class="bi bi-list-check me-2"></i>
+                                    Review More Invoices
+                                    <span class="badge bg-white text-primary ms-2">@pendingCount</span>
+                                </a>
+                                <p class="text-muted small text-center mt-2">Continue reviewing pending documents</p>
+                            </div>
+                            <div class="col-md-6">
+                                <a href="@Url.Action("Index", "Invoices")"
+                                    class="btn btn-outline-secondary btn-lg w-100 py-3">
+                                    <i class="bi bi-receipt me-2"></i>
+                                    Go to Invoice List
+                                </a>
+                                <p class="text-muted small text-center mt-2">View all saved invoices</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <!-- All Done - No Pending -->
+                <div class="card shadow border-success">
+                    <div class="card-body text-center py-4">
+                        <i class="bi bi-check-circle text-success" style="font-size: 2rem;"></i>
+                        <h5 class="text-success mt-2">All Invoices Reviewed!</h5>
+                        <p class="text-muted mb-3">You have no more pending documents to review.</p>
+                        <a href="@Url.Action("Index", "Invoices")" class="btn btn-success">
+                            <i class="bi bi-receipt me-2"></i>
+                            Go to Invoice List
+                        </a>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>

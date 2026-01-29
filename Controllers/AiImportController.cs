@@ -1231,7 +1231,19 @@ namespace InvoiceManagement.Controllers
                     await _documentService.LinkDocumentToInvoiceAsync(model.DocumentId, invoice.Id);
                 }
 
-                TempData["Success"] = $"Invoice {invoice.InvoiceNumber} imported successfully!";
+                // Check if there are more documents pending review
+                var pendingDocuments = await _context.ImportedDocuments
+                    .Where(d => d.Status == "Extracted" && d.DocumentType == "Invoice" && d.InvoiceId == null)
+                    .CountAsync();
+
+                if (pendingDocuments > 0)
+                {
+                    TempData["Success"] = $"Invoice {invoice.InvoiceNumber} imported successfully!";
+                    TempData["PendingReviewCount"] = pendingDocuments;
+                    return RedirectToAction("SavedWithPending");
+                }
+
+                TempData["Success"] = $"Invoice {invoice.InvoiceNumber} imported successfully! All invoices have been reviewed.";
                 return RedirectToAction("Index", "Invoices");
             }
             catch (Exception ex)
@@ -1240,6 +1252,23 @@ namespace InvoiceManagement.Controllers
                 TempData["Error"] = $"Error saving invoice: {ex.Message}";
                 return View("ReviewInvoice", model);
             }
+        }
+
+        // GET: AiImport/SavedWithPending - Show options after saving when more documents are pending
+        public async Task<IActionResult> SavedWithPending()
+        {
+            var pendingDocuments = await _context.ImportedDocuments
+                .Where(d => d.Status == "Extracted" && d.DocumentType == "Invoice" && d.InvoiceId == null)
+                .OrderByDescending(d => d.UploadedDate)
+                .Take(5)
+                .Select(d => new { d.Id, d.OriginalFileName, d.UploadedDate })
+                .ToListAsync();
+
+            ViewBag.PendingCount = await _context.ImportedDocuments
+                .CountAsync(d => d.Status == "Extracted" && d.DocumentType == "Invoice" && d.InvoiceId == null);
+            ViewBag.PendingDocuments = pendingDocuments;
+
+            return View();
         }
 
         // GET: AiImport/Payment
