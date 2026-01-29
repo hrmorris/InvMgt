@@ -34,7 +34,7 @@ namespace InvoiceManagement.Controllers
             }
 
             var user = await _authService.AuthenticateAsync(username, password);
-            
+
             if (user != null)
             {
                 // Set session
@@ -83,7 +83,7 @@ namespace InvoiceManagement.Controllers
                 TempData["ErrorMessage"] = "System already has users. Contact an administrator.";
                 return RedirectToAction(nameof(Login));
             }
-            
+
             return View(new User());
         }
 
@@ -108,7 +108,7 @@ namespace InvoiceManagement.Controllers
                 user.Role = "Admin";
                 user.Status = "Active";
                 await _adminService.CreateUserAsync(user, password);
-                
+
                 TempData["SuccessMessage"] = "First admin account created successfully! Please login.";
                 return RedirectToAction(nameof(Login));
             }
@@ -121,11 +121,41 @@ namespace InvoiceManagement.Controllers
         {
             var username = HttpContext.Session.GetString("Username");
             var role = HttpContext.Session.GetString("Role");
-            
+
             ViewBag.Username = username;
             ViewBag.Role = role;
-            
+
             return View();
+        }
+
+        // GET: Account/QuickSetup - Creates admin account on fresh database
+        public async Task<IActionResult> QuickSetup()
+        {
+            var users = await _adminService.GetAllUsersAsync();
+            if (users.Any())
+            {
+                return Content("❌ Admin already exists. Login at /Account/Login with username: admin");
+            }
+
+            try
+            {
+                var admin = new User
+                {
+                    Username = "admin",
+                    FullName = "System Administrator",
+                    Email = "admin@invoicemgt.com",
+                    Role = "Admin",
+                    Status = "Active"
+                };
+
+                await _adminService.CreateUserAsync(admin, "Admin123!");
+
+                return Content("✅ Admin account created!\n\nUsername: admin\nPassword: Admin123!\n\nLogin at: /Account/Login");
+            }
+            catch (Exception ex)
+            {
+                return Content($"❌ Error creating admin: {ex.Message}");
+            }
         }
     }
 }
