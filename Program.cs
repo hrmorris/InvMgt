@@ -110,8 +110,8 @@ if (databaseProvider == "PostgreSQL")
                     @"CREATE TABLE IF NOT EXISTS ""RolePermissions"" (""Id"" SERIAL PRIMARY KEY, ""RoleId"" INT NOT NULL REFERENCES ""Roles""(""Id"") ON DELETE CASCADE, ""PermissionId"" INT NOT NULL REFERENCES ""Permissions""(""Id"") ON DELETE CASCADE, ""AssignedDate"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);",
                     @"CREATE TABLE IF NOT EXISTS ""UserRoles"" (""Id"" SERIAL PRIMARY KEY, ""UserId"" INT NOT NULL REFERENCES ""Users""(""Id"") ON DELETE CASCADE, ""RoleId"" INT NOT NULL REFERENCES ""Roles""(""Id"") ON DELETE CASCADE, ""AssignedDate"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, ""AssignedBy"" VARCHAR(100));",
                     @"CREATE TABLE IF NOT EXISTS ""AuditLogs"" (""Id"" SERIAL PRIMARY KEY, ""UserId"" INT REFERENCES ""Users""(""Id"") ON DELETE SET NULL, ""Username"" VARCHAR(100), ""Action"" VARCHAR(100) NOT NULL, ""Entity"" VARCHAR(100) NOT NULL, ""EntityId"" INT, ""Details"" VARCHAR(1000), ""ActionDate"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, ""IpAddress"" VARCHAR(50));",
-                    @"CREATE TABLE IF NOT EXISTS ""BatchPayments"" (""Id"" SERIAL PRIMARY KEY, ""BatchReference"" VARCHAR(50) NOT NULL UNIQUE, ""Description"" VARCHAR(500), ""Status"" VARCHAR(50) NOT NULL DEFAULT 'Draft', ""TotalAmount"" DECIMAL(18,2) NOT NULL DEFAULT 0, ""PaymentMethod"" VARCHAR(50), ""ScheduledPaymentDate"" TIMESTAMP, ""ProcessedDate"" TIMESTAMP, ""ProcessedBy"" VARCHAR(200), ""Notes"" VARCHAR(1000), ""CreatedDate"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, ""CreatedBy"" VARCHAR(200), ""ModifiedDate"" TIMESTAMP);",
-                    @"CREATE TABLE IF NOT EXISTS ""BatchPaymentItems"" (""Id"" SERIAL PRIMARY KEY, ""BatchPaymentId"" INT NOT NULL REFERENCES ""BatchPayments""(""Id"") ON DELETE CASCADE, ""InvoiceId"" INT NOT NULL REFERENCES ""Invoices""(""Id"") ON DELETE RESTRICT, ""AmountToPay"" DECIMAL(18,2) NOT NULL, ""Notes"" VARCHAR(500), ""AddedDate"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);"
+                    @"CREATE TABLE IF NOT EXISTS ""BatchPayments"" (""Id"" SERIAL PRIMARY KEY, ""BatchReference"" VARCHAR(50) NOT NULL UNIQUE, ""BatchName"" VARCHAR(200), ""Status"" VARCHAR(50) NOT NULL DEFAULT 'Draft', ""PaymentMethod"" VARCHAR(50), ""BankAccount"" VARCHAR(100), ""ScheduledPaymentDate"" TIMESTAMP, ""ProcessedDate"" TIMESTAMP, ""Notes"" VARCHAR(1000), ""CreatedDate"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, ""CreatedBy"" VARCHAR(100), ""ApprovedBy"" VARCHAR(100), ""ApprovedDate"" TIMESTAMP);",
+                    @"CREATE TABLE IF NOT EXISTS ""BatchPaymentItems"" (""Id"" SERIAL PRIMARY KEY, ""BatchPaymentId"" INT NOT NULL REFERENCES ""BatchPayments""(""Id"") ON DELETE CASCADE, ""InvoiceId"" INT NOT NULL REFERENCES ""Invoices""(""Id"") ON DELETE RESTRICT, ""AmountToPay"" DECIMAL(18,2) NOT NULL, ""IsProcessed"" BOOLEAN NOT NULL DEFAULT FALSE, ""PaymentId"" INT REFERENCES ""Payments""(""Id"") ON DELETE SET NULL, ""AddedDate"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, ""Notes"" VARCHAR(500));"
                 };
 
                 foreach (var stmt in schemaStatements)
@@ -125,7 +125,34 @@ if (databaseProvider == "PostgreSQL")
                         Console.WriteLine($"Statement note: {stmtEx.Message}");
                     }
                 }
-                Console.WriteLine("Schema tables created manually.");
+
+                // Add missing columns to existing tables (ALTER TABLE for incremental schema updates)
+                var alterStatements = new[]
+                {
+                    // BatchPayments columns that might be missing
+                    @"ALTER TABLE ""BatchPayments"" ADD COLUMN IF NOT EXISTS ""BatchName"" VARCHAR(200);",
+                    @"ALTER TABLE ""BatchPayments"" ADD COLUMN IF NOT EXISTS ""BankAccount"" VARCHAR(100);",
+                    @"ALTER TABLE ""BatchPayments"" ADD COLUMN IF NOT EXISTS ""ApprovedBy"" VARCHAR(100);",
+                    @"ALTER TABLE ""BatchPayments"" ADD COLUMN IF NOT EXISTS ""ApprovedDate"" TIMESTAMP;",
+                    // BatchPaymentItems columns that might be missing
+                    @"ALTER TABLE ""BatchPaymentItems"" ADD COLUMN IF NOT EXISTS ""IsProcessed"" BOOLEAN NOT NULL DEFAULT FALSE;",
+                    @"ALTER TABLE ""BatchPaymentItems"" ADD COLUMN IF NOT EXISTS ""PaymentId"" INT REFERENCES ""Payments""(""Id"") ON DELETE SET NULL;"
+                };
+
+                foreach (var stmt in alterStatements)
+                {
+                    try
+                    {
+                        db.Database.ExecuteSqlRaw(stmt);
+                    }
+                    catch (Exception stmtEx)
+                    {
+                        // Ignore errors for columns that already exist
+                        Console.WriteLine($"Alter note: {stmtEx.Message}");
+                    }
+                }
+
+                Console.WriteLine("Schema tables created/updated successfully.");
             }
             catch (Exception schemaEx)
             {
