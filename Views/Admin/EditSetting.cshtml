@@ -1,0 +1,170 @@
+@model SystemSetting
+
+@{
+    ViewData["Title"] = "Edit System Setting";
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-pencil-square"></i> Edit System Setting</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-action="Settings" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Settings
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card shadow">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <span class="badge bg-@GetCategoryColor(Model.Category)">@Model.Category</span>
+                    @Model.SettingKey
+                </h5>
+            </div>
+            <div class="card-body">
+                <form asp-action="EditSetting" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="key" value="@Model.SettingKey" />
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Setting Key</label>
+                        <input type="text" class="form-control" value="@Model.SettingKey" disabled readonly />
+                        <small class="form-text text-muted">Setting keys cannot be changed after creation</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Category</label>
+                        <input type="text" class="form-control" value="@Model.Category" disabled readonly />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="value" class="form-label fw-bold">Value</label>
+                        @if (Model.SettingKey == "CurrencyCode")
+                        {
+                            <select name="value" class="form-select">
+                                @foreach (var currency in InvoiceManagement.Models.Currency.GetAllCurrencies().OrderBy(c => c.Name))
+                                {
+                                    <option value="@currency.Code" selected="@(Model.SettingValue == currency.Code)">
+                                        @currency.Code - @currency.Name (@currency.Symbol)
+                                    </option>
+                                }
+                            </select>
+                        }
+                        else if (Model.SettingKey == "CurrencyPosition")
+                        {
+                            <select name="value" class="form-select">
+                                <option value="before" selected="@(Model.SettingValue == "before")">Before Amount (e.g., $100)</option>
+                                <option value="after" selected="@(Model.SettingValue == "after")">After Amount (e.g., 100$)</option>
+                            </select>
+                        }
+                        else if (Model.SettingKey == "DecimalPlaces")
+                        {
+                            <select name="value" class="form-select">
+                                <option value="0" selected="@(Model.SettingValue == "0")">0 Decimals</option>
+                                <option value="1" selected="@(Model.SettingValue == "1")">1 Decimal</option>
+                                <option value="2" selected="@(Model.SettingValue == "2")">2 Decimals</option>
+                                <option value="3" selected="@(Model.SettingValue == "3")">3 Decimals</option>
+                            </select>
+                        }
+                        else if (Model.SettingKey == "ThousandsSeparator")
+                        {
+                            <select name="value" class="form-select">
+                                <option value="," selected="@(Model.SettingValue == ",")">Comma (1,000)</option>
+                                <option value="." selected="@(Model.SettingValue == ".")">Period (1.000)</option>
+                                <option value=" " selected="@(Model.SettingValue == " ")">Space (1 000)</option>
+                                <option value="" selected="@(string.IsNullOrEmpty(Model.SettingValue))">None (1000)</option>
+                            </select>
+                        }
+                        else if (Model.SettingKey == "DecimalSeparator")
+                        {
+                            <select name="value" class="form-select">
+                                <option value="." selected="@(Model.SettingValue == ".")">Period (100.50)</option>
+                                <option value="," selected="@(Model.SettingValue == ",")">Comma (100,50)</option>
+                            </select>
+                        }
+                        else if (IsBoolean(Model.SettingValue))
+                        {
+                            <select name="value" class="form-select">
+                                <option value="true" selected="@(Model.SettingValue == "true")">Enabled</option>
+                                <option value="false" selected="@(Model.SettingValue == "false")">Disabled</option>
+                            </select>
+                        }
+                        else if (IsNumber(Model.SettingValue))
+                        {
+                            <input type="number" name="value" value="@Model.SettingValue" class="form-control" />
+                        }
+                        else
+                        {
+                            <textarea name="value" class="form-control" rows="3">@Model.SettingValue</textarea>
+                        }
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(Model.Description))
+                    {
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i> <strong>Description:</strong> @Model.Description
+                        </div>
+                    }
+
+                    <div class="mb-3">
+                        <small class="text-muted">
+                            <i class="bi bi-clock"></i> Last modified: @Model.ModifiedDate.ToString("dd/MM/yyyy HH:mm")
+                            @if (!string.IsNullOrEmpty(Model.ModifiedBy))
+                            {
+                                <text> by @Model.ModifiedBy</text>
+                            }
+                        </small>
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> Save Changes
+                            </button>
+                            <a asp-action="Settings" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Cancel
+                            </a>
+                        </div>
+                        <form asp-action="DeleteSetting" asp-route-id="@Model.Id" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Are you sure you want to delete this setting?')">
+                                <i class="bi bi-trash"></i> Delete
+                            </button>
+                        </form>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@functions {
+    string GetCategoryColor(string category)
+    {
+        return category switch
+        {
+            "General" => "primary",
+            "Company" => "info",
+            "Invoice" => "success",
+            "Payment" => "warning",
+            "Procurement" => "secondary",
+            "Email" => "danger",
+            "Notification" => "dark",
+            "Security" => "danger",
+            "API" => "info",
+            "Finance" => "success",
+            _ => "secondary"
+        };
+    }
+
+    bool IsBoolean(string? value)
+    {
+        return value == "true" || value == "false";
+    }
+
+    bool IsNumber(string? value)
+    {
+        return int.TryParse(value, out _) || decimal.TryParse(value, out _);
+    }
+}

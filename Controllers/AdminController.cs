@@ -478,10 +478,10 @@ namespace InvoiceManagement.Controllers
             return View(settings);
         }
 
-        // GET: Admin/EditSetting/key
+        // GET: Admin/EditSetting/id
         public async Task<IActionResult> EditSetting(int id)
         {
-            var setting = await _adminService.GetSettingByKeyAsync(id.ToString());
+            var setting = await _adminService.GetSettingByIdAsync(id);
             if (setting == null)
                 return NotFound();
 
