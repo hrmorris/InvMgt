@@ -627,6 +627,9 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
         {
             try
             {
+                _logger.LogInformation("Calling OpenAI GPT-5.2 Vision API...");
+                _logger.LogInformation($"Image MIME type: {mimeType}, Base64 length: {base64Image.Length} chars");
+
                 // Using OpenAI GPT-5.2 with vision capability
                 var requestBody = new
                 {
@@ -644,7 +647,8 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
                                     type = "image_url",
                                     image_url = new
                                     {
-                                        url = $"data:{mimeType};base64,{base64Image}"
+                                        url = $"data:{mimeType};base64,{base64Image}",
+                                        detail = "high"
                                     }
                                 }
                             }
@@ -655,6 +659,8 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
                 };
 
                 var jsonContent = JsonSerializer.Serialize(requestBody);
+                _logger.LogInformation($"Request payload size: {jsonContent.Length} bytes");
+
                 var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
                 // Set the Authorization header for OpenAI API
@@ -662,6 +668,8 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
                 _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
 
                 var url = "https://api.openai.com/v1/chat/completions";
+                _logger.LogInformation($"Sending request to: {url}");
+
                 var response = await _httpClient.PostAsync(url, content);
 
                 if (!response.IsSuccessStatusCode)
