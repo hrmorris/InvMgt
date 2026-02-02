@@ -1349,5 +1349,39 @@ public class SetupController : ControllerBase
 
         return Ok(new { success = true, results });
     }
+
+    [HttpPost("set-apikey")]
+    public async Task<IActionResult> SetApiKey([FromQuery] string key, [FromQuery] string apiKey)
+    {
+        if (key != "setup-rls-2026")
+            return Unauthorized("Invalid setup key");
+
+        if (string.IsNullOrEmpty(apiKey))
+            return BadRequest("API key is required");
+
+        var setting = await _context.SystemSettings.FirstOrDefaultAsync(s => s.SettingKey == "OpenAIApiKey");
+        if (setting != null)
+        {
+            setting.SettingValue = apiKey;
+            setting.ModifiedDate = DateTime.Now;
+            setting.ModifiedBy = "Setup";
+            await _context.SaveChangesAsync();
+            return Ok(new { success = true, message = "OpenAI API key updated successfully" });
+        }
+        else
+        {
+            _context.SystemSettings.Add(new SystemSetting
+            {
+                Category = "API",
+                SettingKey = "OpenAIApiKey",
+                SettingValue = apiKey,
+                Description = "OpenAI API key for AI-powered invoice/payment import",
+                ModifiedBy = "Setup",
+                ModifiedDate = DateTime.Now
+            });
+            await _context.SaveChangesAsync();
+            return Ok(new { success = true, message = "OpenAI API key created successfully" });
+        }
+    }
 }
 
