@@ -1257,3 +1257,97 @@ namespace InvoiceManagement.Controllers
     }
 }
 
+// Add API endpoint for enabling RLS - accessible without auth for one-time setup
+[ApiController]
+[Route("api/[controller]")]
+public class SetupController : ControllerBase
+{
+    private readonly ApplicationDbContext _context;
+
+    public SetupController(ApplicationDbContext context)
+    {
+        _context = context;
+    }
+
+    [HttpPost("enable-rls")]
+    public async Task<IActionResult> EnableRLS([FromQuery] string key)
+    {
+        // Simple security check
+        if (key != "setup-rls-2026")
+            return Unauthorized("Invalid setup key");
+
+        var results = new List<string>();
+        var tables = new[]
+        {
+            "BatchPaymentItems", "BatchPayments", "AuditLogs", "UserRoles",
+            "Permissions", "RolePermissions", "PurchaseOrderItems", "RequisitionItems",
+            "PaymentAllocations", "ImportedDocuments", "InvoiceItems", "Payments",
+            "Invoices", "Suppliers", "PurchaseOrders", "Requisitions", "Users",
+            "Roles", "SystemSettings", "Customers", "__EFMigrationsHistory", "DataProtectionKeys"
+        };
+
+        foreach (var table in tables)
+        {
+            try
+            {
+                // Enable RLS
+                await _context.Database.ExecuteSqlRawAsync($"ALTER TABLE public.\"{table}\" ENABLE ROW LEVEL SECURITY");
+                results.Add($"✓ RLS enabled on {table}");
+
+                // Check if policy exists using raw SQL
+                var sql = $"SELECT COUNT(*) FROM pg_policies WHERE tablename = '{table}' AND policyname = 'Allow all for authenticated service'";
+                using var command = _context.Database.GetDbConnection().CreateCommand();
+                command.CommandText = sql;
+                await _context.Database.OpenConnectionAsync();
+                var result = await command.ExecuteScalarAsync();
+                var policyCount = Convert.ToInt64(result ?? 0);
+
+                if (policyCount == 0)
+                {
+                    await _context.Database.ExecuteSqlRawAsync(
+                        $"CREATE POLICY \"Allow all for authenticated service\" ON public.\"{table}\" FOR ALL USING (true) WITH CHECK (true)");
+                    results.Add($"  ✓ Policy created for {table}");
+                }
+                else
+                {
+                    results.Add($"  ○ Policy already exists for {table}");
+                }
+            }
+            catch (Exception ex)
+            {
+                results.Add($"✗ Error on {table}: {ex.Message}");
+            }
+        }
+
+        // Update AI settings
+        try
+        {
+            await _context.Database.ExecuteSqlRawAsync(
+                "UPDATE \"SystemSettings\" SET \"SettingValue\" = 'gpt-5.2', \"Description\" = 'OpenAI model for document processing', \"ModifiedDate\" = NOW() WHERE \"SettingKey\" = 'AIModel'");
+            results.Add("✓ AIModel updated to gpt-5.2");
+
+            var openAiExists = await _context.SystemSettings.AnyAsync(s => s.SettingKey == "OpenAIApiKey");
+            if (!openAiExists)
+            {
+                _context.SystemSettings.Add(new SystemSetting
+                {
+                    Category = "API",
+                    SettingKey = "OpenAIApiKey",
+                    SettingValue = "",
+                    Description = "OpenAI API key for AI-powered invoice/payment import. Get from https://platform.openai.com/api-keys",
+                    ModifiedBy = "System",
+                    ModifiedDate = DateTime.Now
+                });
+                await _context.SaveChangesAsync();
+                results.Add("✓ OpenAIApiKey setting created");
+            }
+        }
+        catch (Exception ex)
+        {
+            results.Add($"✗ Error updating AI settings: {ex.Message}");
+        }
+
+        return Ok(new { success = true, results });
+    }
+}
+
