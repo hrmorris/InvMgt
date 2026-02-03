@@ -92,12 +92,12 @@
 
                 <div class="card shadow-sm mb-4">
                     <div class="card-header bg-secondary text-white" id="customerInfoHeader">
-                        <h5 class="mb-0"><i class="bi bi-person me-2"></i>Customer/Client Information</h5>
+                        <h5 class="mb-0"><i class="bi bi-building me-2"></i>Supplier/Vendor Information</h5>
                     </div>
                     <div class="card-body" id="customerInfoSection">
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label asp-for="CustomerName" class="form-label">Customer Name</label>
+                                <label asp-for="CustomerName" class="form-label" id="entityNameLabel">Supplier Name</label>
                                 <input asp-for="CustomerName" class="form-control" />
                             </div>
                             <div class="col-md-6 mb-3">
@@ -437,11 +437,17 @@
                     invoiceTypeInput.value = isSupplierAllocation ? 'Payable' : 'Receivable';
                 }
 
-                // Update header text
+                // Update header text and icon
                 if (customerInfoHeader) {
                     customerInfoHeader.innerHTML = isSupplierAllocation
                         ? '<h5 class=\"mb-0\"><i class=\"bi bi-building me-2\"></i>Supplier/Vendor Information</h5>'
                         : '<h5 class=\"mb-0\"><i class=\"bi bi-person me-2\"></i>Customer/Client Information</h5>';
+                }
+
+                // Update the entity name label
+                const entityNameLabel = document.getElementById('entityNameLabel');
+                if (entityNameLabel) {
+                    entityNameLabel.textContent = isSupplierAllocation ? 'Supplier Name' : 'Customer Name';
                 }
 
                 // Show/hide and highlight the relevant cards
@@ -474,16 +480,31 @@
             });
 
             // When supplier is selected
-            supplierSelect?.addEventListener('change', function () {
+            supplierSelect?.addEventListener('change', async function () {
                 if (this.value) {
                     // Get supplier name from selected option
                     const selectedOption = this.options[this.selectedIndex];
                     const supplierName = selectedOption.text.split(' (')[0];
 
-                    // Update customer name field with supplier info for reference
-                    const customerNameField = document.getElementById('CustomerName');
-                    if (customerNameField && !customerNameField.value) {
-                        customerNameField.value = supplierName;
+                    // Fetch supplier details from API
+                    try {
+                        const response = await fetch('/AiImport/GetSupplierDetails?id=' + this.value);
+                        if (response.ok) {
+                            const supplier = await response.json();
+                            
+                            // Update the Supplier/Vendor Information fields
+                            const customerNameField = document.getElementById('CustomerName');
+                            const customerEmailField = document.getElementById('CustomerEmail');
+                            const customerPhoneField = document.getElementById('CustomerPhone');
+                            const customerAddressField = document.getElementById('CustomerAddress');
+                            
+                            if (customerNameField) customerNameField.value = supplier.name || '';
+                            if (customerEmailField) customerEmailField.value = supplier.email || '';
+                            if (customerPhoneField) customerPhoneField.value = supplier.phone || '';
+                            if (customerAddressField) customerAddressField.value = supplier.address || '';
+                        }
+                    } catch (error) {
+                        console.error('Error fetching supplier details:', error);
                     }
 
                     // Update allocation status
@@ -497,16 +518,31 @@
             });
 
             // When customer is selected
-            customerSelect?.addEventListener('change', function () {
+            customerSelect?.addEventListener('change', async function () {
                 if (this.value) {
                     // Get customer name from selected option
                     const selectedOption = this.options[this.selectedIndex];
                     const customerName = selectedOption.text.split(' (')[0];
 
-                    // Update customer name field
-                    const customerNameField = document.getElementById('CustomerName');
-                    if (customerNameField) {
-                        customerNameField.value = customerName;
+                    // Fetch customer details from API
+                    try {
+                        const response = await fetch('/AiImport/GetCustomerDetails?id=' + this.value);
+                        if (response.ok) {
+                            const customer = await response.json();
+                            
+                            // Update the Customer/Client Information fields
+                            const customerNameField = document.getElementById('CustomerName');
+                            const customerEmailField = document.getElementById('CustomerEmail');
+                            const customerPhoneField = document.getElementById('CustomerPhone');
+                            const customerAddressField = document.getElementById('CustomerAddress');
+                            
+                            if (customerNameField) customerNameField.value = customer.name || '';
+                            if (customerEmailField) customerEmailField.value = customer.email || '';
+                            if (customerPhoneField) customerPhoneField.value = customer.phone || '';
+                            if (customerAddressField) customerAddressField.value = customer.address || '';
+                        }
+                    } catch (error) {
+                        console.error('Error fetching customer details:', error);
                     }
 
                     // Update allocation status
@@ -560,7 +596,7 @@
             });
 
             // Initialize UI state based on current invoice type and matched entities
-            function initializeUI() {
+            async function initializeUI() {
                 const currentInvoiceType = invoiceTypeInput?.value || 'Payable';
                 const hasMatchedSupplier = supplierSelect?.value || '@Model.MatchedSupplierId' !== '';
                 const hasMatchedCustomer = customerSelect?.value || '@Model.MatchedCustomerId' !== '';
@@ -575,9 +611,49 @@
                 // Pre-select matched entities
                 if ('@Model.MatchedSupplierId' && supplierSelect) {
                     supplierSelect.value = '@Model.MatchedSupplierId';
+                    
+                    // Fetch and populate supplier details on initial load
+                    try {
+                        const response = await fetch('/AiImport/GetSupplierDetails?id=@Model.MatchedSupplierId');
+                        if (response.ok) {
+                            const supplier = await response.json();
+                            const customerNameField = document.getElementById('CustomerName');
+                            const customerEmailField = document.getElementById('CustomerEmail');
+                            const customerPhoneField = document.getElementById('CustomerPhone');
+                            const customerAddressField = document.getElementById('CustomerAddress');
+                            
+                            // Only populate if fields are empty or contain extracted data
+                            if (customerNameField && !customerNameField.value) customerNameField.value = supplier.name || '';
+                            if (customerEmailField && !customerEmailField.value) customerEmailField.value = supplier.email || '';
+                            if (customerPhoneField && !customerPhoneField.value) customerPhoneField.value = supplier.phone || '';
+                            if (customerAddressField && !customerAddressField.value) customerAddressField.value = supplier.address || '';
+                        }
+                    } catch (error) {
+                        console.error('Error fetching matched supplier details:', error);
+                    }
                 }
                 if ('@Model.MatchedCustomerId' && customerSelect) {
                     customerSelect.value = '@Model.MatchedCustomerId';
+                    
+                    // Fetch and populate customer details on initial load  
+                    try {
+                        const response = await fetch('/AiImport/GetCustomerDetails?id=@Model.MatchedCustomerId');
+                        if (response.ok) {
+                            const customer = await response.json();
+                            const customerNameField = document.getElementById('CustomerName');
+                            const customerEmailField = document.getElementById('CustomerEmail');
+                            const customerPhoneField = document.getElementById('CustomerPhone');
+                            const customerAddressField = document.getElementById('CustomerAddress');
+                            
+                            // Only populate if fields are empty or contain extracted data
+                            if (customerNameField && !customerNameField.value) customerNameField.value = customer.name || '';
+                            if (customerEmailField && !customerEmailField.value) customerEmailField.value = customer.email || '';
+                            if (customerPhoneField && !customerPhoneField.value) customerPhoneField.value = customer.phone || '';
+                            if (customerAddressField && !customerAddressField.value) customerAddressField.value = customer.address || '';
+                        }
+                    } catch (error) {
+                        console.error('Error fetching matched customer details:', error);
+                    }
                 }
 
                 updateAllocationTypeUI();
