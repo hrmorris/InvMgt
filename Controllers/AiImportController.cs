@@ -1363,20 +1363,10 @@ namespace InvoiceManagement.Controllers
                     await _documentService.LinkDocumentToInvoiceAsync(model.DocumentId, invoice.Id);
                 }
 
-                // Check if there are more documents pending review
-                var pendingDocuments = await _context.ImportedDocuments
-                    .Where(d => d.ProcessingStatus == "Extracted" && d.DocumentType == "Invoice" && d.InvoiceId == null)
-                    .CountAsync();
+                TempData["Success"] = $"Invoice {invoice.InvoiceNumber} saved successfully!";
 
-                if (pendingDocuments > 0)
-                {
-                    TempData["Success"] = $"Invoice {invoice.InvoiceNumber} imported successfully!";
-                    TempData["PendingReviewCount"] = pendingDocuments;
-                    return RedirectToAction("SavedWithPending");
-                }
-
-                TempData["Success"] = $"Invoice {invoice.InvoiceNumber} imported successfully! All invoices have been reviewed.";
-                return RedirectToAction("Index", "Invoices");
+                // Redirect back to the Document Library
+                return RedirectToAction("Documents");
             }
             catch (Exception ex)
             {
