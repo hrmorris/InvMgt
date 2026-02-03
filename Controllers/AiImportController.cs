@@ -1268,6 +1268,9 @@ namespace InvoiceManagement.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> SaveInvoice(AiImportInvoiceViewModel model)
         {
+            _logger.LogInformation("SaveInvoice called. SelectedSupplierId: {SupplierId}, SelectedCustomerId: {CustomerId}, MatchedSupplierId: {MatchedSupplierId}",
+                model.SelectedSupplierId, model.SelectedCustomerId, model.MatchedSupplierId);
+
             try
             {
                 // Determine the customer/supplier name for the invoice
@@ -1377,6 +1380,11 @@ namespace InvoiceManagement.Controllers
             {
                 _logger.LogError(ex, "Error saving imported invoice");
                 TempData["Error"] = $"Error saving invoice: {ex.Message}";
+
+                // Repopulate dropdown data for the view
+                model.AvailableSuppliers = (await _entityLookupService.GetAllSuppliersAsync()).ToList();
+                model.AvailableCustomers = (await _entityLookupService.GetAllCustomersAsync()).ToList();
+
                 return View("ReviewInvoice", model);
             }
         }
