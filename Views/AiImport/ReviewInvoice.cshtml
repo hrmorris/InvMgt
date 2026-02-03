@@ -97,7 +97,8 @@
                     <div class="card-body" id="customerInfoSection">
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label asp-for="CustomerName" class="form-label" id="entityNameLabel">Supplier Name</label>
+                                <label asp-for="CustomerName" class="form-label" id="entityNameLabel">Supplier
+                                    Name</label>
                                 <input asp-for="CustomerName" class="form-control" />
                             </div>
                             <div class="col-md-6 mb-3">
@@ -281,9 +282,18 @@
                                 {
                                     @foreach (var supplier in Model.AvailableSuppliers)
                                     {
-                                        <option value="@supplier.Id" selected="@(supplier.Id == Model.MatchedSupplierId)">
-                                            @supplier.SupplierName (@supplier.SupplierCode)
-                                        </option>
+                                        @if (supplier.Id == Model.MatchedSupplierId)
+                                        {
+                                            <option value="@supplier.Id" selected>
+                                                @supplier.SupplierName (@supplier.SupplierCode)
+                                            </option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@supplier.Id">
+                                                @supplier.SupplierName (@supplier.SupplierCode)
+                                            </option>
+                                        }
                                     }
                                 }
                             </select>
@@ -345,9 +355,18 @@
                                 {
                                     @foreach (var customer in Model.AvailableCustomers)
                                     {
-                                        <option value="@customer.Id" selected="@(customer.Id == Model.MatchedCustomerId)">
-                                            @customer.CustomerName (@customer.CustomerCode)
-                                        </option>
+                                        @if (customer.Id == Model.MatchedCustomerId)
+                                        {
+                                            <option value="@customer.Id" selected>
+                                                @customer.CustomerName (@customer.CustomerCode)
+                                            </option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@customer.Id">
+                                                @customer.CustomerName (@customer.CustomerCode)
+                                            </option>
+                                        }
                                     }
                                 }
                             </select>
@@ -491,13 +510,13 @@
                         const response = await fetch('/AiImport/GetSupplierDetails?id=' + this.value);
                         if (response.ok) {
                             const supplier = await response.json();
-                            
+
                             // Update the Supplier/Vendor Information fields
                             const customerNameField = document.getElementById('CustomerName');
                             const customerEmailField = document.getElementById('CustomerEmail');
                             const customerPhoneField = document.getElementById('CustomerPhone');
                             const customerAddressField = document.getElementById('CustomerAddress');
-                            
+
                             if (customerNameField) customerNameField.value = supplier.name || '';
                             if (customerEmailField) customerEmailField.value = supplier.email || '';
                             if (customerPhoneField) customerPhoneField.value = supplier.phone || '';
@@ -529,13 +548,13 @@
                         const response = await fetch('/AiImport/GetCustomerDetails?id=' + this.value);
                         if (response.ok) {
                             const customer = await response.json();
-                            
+
                             // Update the Customer/Client Information fields
                             const customerNameField = document.getElementById('CustomerName');
                             const customerEmailField = document.getElementById('CustomerEmail');
                             const customerPhoneField = document.getElementById('CustomerPhone');
                             const customerAddressField = document.getElementById('CustomerAddress');
-                            
+
                             if (customerNameField) customerNameField.value = customer.name || '';
                             if (customerEmailField) customerEmailField.value = customer.email || '';
                             if (customerPhoneField) customerPhoneField.value = customer.phone || '';
@@ -565,11 +584,11 @@
                 toast.className = `auto-toast alert alert-${type === 'success' ? 'success' : 'info'} position-fixed shadow-lg`;
                 toast.style.cssText = 'top: 80px; right: 20px; z-index: 9999; max-width: 350px; animation: slideIn 0.3s ease;';
                 toast.innerHTML = `
-                            <div class="d-flex align-items-center">
-                                <i class="bi bi-${type === 'success' ? 'check-circle-fill' : 'info-circle-fill'} me-2"></i>
-                                <span>${message}</span>
-                            </div>
-                        `;
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-${type === 'success' ? 'check-circle-fill' : 'info-circle-fill'} me-2"></i>
+                                    <span>${message}</span>
+                                </div>
+                            `;
                 document.body.appendChild(toast);
 
                 setTimeout(() => {
@@ -598,8 +617,10 @@
             // Initialize UI state based on current invoice type and matched entities
             async function initializeUI() {
                 const currentInvoiceType = invoiceTypeInput?.value || 'Payable';
-                const hasMatchedSupplier = supplierSelect?.value || '@Model.MatchedSupplierId' !== '';
-                const hasMatchedCustomer = customerSelect?.value || '@Model.MatchedCustomerId' !== '';
+                const matchedSupplierId = @(Model.MatchedSupplierId.HasValue? Model.MatchedSupplierId.Value.ToString() : "null");
+                const matchedCustomerId = @(Model.MatchedCustomerId.HasValue? Model.MatchedCustomerId.Value.ToString() : "null");
+                const hasMatchedSupplier = supplierSelect?.value || matchedSupplierId !== null;
+                const hasMatchedCustomer = customerSelect?.value || matchedCustomerId !== null;
 
                 // Set initial allocation type based on invoice type or matched entity
                 if (currentInvoiceType === 'Receivable' || (hasMatchedCustomer && !hasMatchedSupplier)) {
@@ -609,19 +630,19 @@
                 }
 
                 // Pre-select matched entities
-                if ('@Model.MatchedSupplierId' && supplierSelect) {
-                    supplierSelect.value = '@Model.MatchedSupplierId';
-                    
+                if (matchedSupplierId && supplierSelect) {
+                    supplierSelect.value = matchedSupplierId;
+
                     // Fetch and populate supplier details on initial load
                     try {
-                        const response = await fetch('/AiImport/GetSupplierDetails?id=@Model.MatchedSupplierId');
+                        const response = await fetch('/AiImport/GetSupplierDetails?id=' + matchedSupplierId);
                         if (response.ok) {
                             const supplier = await response.json();
                             const customerNameField = document.getElementById('CustomerName');
                             const customerEmailField = document.getElementById('CustomerEmail');
                             const customerPhoneField = document.getElementById('CustomerPhone');
                             const customerAddressField = document.getElementById('CustomerAddress');
-                            
+
                             // Only populate if fields are empty or contain extracted data
                             if (customerNameField && !customerNameField.value) customerNameField.value = supplier.name || '';
                             if (customerEmailField && !customerEmailField.value) customerEmailField.value = supplier.email || '';
@@ -632,19 +653,19 @@
                         console.error('Error fetching matched supplier details:', error);
                     }
                 }
-                if ('@Model.MatchedCustomerId' && customerSelect) {
-                    customerSelect.value = '@Model.MatchedCustomerId';
-                    
+                if (matchedCustomerId && customerSelect) {
+                    customerSelect.value = matchedCustomerId;
+
                     // Fetch and populate customer details on initial load  
                     try {
-                        const response = await fetch('/AiImport/GetCustomerDetails?id=@Model.MatchedCustomerId');
+                        const response = await fetch('/AiImport/GetCustomerDetails?id=' + matchedCustomerId);
                         if (response.ok) {
                             const customer = await response.json();
                             const customerNameField = document.getElementById('CustomerName');
                             const customerEmailField = document.getElementById('CustomerEmail');
                             const customerPhoneField = document.getElementById('CustomerPhone');
                             const customerAddressField = document.getElementById('CustomerAddress');
-                            
+
                             // Only populate if fields are empty or contain extracted data
                             if (customerNameField && !customerNameField.value) customerNameField.value = customer.name || '';
                             if (customerEmailField && !customerEmailField.value) customerEmailField.value = customer.email || '';

@@ -136,11 +136,13 @@ namespace InvoiceManagement.Controllers
                     ExtractedSupplierName = extractedInvoice.Supplier?.SupplierName ?? "",
                     MatchedSupplierId = matchedSupplier?.Id,
                     MatchedSupplierName = matchedSupplier?.SupplierName,
+                    SelectedSupplierId = matchedSupplier?.Id,
                     MatchConfidence = matchedSupplier != null ? "High" : "None",
 
                     // Customer matching
                     MatchedCustomerId = matchedCustomer?.Id,
                     MatchedCustomerName = matchedCustomer?.CustomerName,
+                    SelectedCustomerId = matchedCustomer?.Id,
 
                     // Dropdown data
                     AvailableSuppliers = suppliers,
@@ -234,9 +236,11 @@ namespace InvoiceManagement.Controllers
                     }).ToList() ?? new List<AiImportInvoiceItemViewModel>(),
                     MatchedSupplierId = matchedSupplier?.Id,
                     MatchedSupplierName = matchedSupplier?.SupplierName,
+                    SelectedSupplierId = matchedSupplier?.Id,
                     ExtractedSupplierName = extractedInvoice.Supplier?.SupplierName ?? document.ExtractedSupplierName ?? "",
                     MatchedCustomerId = matchedCustomer?.Id,
                     MatchedCustomerName = matchedCustomer?.CustomerName,
+                    SelectedCustomerId = matchedCustomer?.Id,
                     ExtractedCustomerName = extractedInvoice.CustomerName ?? document.ExtractedCustomerName ?? "",
                     AvailableSuppliers = suppliers.ToList(),
                     AvailableCustomers = customers.ToList(),
@@ -574,9 +578,11 @@ namespace InvoiceManagement.Controllers
                     }).ToList() ?? new List<AiImportInvoiceItemViewModel>(),
                     MatchedSupplierId = matchedSupplier?.Id,
                     MatchedSupplierName = matchedSupplier?.SupplierName,
+                    SelectedSupplierId = matchedSupplier?.Id,
                     ExtractedSupplierName = extractedInvoice.Supplier?.SupplierName ?? "",
                     MatchedCustomerId = matchedCustomer?.Id,
                     MatchedCustomerName = matchedCustomer?.CustomerName,
+                    SelectedCustomerId = matchedCustomer?.Id,
                     ExtractedCustomerName = extractedInvoice.CustomerName ?? "",
                     AvailableSuppliers = suppliers.ToList(),
                     AvailableCustomers = customers.ToList(),
@@ -788,8 +794,10 @@ namespace InvoiceManagement.Controllers
                     ExtractedCustomerName = extractedData.TryGetProperty("ExtractedCustomerName", out var extCust) ? extCust.GetString() ?? "" : "",
                     MatchedSupplierId = extractedData.TryGetProperty("MatchedSupplierId", out var matchSuppId) && matchSuppId.ValueKind != System.Text.Json.JsonValueKind.Null ? matchSuppId.GetInt32() : null,
                     MatchedSupplierName = extractedData.TryGetProperty("MatchedSupplierName", out var matchSuppName) ? matchSuppName.GetString() : null,
+                    SelectedSupplierId = extractedData.TryGetProperty("MatchedSupplierId", out var selSuppId) && selSuppId.ValueKind != System.Text.Json.JsonValueKind.Null ? selSuppId.GetInt32() : null,
                     MatchedCustomerId = extractedData.TryGetProperty("MatchedCustomerId", out var matchCustId) && matchCustId.ValueKind != System.Text.Json.JsonValueKind.Null ? matchCustId.GetInt32() : null,
                     MatchedCustomerName = extractedData.TryGetProperty("MatchedCustomerName", out var matchCustName) ? matchCustName.GetString() : null,
+                    SelectedCustomerId = extractedData.TryGetProperty("MatchedCustomerId", out var selCustId) && selCustId.ValueKind != System.Text.Json.JsonValueKind.Null ? selCustId.GetInt32() : null,
                     MatchConfidence = extractedData.TryGetProperty("MatchConfidence", out var conf) ? conf.GetString() ?? "None" : "None",
                     Items = items,
                     AvailableSuppliers = suppliers.ToList(),
@@ -2703,6 +2711,44 @@ namespace InvoiceManagement.Controllers
             {
                 return null;
             }
+        }
+
+        // API endpoint to get supplier details
+        [HttpGet]
+        public async Task<IActionResult> GetSupplierDetails(int id)
+        {
+            var supplier = await _context.Suppliers.FindAsync(id);
+            if (supplier == null)
+                return NotFound();
+
+            return Json(new
+            {
+                id = supplier.Id,
+                name = supplier.SupplierName,
+                email = supplier.Email,
+                phone = supplier.Phone,
+                address = supplier.Address,
+                code = supplier.SupplierCode
+            });
+        }
+
+        // API endpoint to get customer details
+        [HttpGet]
+        public async Task<IActionResult> GetCustomerDetails(int id)
+        {
+            var customer = await _context.Customers.FindAsync(id);
+            if (customer == null)
+                return NotFound();
+
+            return Json(new
+            {
+                id = customer.Id,
+                name = customer.CustomerName,
+                email = customer.Email,
+                phone = customer.Phone,
+                address = customer.Address,
+                code = customer.CustomerCode
+            });
         }
     }
 }
