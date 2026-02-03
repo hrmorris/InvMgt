@@ -1344,12 +1344,14 @@ namespace InvoiceManagement.Controllers
                 // Add invoice items
                 if (model.Items != null && model.Items.Any())
                 {
-                    invoice.InvoiceItems = model.Items.Select(i => new InvoiceItem
-                    {
-                        Description = i.Description,
-                        Quantity = (int)Math.Round(i.Quantity),
-                        UnitPrice = i.UnitPrice
-                    }).ToList();
+                    invoice.InvoiceItems = model.Items
+                        .Where(i => !string.IsNullOrWhiteSpace(i.Description)) // Only include items with description
+                        .Select(i => new InvoiceItem
+                        {
+                            Description = i.Description,
+                            Quantity = Math.Max(1, (int)Math.Round(i.Quantity)), // Ensure minimum quantity of 1
+                            UnitPrice = i.UnitPrice
+                        }).ToList();
                 }
 
                 _context.Invoices.Add(invoice);
@@ -1378,10 +1380,9 @@ namespace InvoiceManagement.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error saving imported invoice");
-                TempData["Error"] = $"Error saving invoice: {ex.Message}";
-
-                // Repopulate dropdown data for the view
+                var innerMessage = ex.InnerException?.Message ?? ex.Message;
+                _logger.LogError(ex, "Error saving imported invoice. Inner: {InnerMessage}", innerMessage);
+                TempData["Error"] = $"Error saving invoice: {innerMessage}";
                 model.AvailableSuppliers = (await _entityLookupService.GetAllSuppliersAsync()).ToList();
                 model.AvailableCustomers = (await _entityLookupService.GetAllCustomersAsync()).ToList();
 
