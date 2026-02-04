@@ -119,6 +119,60 @@ namespace InvoiceManagement.Services
 
 IMPORTANT CONTEXT: This is a SUPPLIER INVOICE (Accounts Payable) - an invoice FROM a supplier TO a company. Extract the SUPPLIER information (the entity billing/sending the invoice), NOT the buyer/recipient company.
 
+**CRITICAL: SUPPLIER NAME EXTRACTION IS THE #1 PRIORITY**
+You MUST identify the supplier/vendor company name. Look EVERYWHERE on the document:
+
+═══════════════════════════════════════════════════════════════════════════════
+                    SUPPLIER IDENTIFICATION - EXHAUSTIVE SEARCH
+═══════════════════════════════════════════════════════════════════════════════
+
+LOOK FOR SUPPLIER NAME IN THESE LOCATIONS (in order of priority):
+
+1. **COMPANY STAMPS/SEALS** - CRITICAL!
+   - Look for circular, rectangular, or oval RUBBER STAMPS anywhere on the document
+   - Stamps often contain: Company name, Registration number, Address, Phone
+   - Stamps may be in corners, near signatures, or at bottom of page
+   - Read ALL text within stamp boundaries including faded/partial text
+   - Common stamp text: ""RECEIVED"", ""PAID"", company logo with name
+
+2. **LETTERHEAD/HEADER** (Top of document)
+   - Company name in large/bold text at very top
+   - Logo with company name beside or below it
+   - Business name in decorative/stylized font
+
+3. **BILL FROM / FROM / SELLER / VENDOR Section**
+   - Look for labels: ""From:"", ""Bill From:"", ""Seller:"", ""Vendor:"", ""Supplier:""
+   - Company name immediately after these labels
+
+4. **BANK ACCOUNT DETAILS**
+   - Account holder name in payment/banking section
+   - ""Pay to:"", ""Payee:"", ""Account Name:"" fields
+
+5. **TAX/REGISTRATION INFORMATION**
+   - Company name near TIN, ABN, GST, VAT numbers
+   - ""Registered Name:"", ""Business Name:"", ""Trading As:""
+
+6. **FOOTER/BOTTOM OF PAGE**
+   - Company name in footer text
+   - ""Thank you for your business - [Company Name]""
+
+7. **WATERMARKS**
+   - Faint company name watermarked across document
+
+8. **SIGNATURES**
+   - Printed name near signature lines
+   - ""Authorized by [Company Name]""
+
+9. **CONTACT INFORMATION BLOCKS**
+   - Company name above address/phone/email blocks
+
+NEVER RETURN ""Unknown"" FOR SUPPLIER NAME - Keep searching until you find it!
+If multiple company names appear, the SUPPLIER is the one:
+- At the TOP of the document (letterhead)
+- Associated with bank/payment details
+- On stamps/seals
+- NOT in the ""Bill To"" or ""Ship To"" section
+
 **CRITICAL: SCAN ALL PAGES OF THIS DOCUMENT**
 - This document may have MULTIPLE PAGES
 - You MUST read and analyze EVERY page of this PDF
@@ -139,9 +193,10 @@ ADVANCED SCANNING PROTOCOL:
 2. DOCUMENT STRUCTURE ANALYSIS:
    - Identify document layout, headers, footers, and sections
    - Detect tables, columns, and data relationships
-   - Recognize logos, watermarks, stamps, and signatures
+   - Recognize logos, watermarks, STAMPS, SEALS, and signatures
    - Read both printed text and handwritten annotations
    - Process multi-column layouts and complex formatting
+   - **CAREFULLY EXAMINE ALL STAMPS AND SEALS FOR COMPANY NAMES**
 
 3. INTELLIGENT DATA EXTRACTION:
    - Extract SUPPLIER/VENDOR information (the company sending the invoice, usually at the top)
@@ -163,7 +218,7 @@ COMPREHENSIVE EXTRACTION REQUIREMENTS:
 - Invoice Number: Detect all variations (Invoice #, Inv No., Bill #, Reference, etc.)
 - Dates: Parse ANY date format and convert to YYYY-MM-DD (handle DD/MM/YYYY, MM-DD-YY, written dates, etc.)
 - SUPPLIER Information (Bill From): Extract SUPPLIER/VENDOR details including:
-  * Supplier name (company name at top/header of invoice)
+  * Supplier name - MANDATORY! Check stamps, letterhead, bank details, everywhere!
   * Supplier address (full address)
   * Supplier email
   * Supplier phone
