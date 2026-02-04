@@ -1281,6 +1281,35 @@ namespace InvoiceManagement.Controllers
 
             try
             {
+                // Check if invoice number already exists
+                var existingInvoice = await _context.Invoices
+                    .FirstOrDefaultAsync(i => i.InvoiceNumber == model.InvoiceNumber);
+
+                if (existingInvoice != null)
+                {
+                    // Invoice already exists - check if it's linked to this document
+                    if (model.DocumentId > 0)
+                    {
+                        var document = await _context.ImportedDocuments.FindAsync(model.DocumentId);
+                        if (document != null && document.InvoiceId == existingInvoice.Id)
+                        {
+                            // Document already linked to this invoice
+                            TempData["Info"] = $"Invoice {model.InvoiceNumber} was already saved.";
+                            return RedirectToAction(nameof(Documents));
+                        }
+
+                        // Link document to existing invoice
+                        await _documentService.LinkDocumentToInvoiceAsync(model.DocumentId, existingInvoice.Id);
+                        TempData["Success"] = $"Document linked to existing Invoice {model.InvoiceNumber}.";
+                        return RedirectToAction(nameof(Documents));
+                    }
+
+                    TempData["Error"] = $"Invoice number {model.InvoiceNumber} already exists. Please use a different invoice number.";
+                    model.AvailableSuppliers = (await _entityLookupService.GetAllSuppliersAsync()).ToList();
+                    model.AvailableCustomers = (await _entityLookupService.GetAllCustomersAsync()).ToList();
+                    return View("ReviewInvoice", model);
+                }
+
                 // Determine the customer/supplier name for the invoice
                 // For supplier invoices (Payable), use supplier name as CustomerName if CustomerName is empty
                 var customerName = model.CustomerName;
