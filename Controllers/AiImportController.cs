@@ -2583,11 +2583,18 @@ namespace InvoiceManagement.Controllers
         {
             try
             {
-                // Get all invoice documents that haven't been processed
+                // Get all invoice documents that need processing:
+                // - Not processed yet (empty ProcessingNotes)
+                // - Or have unknown/empty supplier name
+                // - Or status is Pending/Uploaded
                 var unprocessedDocs = await _context.ImportedDocuments
                     .Where(d => d.DocumentType == "Invoice" &&
                            d.InvoiceId == null &&
-                           (string.IsNullOrEmpty(d.ProcessingNotes) || d.ProcessingStatus == "Pending" || d.ProcessingStatus == "Uploaded"))
+                           (string.IsNullOrEmpty(d.ProcessingNotes) ||
+                            d.ProcessingStatus == "Pending" ||
+                            d.ProcessingStatus == "Uploaded" ||
+                            string.IsNullOrEmpty(d.ExtractedSupplierName) ||
+                            d.ExtractedSupplierName == "Unknown"))
                     .ToListAsync();
 
                 _logger.LogInformation("ExtractAllDocumentsAjax: Found {Count} unprocessed documents", unprocessedDocs.Count);

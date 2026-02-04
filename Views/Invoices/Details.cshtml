@@ -378,13 +378,17 @@
                         <h6 class="mb-0"><i class="bi bi-folder text-warning me-1"></i>Available Documents to Link
                             (@availableDocuments.Count)</h6>
                         @{
-                            var unprocessedCount = availableDocuments.Count(d => string.IsNullOrEmpty(d.ProcessingNotes));
+                            // Count docs that need processing: unprocessed OR have unknown supplier
+                            var needsProcessingCount = availableDocuments.Count(d =>
+                            string.IsNullOrEmpty(d.ProcessingNotes) ||
+                            string.IsNullOrEmpty(d.ExtractedSupplierName) ||
+                            d.ExtractedSupplierName == "Unknown");
                         }
-                        @if (unprocessedCount > 0)
+                        @if (needsProcessingCount > 0)
                         {
                             <button type="button" class="btn btn-sm btn-primary" id="btnExtractAll"
                                 onclick="extractAllDocuments()">
-                                <i class="bi bi-robot me-1"></i>AI Extract All (@unprocessedCount)
+                                <i class="bi bi-robot me-1"></i>AI Extract All (@needsProcessingCount)
                             </button>
                         }
                     </div>
