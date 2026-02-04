@@ -2576,6 +2576,118 @@ namespace InvoiceManagement.Controllers
             }
         }
 
+        // POST: AiImport/ExtractAllDocumentsAjax - Bulk AI extraction for all unprocessed documents
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> ExtractAllDocumentsAjax()
+        {
+            try
+            {
+                // Get all invoice documents that haven't been processed
+                var unprocessedDocs = await _context.ImportedDocuments
+                    .Where(d => d.DocumentType == "Invoice" &&
+                           d.InvoiceId == null &&
+                           (string.IsNullOrEmpty(d.ProcessingNotes) || d.ProcessingStatus == "Pending" || d.ProcessingStatus == "Uploaded"))
+                    .ToListAsync();
+
+                _logger.LogInformation("ExtractAllDocumentsAjax: Found {Count} unprocessed documents", unprocessedDocs.Count);
+
+                int processedCount = 0;
+                int failedCount = 0;
+
+                foreach (var document in unprocessedDocs)
+                {
+                    try
+                    {
+                        // Get the document content
+                        var content = await _documentService.GetDocumentContentAsync(document.Id);
+                        if (content == null || content.Length == 0)
+                        {
+                            _logger.LogWarning("Document {Id} has no content", document.Id);
+                            failedCount++;
+                            continue;
+                        }
+
+                        // Create a memory stream for the AI service
+                        using var stream = new MemoryStream(content);
+
+                        // Process with AI
+                        var extractedInvoice = await _aiService.ExtractInvoiceFromFileAsync(stream, document.OriginalFileName ?? "document");
+
+                        if (extractedInvoice == null)
+                        {
+                            document.ProcessingStatus = "Error";
+                            document.ProcessingNotes = "AI could not extract invoice data.";
+                            failedCount++;
+                            continue;
+                        }
+
+                        // Build the extracted data JSON
+                        var extractedJson = System.Text.Json.JsonSerializer.Serialize(new
+                        {
+                            InvoiceNumber = extractedInvoice.InvoiceNumber ?? "",
+                            InvoiceDate = extractedInvoice.InvoiceDate,
+                            DueDate = extractedInvoice.DueDate,
+                            CustomerName = extractedInvoice.CustomerName ?? "",
+                            SubTotal = extractedInvoice.SubTotal,
+                            GSTAmount = extractedInvoice.GSTAmount,
+                            TotalAmount = extractedInvoice.TotalAmount,
+                            Notes = extractedInvoice.Notes ?? "",
+                            InvoiceType = extractedInvoice.InvoiceType ?? "Payable",
+                            ExtractedSupplierName = extractedInvoice.Supplier?.SupplierName ?? "",
+                            ExtractedCustomerName = extractedInvoice.CustomerName ?? "",
+                            Items = extractedInvoice.InvoiceItems?.Select(i => new
+                            {
+                                Description = i.Description ?? "",
+                                Quantity = i.Quantity,
+                                UnitPrice = i.UnitPrice
+                            }).ToList()
+                        });
+
+                        // Update document with extracted data
+                        document.ProcessingStatus = "Extracted";
+                        document.ProcessedDate = DateTime.Now;
+                        document.ProcessingNotes = extractedJson;
+                        document.ExtractedSupplierName = extractedInvoice.Supplier?.SupplierName;
+                        document.ExtractedCustomerName = extractedInvoice.CustomerName;
+
+                        // Rename file with invoice number if available
+                        if (!string.IsNullOrWhiteSpace(extractedInvoice.InvoiceNumber))
+                        {
+                            var extension = Path.GetExtension(document.OriginalFileName);
+                            var cleanInvoiceNumber = string.Join("", extractedInvoice.InvoiceNumber.Where(c => !Path.GetInvalidFileNameChars().Contains(c)));
+                            document.OriginalFileName = $"InvNo_{cleanInvoiceNumber}{extension}";
+                        }
+
+                        processedCount++;
+                        _logger.LogInformation("Document {Id} processed successfully: {InvoiceNumber}", document.Id, extractedInvoice.InvoiceNumber);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error processing document {Id}", document.Id);
+                        document.ProcessingStatus = "Error";
+                        document.ProcessingNotes = $"Error: {ex.Message}";
+                        failedCount++;
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+
+                return Json(new
+                {
+                    success = true,
+                    message = $"Processed {processedCount} document(s). {(failedCount > 0 ? $"{failedCount} failed." : "")}",
+                    processedCount,
+                    failedCount
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in ExtractAllDocumentsAjax");
+                return Json(new { success = false, message = $"Error: {ex.Message}" });
+            }
+        }
+
         // POST: AiImport/UpdateDocumentSupplier
         [HttpPost]
         [ValidateAntiForgeryToken]
