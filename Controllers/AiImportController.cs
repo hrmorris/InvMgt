@@ -1268,8 +1268,16 @@ namespace InvoiceManagement.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> SaveInvoice(AiImportInvoiceViewModel model)
         {
-            _logger.LogInformation("SaveInvoice called. SelectedSupplierId: {SupplierId}, SelectedCustomerId: {CustomerId}, MatchedSupplierId: {MatchedSupplierId}",
-                model.SelectedSupplierId, model.SelectedCustomerId, model.MatchedSupplierId);
+            _logger.LogInformation("SaveInvoice called. SelectedSupplierId: {SupplierId}, SelectedCustomerId: {CustomerId}, MatchedSupplierId: {MatchedSupplierId}, DocumentId: {DocumentId}",
+                model.SelectedSupplierId, model.SelectedCustomerId, model.MatchedSupplierId, model.DocumentId);
+
+            // Check model state
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
+                _logger.LogWarning("ModelState invalid: {Errors}", string.Join(", ", errors));
+                // Continue anyway - we'll handle the data manually
+            }
 
             try
             {
@@ -1357,16 +1365,19 @@ namespace InvoiceManagement.Controllers
                 _context.Invoices.Add(invoice);
                 await _context.SaveChangesAsync();
 
+                _logger.LogInformation("Invoice {InvoiceNumber} saved with ID {InvoiceId}", invoice.InvoiceNumber, invoice.Id);
+
                 // Link the document to the invoice
                 if (model.DocumentId > 0)
                 {
                     await _documentService.LinkDocumentToInvoiceAsync(model.DocumentId, invoice.Id);
+                    _logger.LogInformation("Document {DocumentId} linked to Invoice {InvoiceId}", model.DocumentId, invoice.Id);
                 }
 
                 TempData["Success"] = $"Invoice {invoice.InvoiceNumber} saved successfully!";
 
                 // Redirect back to the Document Library
-                return RedirectToAction("Documents");
+                return RedirectToAction(nameof(Documents));
             }
             catch (Exception ex)
             {
