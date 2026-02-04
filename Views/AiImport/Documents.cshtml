@@ -120,7 +120,7 @@
                             .Select(d => string.IsNullOrEmpty(d.ExtractedSupplierName) &&
                             string.IsNullOrEmpty(d.ExtractedCustomerName)
                             ? "Unknown Supplier"
-                            : (d.ExtractedSupplierName ?? d.ExtractedCustomerName ?? "Unknown Supplier"))
+                                    : (d.ExtractedSupplierName ?? d.ExtractedCustomerName ?? "Unknown Supplier"))
                             .Distinct()
                             .OrderBy(s => s == "Unknown Supplier" ? "ZZZZZ" : s);
                             foreach (var supplier in suppliers)
@@ -168,7 +168,7 @@
                         .GroupBy(d => string.IsNullOrEmpty(d.ExtractedSupplierName) &&
                         string.IsNullOrEmpty(d.ExtractedCustomerName)
                         ? "Unknown Supplier"
-                        : (d.ExtractedSupplierName ?? d.ExtractedCustomerName ?? "Unknown Supplier"))
+                                        : (d.ExtractedSupplierName ?? d.ExtractedCustomerName ?? "Unknown Supplier"))
                         .OrderBy(g => g.Key == "Unknown Supplier" ? "ZZZZZ" : g.Key);
 
                         <div class="accordion-item type-group" data-type="@typeGroup.Key.ToLower()">
@@ -226,13 +226,13 @@
                                                                 <thead class="table-light">
                                                                     <tr>
                                                                         <th>File Name</th>
+                                                                        <th>Supplier/Customer</th>
                                                                         <th>Invoice #</th>
                                                                         <th>Date</th>
                                                                         <th class="text-end">Amount</th>
                                                                         <th>Size</th>
                                                                         <th>Status</th>
                                                                         <th>Linked To</th>
-                                                                        <th>Uploaded</th>
                                                                         <th class="text-center" style="width: 150px;">Actions</th>
                                                                     </tr>
                                                                 </thead>
@@ -241,9 +241,11 @@
                                                                                                                             d.UploadDate))
                                                                     {
                                                                         @* Parse ProcessingNotes JSON for invoice details *@
-                                                                        string invoiceNumber = "";
+                                                                                        string invoiceNumber = "";
                                                                         DateTime? invoiceDate = null;
                                                                         decimal totalAmount = 0;
+                                                                        string supplierCustomerName = doc.ExtractedSupplierName ??
+                                                                        doc.ExtractedCustomerName ?? "";
 
                                                                         if (!string.IsNullOrEmpty(doc.ProcessingNotes))
                                                                         {
@@ -260,6 +262,17 @@
                                                                                     invoiceDate = invDate.GetDateTime();
                                                                                 if (json.RootElement.TryGetProperty("TotalAmount", out var amt))
                                                                                     totalAmount = amt.GetDecimal();
+                                                                                // Also try to get supplier name from JSON if not in field
+                                                                                if (string.IsNullOrEmpty(supplierCustomerName))
+                                                                                {
+                                                                                    if (json.RootElement.TryGetProperty("ExtractedSupplierName", out
+                                                                                    var supName))
+                                                                                        supplierCustomerName = supName.GetString() ?? "";
+                                                                                    if (string.IsNullOrEmpty(supplierCustomerName) &&
+                                                                                    json.RootElement.TryGetProperty("CustomerName", out var
+                                                                                    custName))
+                                                                                        supplierCustomerName = custName.GetString() ?? "";
+                                                                                }
                                                                             }
                                                                             catch { }
                                                                         }
@@ -284,6 +297,17 @@
                                                                                             class="small">@doc.OriginalFileName</strong>
                                                                                     </div>
                                                                                 </div>
+                                                                            </td>
+                                                                            <td>
+                                                                                @if (!string.IsNullOrEmpty(supplierCustomerName))
+                                                                                {
+                                                                                    <small
+                                                                                        class="text-primary fw-bold">@supplierCustomerName</small>
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    <span class="text-muted fst-italic small">Unknown</span>
+                                                                                }
                                                                             </td>
                                                                             <td>
                                                                                 @if (!string.IsNullOrEmpty(invoiceNumber))
