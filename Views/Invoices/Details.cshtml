@@ -258,9 +258,10 @@
                             <thead>
                                 <tr>
                                     <th>File Name</th>
-                                    <th>Type</th>
-                                    <th>Size</th>
-                                    <th>Upload Date</th>
+                                    <th>Supplier/Customer</th>
+                                    <th>Invoice #</th>
+                                    <th>Date</th>
+                                    <th class="text-end">Amount</th>
                                     <th>Status</th>
                                     <th>Actions</th>
                                 </tr>
@@ -268,15 +269,82 @@
                             <tbody>
                                 @foreach (var doc in Model.ImportedDocuments.OrderByDescending(d => d.UploadDate))
                                 {
+                                    @* Parse ProcessingNotes JSON for invoice details *@
+                                            string docInvoiceNumber = "";
+                                    DateTime? docInvoiceDate = null;
+                                    decimal docTotalAmount = 0;
+                                    string docSupplierName = doc.ExtractedSupplierName ?? doc.ExtractedCustomerName ?? "";
+
+                                    if (!string.IsNullOrEmpty(doc.ProcessingNotes))
+                                    {
+                                        try
+                                        {
+                                            var json = System.Text.Json.JsonDocument.Parse(doc.ProcessingNotes);
+                                            if (json.RootElement.TryGetProperty("InvoiceNumber", out var invNum))
+                                                docInvoiceNumber = invNum.GetString() ?? "";
+                                            if (json.RootElement.TryGetProperty("InvoiceDate", out var invDate) && invDate.ValueKind !=
+                                            System.Text.Json.JsonValueKind.Null)
+                                                docInvoiceDate = invDate.GetDateTime();
+                                            if (json.RootElement.TryGetProperty("TotalAmount", out var amt))
+                                                docTotalAmount = amt.GetDecimal();
+                                            if (string.IsNullOrEmpty(docSupplierName))
+                                            {
+                                                if (json.RootElement.TryGetProperty("ExtractedSupplierName", out var supName))
+                                                    docSupplierName = supName.GetString() ?? "";
+                                                if (string.IsNullOrEmpty(docSupplierName) && json.RootElement.TryGetProperty("CustomerName",
+                                                out var custName))
+                                                    docSupplierName = custName.GetString() ?? "";
+                                            }
+                                        }
+                                        catch { }
+                                    }
+
                                     <tr>
                                         <td>
                                             <i
                                                 class="bi @(doc.ContentType?.Contains("pdf") == true ? "bi-file-pdf text-danger" : doc.ContentType?.Contains("image") == true ? "bi-file-image text-primary" : "bi-file-earmark") me-1"></i>
                                             @doc.OriginalFileName
                                         </td>
-                                        <td><span class="badge bg-info">@doc.DocumentType</span></td>
-                                        <td>@(doc.FileSize > 0 ? $"{doc.FileSize / 1024.0:N1} KB" : "-")</td>
-                                        <td>@doc.UploadDate.ToString("dd/MM/yyyy HH:mm")</td>
+                                        <td>
+                                            @if (!string.IsNullOrEmpty(docSupplierName))
+                                            {
+                                                <small class="text-primary fw-bold">@docSupplierName</small>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted fst-italic small">-</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (!string.IsNullOrEmpty(docInvoiceNumber))
+                                            {
+                                                <code class="small">@docInvoiceNumber</code>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">-</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (docInvoiceDate.HasValue)
+                                            {
+                                                <small>@docInvoiceDate.Value.ToString("dd/MM/yyyy")</small>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">-</span>
+                                            }
+                                        </td>
+                                        <td class="text-end">
+                                            @if (docTotalAmount > 0)
+                                            {
+                                                <strong class="small text-success">@FormatCurrency(docTotalAmount)</strong>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">-</span>
+                                            }
+                                        </td>
                                         <td>
                                             <span
                                                 class="badge @(doc.ProcessingStatus == "Processed" ? "bg-success" : doc.ProcessingStatus == "Error" ? "bg-danger" : "bg-warning")">
