@@ -1,6 +1,12 @@
 @model IEnumerable<InvoiceManagement.Models.ImportedDocument>
 @{
     ViewData["Title"] = "Imported Documents";
+
+    // Currency formatting - uses K (Kina) as default
+    string FormatCurrency(decimal amount)
+    {
+        return $"K {amount:N2}";
+    }
 }
 
 <div class="container-fluid">
@@ -114,7 +120,7 @@
                             .Select(d => string.IsNullOrEmpty(d.ExtractedSupplierName) &&
                             string.IsNullOrEmpty(d.ExtractedCustomerName)
                             ? "Unknown Supplier"
-                                                                                                                                                                                                                                                                                    : (d.ExtractedSupplierName ?? d.ExtractedCustomerName ?? "Unknown Supplier"))
+                            : (d.ExtractedSupplierName ?? d.ExtractedCustomerName ?? "Unknown Supplier"))
                             .Distinct()
                             .OrderBy(s => s == "Unknown Supplier" ? "ZZZZZ" : s);
                             foreach (var supplier in suppliers)
@@ -162,7 +168,7 @@
                         .GroupBy(d => string.IsNullOrEmpty(d.ExtractedSupplierName) &&
                         string.IsNullOrEmpty(d.ExtractedCustomerName)
                         ? "Unknown Supplier"
-                                                                                                                                                                                                        : (d.ExtractedSupplierName ?? d.ExtractedCustomerName ?? "Unknown Supplier"))
+                        : (d.ExtractedSupplierName ?? d.ExtractedCustomerName ?? "Unknown Supplier"))
                         .OrderBy(g => g.Key == "Unknown Supplier" ? "ZZZZZ" : g.Key);
 
                         <div class="accordion-item type-group" data-type="@typeGroup.Key.ToLower()">
@@ -220,11 +226,13 @@
                                                                 <thead class="table-light">
                                                                     <tr>
                                                                         <th>File Name</th>
+                                                                        <th>Invoice #</th>
+                                                                        <th>Date</th>
+                                                                        <th class="text-end">Amount</th>
                                                                         <th>Size</th>
                                                                         <th>Status</th>
                                                                         <th>Linked To</th>
                                                                         <th>Uploaded</th>
-                                                                        <th>Uploaded By</th>
                                                                         <th class="text-center" style="width: 150px;">Actions</th>
                                                                     </tr>
                                                                 </thead>
@@ -232,6 +240,30 @@
                                                                     @foreach (var doc in supplierGroup.OrderByDescending(d =>
                                                                                                                             d.UploadDate))
                                                                     {
+                                                                        @* Parse ProcessingNotes JSON for invoice details *@
+                                                                        string invoiceNumber = "";
+                                                                        DateTime? invoiceDate = null;
+                                                                        decimal totalAmount = 0;
+
+                                                                        if (!string.IsNullOrEmpty(doc.ProcessingNotes))
+                                                                        {
+                                                                            try
+                                                                            {
+                                                                                var json =
+                                                                                System.Text.Json.JsonDocument.Parse(doc.ProcessingNotes);
+                                                                                if (json.RootElement.TryGetProperty("InvoiceNumber", out var
+                                                                                invNum))
+                                                                                    invoiceNumber = invNum.GetString() ?? "";
+                                                                                if (json.RootElement.TryGetProperty("InvoiceDate", out var
+                                                                                invDate) && invDate.ValueKind !=
+                                                                                System.Text.Json.JsonValueKind.Null)
+                                                                                    invoiceDate = invDate.GetDateTime();
+                                                                                if (json.RootElement.TryGetProperty("TotalAmount", out var amt))
+                                                                                    totalAmount = amt.GetDecimal();
+                                                                            }
+                                                                            catch { }
+                                                                        }
+
                                                                         <tr class="document-row"
                                                                             data-filename="@doc.OriginalFileName.ToLower()"
                                                                             data-supplier="@supplierGroup.Key.ToLower()"
@@ -252,6 +284,37 @@
                                                                                             class="small">@doc.OriginalFileName</strong>
                                                                                     </div>
                                                                                 </div>
+                                                                            </td>
+                                                                            <td>
+                                                                                @if (!string.IsNullOrEmpty(invoiceNumber))
+                                                                                {
+                                                                                    <code class="small">@invoiceNumber</code>
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    <span class="text-muted">-</span>
+                                                                                }
+                                                                            </td>
+                                                                            <td>
+                                                                                @if (invoiceDate.HasValue)
+                                                                                {
+                                                                                    <small>@invoiceDate.Value.ToString("dd/MM/yyyy")</small>
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    <span class="text-muted">-</span>
+                                                                                }
+                                                                            </td>
+                                                                            <td class="text-end">
+                                                                                @if (totalAmount > 0)
+                                                                                {
+                                                                                    <strong
+                                                                                        class="small text-success">@FormatCurrency(totalAmount)</strong>
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    <span class="text-muted">-</span>
+                                                                                }
                                                                             </td>
                                                                             <td>
                                                                                 @{
@@ -310,9 +373,8 @@
                                                                                 }
                                                                             </td>
                                                                             <td>
-                                                                                <small>@doc.UploadDate.ToString("dd MMM yyyy HH:mm")</small>
+                                                                                <small>@doc.UploadDate.ToString("dd MMM yyyy")</small>
                                                                             </td>
-                                                                            <td><small>@doc.UploadedBy</small></td>
                                                                             <td class="text-center">
                                                                                 <div class="btn-group btn-group-sm">
                                                                                     @if (!doc.InvoiceId.HasValue &&
