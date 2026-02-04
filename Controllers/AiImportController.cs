@@ -181,6 +181,13 @@ namespace InvoiceManagement.Controllers
 
             try
             {
+                // Check if we have already extracted data stored
+                if (!string.IsNullOrEmpty(document.ProcessingNotes) && document.ProcessingStatus == "Extracted")
+                {
+                    // Use the stored extracted data
+                    return await BuildReviewViewModelFromStoredData(document);
+                }
+
                 // Re-process the document with AI
                 Invoice? extractedInvoice = null;
                 using (var stream = new MemoryStream(document.FileContent))
@@ -255,6 +262,92 @@ namespace InvoiceManagement.Controllers
                 _logger.LogError(ex, "Error re-processing document with AI");
                 TempData["Error"] = $"Error processing document: {ex.Message}";
                 return RedirectToAction(nameof(Documents));
+            }
+        }
+
+        // Helper method to build ReviewInvoice ViewModel from stored ProcessingNotes
+        private async Task<IActionResult> BuildReviewViewModelFromStoredData(ImportedDocument document)
+        {
+            try
+            {
+                var extractedData = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(document.ProcessingNotes!);
+
+                // Get suppliers and customers for dropdown
+                var suppliers = await _entityLookupService.GetAllSuppliersAsync();
+                var customers = await _entityLookupService.GetAllCustomersAsync();
+
+                // Parse items from extracted data
+                var items = new List<AiImportInvoiceItemViewModel>();
+                if (extractedData.TryGetProperty("Items", out var itemsElement) && itemsElement.ValueKind == System.Text.Json.JsonValueKind.Array)
+                {
+                    foreach (var item in itemsElement.EnumerateArray())
+                    {
+                        items.Add(new AiImportInvoiceItemViewModel
+                        {
+                            Description = item.TryGetProperty("Description", out var desc) ? desc.GetString() ?? "" : "",
+                            Quantity = item.TryGetProperty("Quantity", out var qty) ? qty.GetDecimal() : 0,
+                            UnitPrice = item.TryGetProperty("UnitPrice", out var price) ? price.GetDecimal() : 0
+                        });
+                    }
+                }
+
+                // Get extracted names
+                var extractedSupplierName = extractedData.TryGetProperty("ExtractedSupplierName", out var suppName) ? suppName.GetString() ?? "" : document.ExtractedSupplierName ?? "";
+                var extractedCustomerName = extractedData.TryGetProperty("ExtractedCustomerName", out var custName) ? custName.GetString() ?? "" : document.ExtractedCustomerName ?? "";
+
+                // Try to match supplier
+                Supplier? matchedSupplier = null;
+                if (!string.IsNullOrEmpty(extractedSupplierName))
+                {
+                    matchedSupplier = await _entityLookupService.FindSupplierByNameAsync(extractedSupplierName);
+                }
+
+                // Try to match customer
+                Customer? matchedCustomer = null;
+                if (!string.IsNullOrEmpty(extractedCustomerName))
+                {
+                    matchedCustomer = await _entityLookupService.FindCustomerByNameAsync(extractedCustomerName);
+                }
+
+                var viewModel = new AiImportInvoiceViewModel
+                {
+                    DocumentId = document.Id,
+                    OriginalFileName = document.OriginalFileName,
+                    InvoiceNumber = extractedData.TryGetProperty("InvoiceNumber", out var invNum) ? invNum.GetString() ?? "" : "",
+                    InvoiceDate = extractedData.TryGetProperty("InvoiceDate", out var invDate) && invDate.ValueKind != System.Text.Json.JsonValueKind.Null ? invDate.GetDateTime() : DateTime.Now,
+                    DueDate = extractedData.TryGetProperty("DueDate", out var dueDate) && dueDate.ValueKind != System.Text.Json.JsonValueKind.Null ? dueDate.GetDateTime() : DateTime.Now.AddDays(30),
+                    CustomerName = extractedData.TryGetProperty("CustomerName", out var custNameField) ? custNameField.GetString() ?? "" : "",
+                    CustomerAddress = extractedData.TryGetProperty("CustomerAddress", out var custAddr) ? custAddr.GetString() ?? "" : "",
+                    CustomerEmail = extractedData.TryGetProperty("CustomerEmail", out var custEmail) ? custEmail.GetString() ?? "" : "",
+                    CustomerPhone = extractedData.TryGetProperty("CustomerPhone", out var custPhone) ? custPhone.GetString() ?? "" : "",
+                    SubTotal = extractedData.TryGetProperty("SubTotal", out var subTotal) ? subTotal.GetDecimal() : 0,
+                    GSTAmount = extractedData.TryGetProperty("GSTAmount", out var gst) ? gst.GetDecimal() : 0,
+                    TotalAmount = extractedData.TryGetProperty("TotalAmount", out var total) ? total.GetDecimal() : 0,
+                    Notes = extractedData.TryGetProperty("Notes", out var notes) ? notes.GetString() ?? "" : "",
+                    InvoiceType = extractedData.TryGetProperty("InvoiceType", out var invType) ? invType.GetString() ?? "Payable" : "Payable",
+                    ExtractedSupplierName = extractedSupplierName,
+                    ExtractedCustomerName = extractedCustomerName,
+                    MatchedSupplierId = matchedSupplier?.Id,
+                    MatchedSupplierName = matchedSupplier?.SupplierName,
+                    SelectedSupplierId = matchedSupplier?.Id,
+                    MatchedCustomerId = matchedCustomer?.Id,
+                    MatchedCustomerName = matchedCustomer?.CustomerName,
+                    SelectedCustomerId = matchedCustomer?.Id,
+                    MatchConfidence = matchedSupplier != null || matchedCustomer != null ? "High" : "None",
+                    Items = items,
+                    AvailableSuppliers = suppliers.ToList(),
+                    AvailableCustomers = customers.ToList()
+                };
+
+                TempData["Success"] = "Invoice data loaded. Please review and confirm.";
+                return View("ReviewInvoice", viewModel);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error parsing stored invoice data for document {DocumentId}", document.Id);
+                // Fall back to re-processing
+                TempData["Warning"] = "Stored data could not be loaded. Re-processing document...";
+                throw; // Let the calling method handle this
             }
         }
 

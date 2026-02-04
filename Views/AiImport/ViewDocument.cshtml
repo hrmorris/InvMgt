@@ -317,12 +317,12 @@
                         toast.className = 'position-fixed bottom-0 end-0 p-3';
                         toast.style.zIndex = '11';
                         toast.innerHTML = `
-                                            <div class="toast show bg-success text-white" role="alert">
-                                                <div class="toast-body">
-                                                    <i class="bi bi-check-circle me-2"></i>${result.message}
+                                                <div class="toast show bg-success text-white" role="alert">
+                                                    <div class="toast-body">
+                                                        <i class="bi bi-check-circle me-2"></i>${result.message}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        `;
+                                            `;
                         document.body.appendChild(toast);
                         setTimeout(() => toast.remove(), 3000);
                     } else {
@@ -408,12 +408,12 @@
                         }
 
                         // Show success toast
-                        showToast(result.message, 'success');
+                        showToast(result.message + ' Redirecting to review...', 'success');
 
-                        // Update analyze button to show re-analyze option
-                        analyzeBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Re-Analyze';
-                        analyzeBtn.classList.remove('btn-warning');
-                        analyzeBtn.classList.add('btn-outline-warning');
+                        // Redirect to ReviewInvoice page after a short delay
+                        setTimeout(() => {
+                            window.location.href = '@Url.Action("ReviewInvoice", "AiImport")?documentId=' + documentId;
+                        }, 1500);
                     } else {
                         showToast(result.message, 'danger');
                         analyzeBtn.innerHTML = '<i class="bi bi-cpu me-1"></i>Run AI Analysis';
@@ -435,12 +435,12 @@
                 toast.className = 'auto-toast position-fixed bottom-0 end-0 p-3';
                 toast.style.zIndex = '11';
                 toast.innerHTML = `
-                            <div class="toast show bg-${type} text-white" role="alert">
-                                <div class="toast-body">
-                                    <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>${message}
+                                <div class="toast show bg-${type} text-white" role="alert">
+                                    <div class="toast-body">
+                                        <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>${message}
+                                    </div>
                                 </div>
-                            </div>
-                        `;
+                            `;
                 document.body.appendChild(toast);
                 setTimeout(() => toast.remove(), 4000);
             }
