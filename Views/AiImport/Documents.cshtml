@@ -106,6 +106,29 @@
                     </h5>
                 </div>
                 <div class="col-auto d-flex gap-2">
+                    <!-- Bulk Action Buttons -->
+                    <div id="bulkActions" class="d-none">
+                        <button type="button" class="btn btn-success btn-sm" onclick="showBulkLinkModal()"
+                            title="Link selected documents to invoice">
+                            <i class="bi bi-link-45deg me-1"></i>Bulk Link <span id="selectedCount"
+                                class="badge bg-light text-success">0</span>
+                        </button>
+                    </div>
+                    <!-- AI Process All Button -->
+                    @{
+                        var unprocessedCount = Model.Count(d => d.DocumentType == "Invoice" &&
+                        d.InvoiceId == null &&
+                        (string.IsNullOrEmpty(d.ProcessingNotes) ||
+                        string.IsNullOrEmpty(d.ExtractedSupplierName) ||
+                        d.ExtractedSupplierName == "Unknown"));
+                    }
+                    @if (unprocessedCount > 0)
+                    {
+                        <button type="button" class="btn btn-primary btn-sm" id="btnAiProcessAll" onclick="aiProcessAll()">
+                            <i class="bi bi-robot me-1"></i>AI Process All <span
+                                class="badge bg-light text-primary">@unprocessedCount</span>
+                        </button>
+                    }
                     <!-- Type Filter -->
                     <select id="typeFilter" class="form-select form-select-sm" style="width: 140px;">
                         <option value="">All Types</option>
@@ -225,6 +248,12 @@
                                                             <table class="table table-hover table-sm mb-0 documentsTable">
                                                                 <thead class="table-light">
                                                                     <tr>
+                                                                        <th style="width: 40px;">
+                                                                            <input type="checkbox"
+                                                                                class="form-check-input select-all-supplier"
+                                                                                data-supplier-id="@supplierId"
+                                                                                title="Select all in this group">
+                                                                        </th>
                                                                         <th>File Name</th>
                                                                         <th>Supplier/Customer</th>
                                                                         <th>Invoice #</th>
@@ -280,7 +309,18 @@
                                                                         <tr class="document-row"
                                                                             data-filename="@doc.OriginalFileName.ToLower()"
                                                                             data-supplier="@supplierGroup.Key.ToLower()"
-                                                                            data-type="@(doc.DocumentType?.ToLower() ?? "unknown")">
+                                                                            data-type="@(doc.DocumentType?.ToLower() ?? "unknown")"
+                                                                            data-doc-id="@doc.Id" data-invoice-number="@invoiceNumber"
+                                                                            data-amount="@totalAmount">
+                                                                            <td>
+                                                                                @if (!doc.InvoiceId.HasValue && !doc.PaymentId.HasValue)
+                                                                                {
+                                                                                    <input type="checkbox"
+                                                                                        class="form-check-input doc-checkbox"
+                                                                                        value="@doc.Id" data-supplier-id="@supplierId"
+                                                                                        onchange="updateBulkSelection()">
+                                                                                }
+                                                                            </td>
                                                                             <td>
                                                                                 <div class="d-flex align-items-center">
                                                                                     @{
@@ -541,6 +581,80 @@
     </div>
 </div>
 
+<!-- Bulk Link Modal -->
+<div class="modal fade" id="bulkLinkModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-link-45deg me-2"></i>Bulk Link Documents to Invoice
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info mb-3">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong id="bulkLinkCount">0</strong> document(s) selected for linking.
+                </div>
+
+                <div id="selectedDocsList" class="mb-3 small" style="max-height: 200px; overflow-y: auto;">
+                    <!-- Selected documents will be listed here -->
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Select Invoice to Link</label>
+                    <select id="bulkLinkInvoiceSelect" class="form-select">
+                        <option value="">-- Select an invoice --</option>
+                    </select>
+                    <div class="form-text">Search by invoice number or supplier name</div>
+                </div>
+
+                <div id="invoicePreview" class="d-none border rounded p-3 bg-light">
+                    <h6 class="mb-2"><i class="bi bi-receipt me-1"></i>Invoice Details</h6>
+                    <div class="row small">
+                        <div class="col-md-6"><strong>Invoice #:</strong> <span id="previewInvoiceNumber"></span></div>
+                        <div class="col-md-6"><strong>Date:</strong> <span id="previewInvoiceDate"></span></div>
+                        <div class="col-md-6"><strong>Supplier:</strong> <span id="previewSupplier"></span></div>
+                        <div class="col-md-6"><strong>Amount:</strong> <span id="previewAmount"></span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="btnConfirmBulkLink" onclick="confirmBulkLink()"
+                    disabled>
+                    <i class="bi bi-link-45deg me-1"></i>Link Documents
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- AI Processing Progress Modal -->
+<div class="modal fade" id="aiProgressModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-robot me-2"></i>AI Processing Documents
+                </h5>
+            </div>
+            <div class="modal-body text-center py-4">
+                <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                    <span class="visually-hidden">Processing...</span>
+                </div>
+                <h5 id="aiProgressText">Processing documents...</h5>
+                <p class="text-muted" id="aiProgressDetails">Please wait while AI extracts information from all
+                    documents.</p>
+                <div class="progress mt-3" style="height: 25px;">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
+                        id="aiProgressBar" style="width: 0%">0%</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script>
         // Combined filter function
@@ -660,5 +774,249 @@
                 document.getElementById('newSupplierName').value = this.value;
             }
         });
+
+        // ==================== BULK SELECTION ====================
+
+        // Update bulk selection count and visibility
+        function updateBulkSelection() {
+            var checkboxes = document.querySelectorAll('.doc-checkbox:checked');
+            var count = checkboxes.length;
+            document.getElementById('selectedCount').textContent = count;
+
+            var bulkActions = document.getElementById('bulkActions');
+            if (count > 0) {
+                bulkActions.classList.remove('d-none');
+            } else {
+                bulkActions.classList.add('d-none');
+            }
+        }
+
+        // Select all in supplier group
+        document.querySelectorAll('.select-all-supplier').forEach(function (checkbox) {
+            checkbox.addEventListener('change', function () {
+                var supplierId = this.getAttribute('data-supplier-id');
+                var checkboxes = document.querySelectorAll('.doc-checkbox[data-supplier-id="' + supplierId + '"]');
+                checkboxes.forEach(function (cb) {
+                    cb.checked = checkbox.checked;
+                });
+                updateBulkSelection();
+            });
+        });
+
+        // ==================== BULK LINK ====================
+
+        var invoicesCache = null;
+
+        // Show bulk link modal
+        async function showBulkLinkModal() {
+            var checkboxes = document.querySelectorAll('.doc-checkbox:checked');
+            var count = checkboxes.length;
+
+            if (count === 0) {
+                alert('Please select at least one document.');
+                return;
+            }
+
+            document.getElementById('bulkLinkCount').textContent = count;
+
+            // Build list of selected documents
+            var docsList = document.getElementById('selectedDocsList');
+            docsList.innerHTML = '';
+            checkboxes.forEach(function (cb) {
+                var row = cb.closest('tr');
+                var fileName = row.querySelector('td:nth-child(2) strong')?.textContent || 'Unknown';
+                var invoiceNum = row.getAttribute('data-invoice-number') || '-';
+                var amount = row.getAttribute('data-amount') || '0';
+
+                var item = document.createElement('div');
+                item.className = 'border-bottom py-1';
+                item.innerHTML = '<i class="bi bi-file-earmark me-1"></i>' + fileName +
+                    ' <span class="text-muted">(Inv: ' + invoiceNum + ', K ' + parseFloat(amount).toFixed(2) + ')</span>';
+                docsList.appendChild(item);
+            });
+
+            // Load invoices if not cached
+            if (!invoicesCache) {
+                await loadInvoices();
+            }
+
+            document.getElementById('bulkLinkInvoiceSelect').value = '';
+            document.getElementById('invoicePreview').classList.add('d-none');
+            document.getElementById('btnConfirmBulkLink').disabled = true;
+
+            new bootstrap.Modal(document.getElementById('bulkLinkModal')).show();
+        }
+
+        // Load invoices for dropdown
+        async function loadInvoices() {
+            try {
+                const response = await fetch('/AiImport/GetInvoicesList');
+                if (response.ok) {
+                    invoicesCache = await response.json();
+                    populateInvoiceDropdown();
+                } else {
+                    // Fallback - load from page data
+                    console.log('API not available, using fallback');
+                }
+            } catch (error) {
+                console.error('Error loading invoices:', error);
+            }
+        }
+
+        function populateInvoiceDropdown() {
+            var select = document.getElementById('bulkLinkInvoiceSelect');
+            select.innerHTML = '<option value="">-- Select an invoice --</option>';
+
+            if (invoicesCache && invoicesCache.length > 0) {
+                invoicesCache.forEach(function (inv) {
+                    var option = document.createElement('option');
+                    option.value = inv.id;
+                    var partyName = inv.supplierName || inv.customerName || 'Unknown';
+                    option.textContent = inv.invoiceNumber + ' - ' + partyName + ' (' + inv.currency + ' ' + inv.totalAmount.toFixed(2) + ')';
+                    option.setAttribute('data-invoice', JSON.stringify(inv));
+                    select.appendChild(option);
+                });
+            }
+        }
+
+        // Invoice selection change
+        document.getElementById('bulkLinkInvoiceSelect').addEventListener('change', function () {
+            var option = this.options[this.selectedIndex];
+            var preview = document.getElementById('invoicePreview');
+
+            if (this.value && option.getAttribute('data-invoice')) {
+                var inv = JSON.parse(option.getAttribute('data-invoice'));
+                document.getElementById('previewInvoiceNumber').textContent = inv.invoiceNumber;
+                document.getElementById('previewInvoiceDate').textContent = inv.invoiceDate || 'N/A';
+                document.getElementById('previewSupplier').textContent = inv.supplierName || inv.customerName || 'Unknown';
+                document.getElementById('previewAmount').textContent = inv.currency + ' ' + inv.totalAmount.toFixed(2);
+                preview.classList.remove('d-none');
+                document.getElementById('btnConfirmBulkLink').disabled = false;
+            } else {
+                preview.classList.add('d-none');
+                document.getElementById('btnConfirmBulkLink').disabled = true;
+            }
+        });
+
+        // Confirm bulk link
+        async function confirmBulkLink() {
+            var invoiceId = document.getElementById('bulkLinkInvoiceSelect').value;
+            if (!invoiceId) {
+                alert('Please select an invoice.');
+                return;
+            }
+
+            var checkboxes = document.querySelectorAll('.doc-checkbox:checked');
+            var documentIds = Array.from(checkboxes).map(cb => cb.value);
+
+            if (documentIds.length === 0) {
+                alert('No documents selected.');
+                return;
+            }
+
+            document.getElementById('btnConfirmBulkLink').disabled = true;
+            document.getElementById('btnConfirmBulkLink').innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Linking...';
+
+            try {
+                const response = await fetch('/AiImport/BulkLinkDocuments', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                    },
+                    body: JSON.stringify({
+                        documentIds: documentIds,
+                        invoiceId: parseInt(invoiceId)
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('Successfully linked ' + result.linkedCount + ' document(s) to invoice.');
+                    location.reload();
+                } else {
+                    alert('Error: ' + (result.message || 'Failed to link documents.'));
+                    document.getElementById('btnConfirmBulkLink').disabled = false;
+                    document.getElementById('btnConfirmBulkLink').innerHTML = '<i class="bi bi-link-45deg me-1"></i>Link Documents';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error linking documents. Please try again.');
+                document.getElementById('btnConfirmBulkLink').disabled = false;
+                document.getElementById('btnConfirmBulkLink').innerHTML = '<i class="bi bi-link-45deg me-1"></i>Link Documents';
+            }
+        }
+
+        // ==================== AI PROCESS ALL ====================
+
+        async function aiProcessAll() {
+            var btn = document.getElementById('btnAiProcessAll');
+            var originalText = btn.innerHTML;
+            btn.disabled = true;
+
+            // Show progress modal
+            var progressModal = new bootstrap.Modal(document.getElementById('aiProgressModal'));
+            progressModal.show();
+
+            document.getElementById('aiProgressBar').style.width = '10%';
+            document.getElementById('aiProgressBar').textContent = '10%';
+            document.getElementById('aiProgressText').textContent = 'Starting AI extraction...';
+
+            try {
+                const response = await fetch('/AiImport/ExtractAllDocumentsAjax', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                    }
+                });
+
+                document.getElementById('aiProgressBar').style.width = '90%';
+                document.getElementById('aiProgressBar').textContent = '90%';
+
+                const result = await response.json();
+
+                document.getElementById('aiProgressBar').style.width = '100%';
+                document.getElementById('aiProgressBar').textContent = '100%';
+                document.getElementById('aiProgressBar').classList.remove('progress-bar-animated');
+
+                if (result.success) {
+                    document.getElementById('aiProgressText').textContent = 'Processing Complete!';
+                    document.getElementById('aiProgressDetails').innerHTML =
+                        '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Successfully processed ' +
+                        result.processedCount + ' document(s).</span>' +
+                        (result.failedCount > 0 ? '<br><span class="text-warning">' + result.failedCount + ' document(s) failed.</span>' : '');
+
+                    setTimeout(function () {
+                        progressModal.hide();
+                        location.reload();
+                    }, 2000);
+                } else {
+                    document.getElementById('aiProgressText').textContent = 'Error';
+                    document.getElementById('aiProgressDetails').innerHTML =
+                        '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>' + (result.message || 'Unknown error') + '</span>';
+                    document.getElementById('aiProgressBar').classList.add('bg-danger');
+
+                    setTimeout(function () {
+                        progressModal.hide();
+                        btn.disabled = false;
+                        btn.innerHTML = originalText;
+                    }, 3000);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('aiProgressText').textContent = 'Error';
+                document.getElementById('aiProgressDetails').innerHTML =
+                    '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>Failed to process documents. Please try again.</span>';
+                document.getElementById('aiProgressBar').classList.add('bg-danger');
+
+                setTimeout(function () {
+                    progressModal.hide();
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                }, 3000);
+            }
+        }
     </script>
 }

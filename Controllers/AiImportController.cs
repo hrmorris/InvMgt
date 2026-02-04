@@ -3007,5 +3007,104 @@ namespace InvoiceManagement.Controllers
                 code = customer.CustomerCode
             });
         }
+
+        // POST: AiImport/BulkLinkDocuments - Bulk link documents to an invoice
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> BulkLinkDocuments([FromBody] BulkLinkRequest request)
+        {
+            try
+            {
+                if (request.DocumentIds == null || !request.DocumentIds.Any())
+                {
+                    return Json(new { success = false, message = "No documents selected." });
+                }
+
+                if (request.InvoiceId <= 0)
+                {
+                    return Json(new { success = false, message = "Invalid invoice selected." });
+                }
+
+                // Verify invoice exists
+                var invoice = await _context.Invoices.FindAsync(request.InvoiceId);
+                if (invoice == null)
+                {
+                    return Json(new { success = false, message = "Invoice not found." });
+                }
+
+                int linkedCount = 0;
+                foreach (var docId in request.DocumentIds)
+                {
+                    var document = await _context.ImportedDocuments.FindAsync(docId);
+                    if (document != null && !document.InvoiceId.HasValue)
+                    {
+                        document.InvoiceId = request.InvoiceId;
+                        document.ProcessingStatus = "Linked";
+                        linkedCount++;
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Bulk linked {Count} documents to invoice {InvoiceId}", linkedCount, request.InvoiceId);
+
+                return Json(new { success = true, linkedCount = linkedCount, message = $"Successfully linked {linkedCount} documents." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in BulkLinkDocuments");
+                return Json(new { success = false, message = $"Error: {ex.Message}" });
+            }
+        }
+
+        public class BulkLinkRequest
+        {
+            public List<int> DocumentIds { get; set; } = new();
+            public int InvoiceId { get; set; }
+        }
+
+        // GET: AiImport/GetInvoicesList - API endpoint to get invoices list for dropdown
+        [HttpGet]
+        public async Task<IActionResult> GetInvoicesList(string search = "")
+        {
+            try
+            {
+                var query = _context.Invoices
+                    .Include(i => i.Supplier)
+                    .Include(i => i.Customer)
+                    .AsQueryable();
+
+                if (!string.IsNullOrEmpty(search))
+                {
+                    search = search.ToLower();
+                    query = query.Where(i =>
+                        i.InvoiceNumber.ToLower().Contains(search) ||
+                        (i.Supplier != null && i.Supplier.SupplierName.ToLower().Contains(search)) ||
+                        (i.Customer != null && i.Customer.CustomerName.ToLower().Contains(search)));
+                }
+
+                var invoices = await query
+                    .OrderByDescending(i => i.InvoiceDate)
+                    .Take(100)
+                    .Select(i => new
+                    {
+                        id = i.Id,
+                        invoiceNumber = i.InvoiceNumber,
+                        supplierName = i.Supplier != null ? i.Supplier.SupplierName : null,
+                        customerName = i.Customer != null ? i.Customer.CustomerName : i.CustomerName,
+                        totalAmount = i.TotalAmount,
+                        invoiceDate = i.InvoiceDate.ToString("dd/MM/yyyy"),
+                        currency = "USD"
+                    })
+                    .ToListAsync();
+
+                return Json(invoices);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting invoices list");
+                return Json(new List<object>());
+            }
+        }
     }
 }
