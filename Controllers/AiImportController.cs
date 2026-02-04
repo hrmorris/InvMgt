@@ -2622,6 +2622,12 @@ namespace InvoiceManagement.Controllers
                             continue;
                         }
 
+                        // Extract supplier name - it's in CustomerName for supplier invoices (AI prompt stores supplier info there)
+                        // Also check Supplier object which ParseInvoiceFromJson now populates
+                        var supplierName = extractedInvoice.Supplier?.SupplierName
+                            ?? extractedInvoice.CustomerName
+                            ?? "";
+
                         // Build the extracted data JSON
                         var extractedJson = System.Text.Json.JsonSerializer.Serialize(new
                         {
@@ -2634,7 +2640,7 @@ namespace InvoiceManagement.Controllers
                             TotalAmount = extractedInvoice.TotalAmount,
                             Notes = extractedInvoice.Notes ?? "",
                             InvoiceType = extractedInvoice.InvoiceType ?? "Payable",
-                            ExtractedSupplierName = extractedInvoice.Supplier?.SupplierName ?? "",
+                            ExtractedSupplierName = supplierName,
                             ExtractedCustomerName = extractedInvoice.CustomerName ?? "",
                             Items = extractedInvoice.InvoiceItems?.Select(i => new
                             {
@@ -2648,7 +2654,7 @@ namespace InvoiceManagement.Controllers
                         document.ProcessingStatus = "Extracted";
                         document.ProcessedDate = DateTime.Now;
                         document.ProcessingNotes = extractedJson;
-                        document.ExtractedSupplierName = extractedInvoice.Supplier?.SupplierName;
+                        document.ExtractedSupplierName = supplierName;
                         document.ExtractedCustomerName = extractedInvoice.CustomerName;
 
                         // Rename file with invoice number if available

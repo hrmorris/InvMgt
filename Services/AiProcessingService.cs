@@ -867,12 +867,15 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
                     dueDate = invoiceDate.Value.AddDays(30);
                 }
 
+                // For supplier invoices, CustomerName from AI actually contains the SUPPLIER name
+                var supplierName = data.CustomerName!.Trim();
+
                 var invoice = new Invoice
                 {
                     InvoiceNumber = data.InvoiceNumber!.Trim(),
                     InvoiceDate = invoiceDate.Value,
                     DueDate = dueDate.Value,
-                    CustomerName = data.CustomerName!.Trim(),
+                    CustomerName = supplierName, // Keep for backward compatibility
                     CustomerAddress = data.CustomerAddress?.Trim(),
                     CustomerEmail = ValidateEmail(data.CustomerEmail),
                     CustomerPhone = data.CustomerPhone?.Trim(),
@@ -882,7 +885,15 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
                     InvoiceType = "Supplier", // Imported/uploaded invoices are from suppliers (AP - Accounts Payable)
                     Status = "Unpaid",
                     PaidAmount = 0,
-                    InvoiceItems = new List<InvoiceItem>()
+                    InvoiceItems = new List<InvoiceItem>(),
+                    // Create a Supplier object with the extracted supplier name
+                    Supplier = new Supplier
+                    {
+                        SupplierName = supplierName,
+                        Email = ValidateEmail(data.CustomerEmail),
+                        Phone = data.CustomerPhone?.Trim(),
+                        Address = data.CustomerAddress?.Trim()
+                    }
                 };
 
                 // Process line items
