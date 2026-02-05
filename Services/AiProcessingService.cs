@@ -215,7 +215,54 @@ ADVANCED SCANNING PROTOCOL:
    - Flag inconsistencies or potential errors
 
 COMPREHENSIVE EXTRACTION REQUIREMENTS:
-- Invoice Number: Detect all variations (Invoice #, Inv No., Bill #, Reference, etc.)
+
+═══════════════════════════════════════════════════════════════════════════════
+                    INVOICE NUMBER EXTRACTION - CRITICAL RULES
+═══════════════════════════════════════════════════════════════════════════════
+
+**INVOICE NUMBER IDENTIFICATION - APPLY STRICT REASONING:**
+
+The invoice number is a UNIQUE IDENTIFIER assigned to this specific document. It is NOT the document type/title.
+
+✅ VALID INVOICE NUMBERS - These ARE invoice numbers:
+   - Numeric: ""36"", ""1234"", ""00123""
+   - Alphanumeric: ""INV-2025-001"", ""A12345"", ""YS-36""
+   - With prefixes: ""INV001"", ""PO-123"", ""REF/2025/001""
+   - With dates: ""INV20250131"", ""2025-001""
+   - Sequential codes: ""#36"", ""No. 123"", ""Inv No: 456""
+
+❌ NOT INVOICE NUMBERS - These are document TYPE labels, NEVER use as invoice number:
+   - ""TAX INVOICE"" (document type, not a number)
+   - ""TAX INVOICE/STATEMENT"" (document type, not a number)
+   - ""INVOICE"" (just a label)
+   - ""STATEMENT"" (document type)
+   - ""CREDIT NOTE"" (document type)
+   - ""DELIVERY NOTE"" (document type)
+   - ""PROFORMA INVOICE"" (document type)
+   - ""COMMERCIAL INVOICE"" (document type)
+   - ""RECEIPT"" (document type)
+
+🔍 WHERE TO FIND THE ACTUAL INVOICE NUMBER:
+   1. Look for fields labeled: ""Invoice No"", ""Invoice #"", ""Inv No"", ""Invoice Number"", ""Bill No"", ""Reference No"", ""Doc No""
+   2. Usually appears AFTER the document title ""TAX INVOICE"" heading
+   3. Often in a box, table cell, or highlighted area
+   4. Near the top-right or in a header section
+   5. May be handwritten if printed form
+   6. Look for a NUMBER or CODE - not descriptive text
+
+🧠 REASONING PROCESS FOR INVOICE NUMBER:
+   1. First, identify the document TYPE (e.g., ""TAX INVOICE"") - DO NOT use this as invoice number
+   2. Then, search for a SPECIFIC field labeled ""Invoice No"", ""Inv #"", ""Reference"", etc.
+   3. The invoice number should be SHORT and UNIQUE (typically 1-20 characters)
+   4. If you see ""TAX INVOICE"" followed by ""No: 36"" → The invoice number is ""36"", NOT ""TAX INVOICE""
+   5. If document shows ""Invoice No.: 36"" anywhere → Extract ""36""
+   6. Always extract ONLY the number/code portion, not the label
+
+⚠️ SPECIAL CASES:
+   - If field shows ""Invoice: TAX INVOICE/STATEMENT"" → SEARCH ELSEWHERE for actual number
+   - If no invoice number found after exhaustive search → Use filename reference (e.g., extract ""36"" from ""InvNo_36.jpeg"")
+   - Never return descriptive text like ""TAX INVOICE/STATEMENT"" as the invoice number
+
 - Dates: Parse ANY date format and convert to YYYY-MM-DD (handle DD/MM/YYYY, MM-DD-YY, written dates, etc.)
 - SUPPLIER Information (Bill From): Extract SUPPLIER/VENDOR details including:
   * Supplier name - MANDATORY! Check stamps, letterhead, bank details, everywhere!
@@ -230,7 +277,8 @@ COMPREHENSIVE EXTRACTION REQUIREMENTS:
 
 Return ONLY a valid JSON object with this EXACT structure (no markdown, no extra text):
 {
-  ""invoiceNumber"": ""string (required)"",
+  ""invoiceNumber"": ""string (required) - MUST be the actual invoice number/code, NEVER a document type like TAX INVOICE"",
+  ""invoiceNumberSource"": ""string - where you found the invoice number (e.g., 'Invoice No field', 'header', 'filename')"",
   ""invoiceDate"": ""YYYY-MM-DD (required)"",
   ""dueDate"": ""YYYY-MM-DD (required)"",
   ""customerName"": ""SUPPLIER/VENDOR company name (required - the entity billing you)"",
@@ -255,6 +303,10 @@ Return ONLY a valid JSON object with this EXACT structure (no markdown, no extra
 
 VALIDATION RULES:
 - All required fields must have values
+- **INVOICE NUMBER VALIDATION**: The invoiceNumber field MUST NOT contain document type labels:
+  * REJECT if invoiceNumber equals or contains: ""TAX INVOICE"", ""STATEMENT"", ""CREDIT NOTE"", ""PROFORMA"", ""RECEIPT"", ""DELIVERY NOTE""
+  * If you extracted a document type label, SEARCH AGAIN for the actual invoice number
+  * The invoice number should typically be numeric or a short alphanumeric code
 - Dates must be valid and logical (invoice date should come before or equal to due date)
 - All amounts must be positive numbers
 - Quantity must be at least 1
@@ -894,6 +946,16 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
                 if (string.IsNullOrWhiteSpace(data.InvoiceNumber))
                     validationErrors.Add("Invoice number is missing");
 
+                // Validate and clean invoice number - reject document type labels
+                var invoiceNumber = data.InvoiceNumber?.Trim() ?? "";
+                invoiceNumber = CleanInvoiceNumber(invoiceNumber);
+
+                if (string.IsNullOrWhiteSpace(invoiceNumber))
+                {
+                    _logger.LogWarning("Invoice number was a document type label or empty, it will need manual correction");
+                    invoiceNumber = "NEEDS-REVIEW";
+                }
+
                 if (string.IsNullOrWhiteSpace(data.CustomerName))
                     validationErrors.Add("Customer name is missing");
 
@@ -927,7 +989,7 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
 
                 var invoice = new Invoice
                 {
-                    InvoiceNumber = data.InvoiceNumber!.Trim(),
+                    InvoiceNumber = invoiceNumber,
                     InvoiceDate = invoiceDate.Value,
                     DueDate = dueDate.Value,
                     CustomerName = supplierName, // Keep for backward compatibility
@@ -1074,6 +1136,102 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
                 _logger.LogError(ex, "Error parsing payment JSON: {Json}", json);
                 return null;
             }
+        }
+
+        /// <summary>
+        /// Validates and cleans invoice numbers by rejecting document type labels
+        /// that were incorrectly extracted as invoice numbers by AI.
+        /// </summary>
+        private string CleanInvoiceNumber(string invoiceNumber)
+        {
+            if (string.IsNullOrWhiteSpace(invoiceNumber))
+                return "";
+
+            var original = invoiceNumber.Trim();
+            var upperValue = original.ToUpperInvariant();
+
+            // List of document type labels that are NOT valid invoice numbers
+            var documentTypeLabels = new[]
+            {
+                "TAX INVOICE",
+                "TAX INVOICE/STATEMENT",
+                "INVOICE/STATEMENT",
+                "TAX INVOICE / STATEMENT",
+                "INVOICE / STATEMENT",
+                "STATEMENT",
+                "TAX STATEMENT",
+                "CREDIT NOTE",
+                "CREDIT MEMO",
+                "DEBIT NOTE",
+                "DEBIT MEMO",
+                "PROFORMA INVOICE",
+                "PROFORMA",
+                "PRO FORMA",
+                "RECEIPT",
+                "PAYMENT RECEIPT",
+                "DELIVERY NOTE",
+                "DELIVERY ORDER",
+                "PURCHASE ORDER",
+                "QUOTATION",
+                "QUOTE",
+                "ESTIMATE",
+                "ORDER CONFIRMATION",
+                "COMMERCIAL INVOICE",
+                "INVOICE ONLY",
+                "ORIGINAL INVOICE",
+                "COPY INVOICE",
+                "REVISED INVOICE",
+                "FINAL INVOICE",
+                "INTERIM INVOICE"
+            };
+
+            // Check if the invoice number is actually a document type label
+            foreach (var label in documentTypeLabels)
+            {
+                if (upperValue == label ||
+                    upperValue == label.Replace(" ", "") ||
+                    upperValue.StartsWith(label + " ") ||
+                    upperValue.EndsWith(" " + label))
+                {
+                    _logger.LogWarning("Invoice number '{Original}' appears to be a document type label, not an actual invoice number", original);
+                    return "";
+                }
+            }
+
+            // Check if it contains only common document type words without any numbers
+            var documentTypeWords = new[] { "TAX", "INVOICE", "STATEMENT", "CREDIT", "DEBIT", "NOTE", "MEMO", "PROFORMA", "RECEIPT", "DELIVERY", "QUOTATION", "QUOTE" };
+            var hasNumber = original.Any(char.IsDigit);
+            var containsOnlyDocTypeWords = documentTypeWords.Any(w => upperValue.Contains(w));
+
+            if (!hasNumber && containsOnlyDocTypeWords && original.Length > 15)
+            {
+                _logger.LogWarning("Invoice number '{Original}' contains document type words but no numbers - likely a document type label", original);
+                return "";
+            }
+
+            // Clean up common prefixes that might be attached
+            var cleanedNumber = original;
+
+            // If starts with "TAX INVOICE" or similar followed by actual number, extract just the number
+            var prefixesToRemove = new[]
+            {
+                "TAX INVOICE NO:", "TAX INVOICE NO.", "TAX INVOICE #", "TAX INVOICE:",
+                "INVOICE NO:", "INVOICE NO.", "INVOICE #", "INVOICE:",
+                "INV NO:", "INV NO.", "INV #", "INV:",
+                "NO:", "NO.", "#"
+            };
+
+            foreach (var prefix in prefixesToRemove)
+            {
+                if (upperValue.StartsWith(prefix))
+                {
+                    cleanedNumber = original.Substring(prefix.Length).Trim();
+                    _logger.LogInformation("Cleaned invoice number prefix: '{Original}' -> '{Cleaned}'", original, cleanedNumber);
+                    break;
+                }
+            }
+
+            return cleanedNumber;
         }
 
         private string? ValidateEmail(string? email)
