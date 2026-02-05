@@ -390,13 +390,13 @@
                                                                                 <small>@sizeDisplay</small>
                                                                             </td>
                                                                             <td>
-                                                                                @if (doc.ProcessingStatus == "Processed")
+                                                                                @if (doc.ProcessingStatus == "Processed" || doc.ProcessingStatus == "Linked" || doc.ProcessingStatus == "Completed" || doc.InvoiceId.HasValue || doc.PaymentId.HasValue)
                                                                                 {
                                                                                     <span class="badge bg-success">
                                                                                         <i class="bi bi-check-circle"></i>
                                                                                     </span>
                                                                                 }
-                                                                                else if (doc.ProcessingStatus == "Failed")
+                                                                                else if (doc.ProcessingStatus == "Failed" || doc.ProcessingStatus == "Error")
                                                                                 {
                                                                                     <span class="badge bg-danger"
                                                                                         title="@doc.ProcessingNotes">
