@@ -213,4 +213,113 @@ namespace InvoiceManagement.Models.ViewModels
         public int FailedCount { get; set; }
         public List<string> FailedFiles { get; set; } = new List<string>();
     }
+
+    /// <summary>
+    /// ViewModel for the Multi-Page PDF Import feature.
+    /// Supports PDFs with up to 100 pages containing multiple invoices,
+    /// with intelligent page-boundary detection and individual document storage.
+    /// </summary>
+    public class MultiPagePdfViewModel
+    {
+        /// <summary>Master document ID (the uploaded multi-page PDF)</summary>
+        public int MasterDocumentId { get; set; }
+
+        /// <summary>Original file name of the uploaded PDF</summary>
+        public string OriginalFileName { get; set; } = "";
+
+        /// <summary>Total number of pages detected in the PDF</summary>
+        public int TotalPages { get; set; }
+
+        /// <summary>Total number of individual invoices detected</summary>
+        public int TotalInvoicesDetected { get; set; }
+
+        /// <summary>Number of invoices successfully extracted</summary>
+        public int SuccessfullyExtracted { get; set; }
+
+        /// <summary>Number of extraction failures</summary>
+        public int FailedExtractions { get; set; }
+
+        /// <summary>Processing time in seconds</summary>
+        public double ProcessingTimeSeconds { get; set; }
+
+        /// <summary>Processing summary message</summary>
+        public string ProcessingSummary { get; set; } = "";
+
+        /// <summary>Warnings generated during processing</summary>
+        public List<string> Warnings { get; set; } = new();
+
+        /// <summary>Errors generated during processing</summary>
+        public List<string> Errors { get; set; } = new();
+
+        /// <summary>List of split invoice entries with page-level metadata</summary>
+        public List<SplitInvoiceEntry> SplitInvoices { get; set; } = new();
+
+        /// <summary>Available suppliers for entity matching dropdowns</summary>
+        public List<Supplier> AvailableSuppliers { get; set; } = new();
+
+        /// <summary>Available customers for entity matching dropdowns</summary>
+        public List<Customer> AvailableCustomers { get; set; } = new();
+
+        /// <summary>Number of duplicate invoice numbers found in the database</summary>
+        public int DuplicateCount { get; set; }
+
+        /// <summary>List of duplicate invoice numbers (first 10)</summary>
+        public List<string> DuplicateNumbers { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Represents a single invoice split from a multi-page PDF.
+    /// Each entry tracks its source page range and has its own stored document.
+    /// </summary>
+    public class SplitInvoiceEntry
+    {
+        /// <summary>Sequential index within the split (1-based)</summary>
+        public int Index { get; set; }
+
+        /// <summary>Whether this invoice is selected for saving</summary>
+        public bool Selected { get; set; } = true;
+
+        /// <summary>The document ID for this individual split page/document (stored separately)</summary>
+        public int? SplitDocumentId { get; set; }
+
+        /// <summary>Page range in the source PDF (e.g., "1-2", "3")</summary>
+        public string PageRange { get; set; } = "";
+
+        /// <summary>Starting page in the source PDF (1-based)</summary>
+        public int StartPage { get; set; }
+
+        /// <summary>Ending page in the source PDF (1-based)</summary>
+        public int EndPage { get; set; }
+
+        /// <summary>AI confidence for this extraction</summary>
+        public string Confidence { get; set; } = "Medium";
+
+        // ─── Invoice Data ───────────────────────────────────────────────
+        public string InvoiceNumber { get; set; } = "";
+        public DateTime? InvoiceDate { get; set; }
+        public DateTime? DueDate { get; set; }
+        public string CustomerName { get; set; } = "";
+        public string CustomerAddress { get; set; } = "";
+        public string CustomerEmail { get; set; } = "";
+        public string CustomerPhone { get; set; } = "";
+        public decimal SubTotal { get; set; }
+        public decimal GSTAmount { get; set; }
+        public decimal TotalAmount { get; set; }
+        public string Notes { get; set; } = "";
+        public string InvoiceType { get; set; } = "Payable";
+
+        // ─── Supplier / Customer matching ────────────────────────────────
+        public string ExtractedSupplierName { get; set; } = "";
+        public string ExtractedCustomerName { get; set; } = "";
+        public int? MatchedSupplierId { get; set; }
+        public string? MatchedSupplierName { get; set; }
+        public int? MatchedCustomerId { get; set; }
+        public string? MatchedCustomerName { get; set; }
+        public int? SelectedSupplierId { get; set; }
+        public int? SelectedCustomerId { get; set; }
+        public string MatchConfidence { get; set; } = "None";
+
+        // ─── Line Items ──────────────────────────────────────────────────
+        public List<AiImportInvoiceItemViewModel> Items { get; set; } = new();
+    }
 }

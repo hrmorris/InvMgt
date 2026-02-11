@@ -104,10 +104,10 @@ namespace InvoiceManagement.Services
                 var fileSizeMB = fileBytes.Length / 1024.0 / 1024.0;
                 _logger.LogInformation($"File size: {fileBytes.Length} bytes ({fileSizeMB:F2} MB)");
 
-                // Check file size limits (7 MB for inline_data as per Google documentation)
-                if (fileSizeMB > 7)
+                // Check file size limits (50 MB for OpenAI Responses API)
+                if (fileSizeMB > 50)
                 {
-                    throw new Exception($"File {fileName} is too large ({fileSizeMB:F2} MB). Maximum file size is 7 MB for inline processing. Please use a smaller file or compress the PDF.");
+                    throw new Exception($"File {fileName} is too large ({fileSizeMB:F2} MB). Maximum file size is 50 MB. Please use a smaller file or compress the PDF.");
                 }
 
                 var base64File = Convert.ToBase64String(fileBytes);
@@ -326,11 +326,16 @@ Return ONLY the JSON object, nothing else.";
                 }
 
                 _logger.LogInformation($"AI response received, parsing invoice data from {fileName}");
+
+                // Log the raw response for debugging (truncated)
+                _logger.LogInformation($"AI raw response (first 500 chars): {response.Substring(0, Math.Min(500, response.Length))}");
+
                 var invoice = ParseInvoiceFromJson(response);
 
                 if (invoice == null)
                 {
-                    throw new Exception($"Failed to parse invoice data from {fileName}. AI response format was invalid.");
+                    _logger.LogError($"ParseInvoiceFromJson returned null for {fileName}. Raw response: {response.Substring(0, Math.Min(1000, response.Length))}");
+                    throw new Exception($"Failed to parse invoice data from {fileName}. AI response format was invalid. The AI may have returned non-JSON content. Please try re-uploading the document.");
                 }
 
                 return invoice;
@@ -730,11 +735,20 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
             }
         }
 
-        private async Task<string?> CallGeminiVisionApiAsync(string prompt, string base64Image, string mimeType, string apiKey)
+        private async Task<string?> CallGeminiVisionApiAsync(string prompt, string base64Image, string mimeType, string apiKey, int maxOutputTokens = 8192)
         {
+            // PDFs are not supported by the Chat Completions image_url content type.
+            // Use the Responses API with input_file for PDFs.
+            bool isPdf = mimeType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase);
+
+            if (isPdf)
+            {
+                return await CallOpenAiResponsesApiForPdfAsync(prompt, base64Image, apiKey, maxOutputTokens);
+            }
+
             try
             {
-                _logger.LogInformation("Calling OpenAI GPT-5.2 Vision API...");
+                _logger.LogInformation("Calling OpenAI GPT-5.2 Vision API (Chat Completions)...");
                 _logger.LogInformation($"Image MIME type: {mimeType}, Base64 length: {base64Image.Length} chars");
 
                 // Using OpenAI GPT-5.2 with vision capability
@@ -761,7 +775,7 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
                             }
                         }
                     },
-                    max_completion_tokens = 8192,
+                    max_completion_tokens = maxOutputTokens,
                     temperature = 0.1
                 };
 
@@ -847,6 +861,165 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
             }
         }
 
+        /// <summary>
+        /// Calls the OpenAI Responses API (/v1/responses) with input_file for PDF documents.
+        /// The Chat Completions image_url content type only supports image MIME types,
+        /// so PDFs must use the Responses API which natively supports PDF input.
+        /// </summary>
+        private async Task<string?> CallOpenAiResponsesApiForPdfAsync(string prompt, string base64Pdf, string apiKey, int maxOutputTokens = 8192)
+        {
+            try
+            {
+                _logger.LogInformation("Calling OpenAI Responses API for PDF document...");
+                _logger.LogInformation($"PDF Base64 length: {base64Pdf.Length} chars");
+
+                // Build the request body using Dictionary to avoid anonymous type serialization issues.
+                // Anonymous types with different shapes in object[] cause System.Text.Json to serialize
+                // the second element's unique properties as null.
+                var fileContentBlock = new Dictionary<string, object>
+                {
+                    { "type", "input_file" },
+                    { "filename", "document.pdf" },
+                    { "file_data", $"data:application/pdf;base64,{base64Pdf}" }
+                };
+
+                var textContentBlock = new Dictionary<string, object>
+                {
+                    { "type", "input_text" },
+                    { "text", prompt }
+                };
+
+                var requestBody = new Dictionary<string, object>
+                {
+                    { "model", "gpt-5.2" },
+                    { "input", new object[]
+                        {
+                            new Dictionary<string, object>
+                            {
+                                { "role", "user" },
+                                { "content", new object[] { fileContentBlock, textContentBlock } }
+                            }
+                        }
+                    },
+                    { "max_output_tokens", maxOutputTokens },
+                    { "temperature", 0.1 }
+                };
+
+                var jsonContent = JsonSerializer.Serialize(requestBody);
+                _logger.LogInformation($"PDF request payload size: {jsonContent.Length} bytes");
+
+                var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+                _httpClient.DefaultRequestHeaders.Clear();
+                _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+
+                var url = "https://api.openai.com/v1/responses";
+                _logger.LogInformation($"Sending PDF request to: {url}");
+
+                var response = await _httpClient.PostAsync(url, content);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogError($"OpenAI Responses API error: {response.StatusCode} - {errorContent}");
+
+                    if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized ||
+                        response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                    {
+                        throw new InvalidOperationException($"OpenAI API authentication failed. Please check your API key. Status: {response.StatusCode}");
+                    }
+
+                    throw new Exception($"OpenAI Responses API error ({response.StatusCode}): {errorContent}");
+                }
+
+                var responseContent = await response.Content.ReadAsStringAsync();
+                _logger.LogInformation($"OpenAI Responses API response length: {responseContent.Length} characters");
+                _logger.LogInformation($"OpenAI Responses API raw response (first 1000 chars): {responseContent.Substring(0, Math.Min(1000, responseContent.Length))}");
+
+                var result = JsonSerializer.Deserialize<JsonElement>(responseContent);
+
+                // Check for error in response - the API may return "error": null on success
+                if (result.TryGetProperty("error", out var error) &&
+                    error.ValueKind != JsonValueKind.Null &&
+                    error.ValueKind != JsonValueKind.Undefined)
+                {
+                    var errorMessage = error.TryGetProperty("message", out var msg) ? msg.GetString() : "Unknown error";
+                    _logger.LogError($"Responses API returned error: {errorMessage}");
+                    throw new Exception($"OpenAI Responses API error: {errorMessage}");
+                }
+
+                // The Responses API returns output in different possible structures.
+                // Try "output_text" first (direct text output at top level)
+                if (result.TryGetProperty("output_text", out var directText) &&
+                    directText.ValueKind == JsonValueKind.String)
+                {
+                    var text = directText.GetString();
+                    _logger.LogInformation("Successfully extracted text from Responses API direct output_text");
+                    return CleanJsonResponse(text);
+                }
+
+                // Try nested output structure:
+                // { "output": [ { "type": "message", "content": [ { "type": "output_text", "text": "..." } ] } ] }
+                if (result.TryGetProperty("output", out var output) &&
+                    output.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var outputItem in output.EnumerateArray())
+                    {
+                        if (outputItem.ValueKind != JsonValueKind.Object) continue;
+
+                        // Check if this is a message type
+                        var isMessage = outputItem.TryGetProperty("type", out var itemType) &&
+                                        itemType.ValueKind == JsonValueKind.String &&
+                                        itemType.GetString() == "message";
+
+                        if (isMessage && outputItem.TryGetProperty("content", out var contentArray) &&
+                            contentArray.ValueKind == JsonValueKind.Array)
+                        {
+                            foreach (var contentItem in contentArray.EnumerateArray())
+                            {
+                                if (contentItem.ValueKind != JsonValueKind.Object) continue;
+
+                                if (contentItem.TryGetProperty("type", out var contentType) &&
+                                    contentType.ValueKind == JsonValueKind.String &&
+                                    contentType.GetString() == "output_text" &&
+                                    contentItem.TryGetProperty("text", out var textValue) &&
+                                    textValue.ValueKind == JsonValueKind.String)
+                                {
+                                    var text = textValue.GetString();
+                                    _logger.LogInformation("Successfully extracted text from Responses API (PDF)");
+                                    return CleanJsonResponse(text);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Last resort: try choices structure (in case API falls back to chat completions format)
+                if (result.TryGetProperty("choices", out var choices) &&
+                    choices.ValueKind == JsonValueKind.Array && choices.GetArrayLength() > 0)
+                {
+                    var firstChoice = choices[0];
+                    if (firstChoice.TryGetProperty("message", out var message) &&
+                        message.ValueKind == JsonValueKind.Object &&
+                        message.TryGetProperty("content", out var contentText) &&
+                        contentText.ValueKind == JsonValueKind.String)
+                    {
+                        var text = contentText.GetString();
+                        _logger.LogInformation("Successfully extracted text from Responses API (choices fallback)");
+                        return CleanJsonResponse(text);
+                    }
+                }
+
+                _logger.LogWarning($"Responses API returned data but couldn't extract text. Response: {responseContent.Substring(0, Math.Min(500, responseContent.Length))}");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error calling OpenAI Responses API for PDF");
+                throw new Exception($"Failed to call OpenAI API for PDF: {ex.Message}", ex);
+            }
+        }
+
         private async Task<string?> CallGeminiTextApiAsync(string prompt, string apiKey)
         {
             try
@@ -920,6 +1093,22 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
             if (response.EndsWith("```"))
                 response = response.Substring(0, response.Length - 3);
 
+            response = response.Trim();
+
+            // If response doesn't start with { or [, try to find JSON object within it
+            if (!response.StartsWith("{") && !response.StartsWith("["))
+            {
+                var jsonStart = response.IndexOf('{');
+                if (jsonStart >= 0)
+                {
+                    var jsonEnd = response.LastIndexOf('}');
+                    if (jsonEnd > jsonStart)
+                    {
+                        response = response.Substring(jsonStart, jsonEnd - jsonStart + 1);
+                    }
+                }
+            }
+
             return response.Trim();
         }
 
@@ -929,22 +1118,23 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
             {
                 var options = new JsonSerializerOptions
                 {
-                    PropertyNameCaseInsensitive = true
+                    PropertyNameCaseInsensitive = true,
+                    NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString
                 };
 
                 var data = JsonSerializer.Deserialize<InvoiceDto>(json, options);
 
                 if (data == null)
                 {
-                    _logger.LogWarning("Failed to deserialize invoice JSON");
+                    _logger.LogWarning("Failed to deserialize invoice JSON. Content: {Json}", json.Substring(0, Math.Min(500, json.Length)));
                     return null;
                 }
 
-                // Validate required fields
-                var validationErrors = new List<string>();
+                // Validate required fields - use defaults instead of rejecting
+                var validationWarnings = new List<string>();
 
                 if (string.IsNullOrWhiteSpace(data.InvoiceNumber))
-                    validationErrors.Add("Invoice number is missing");
+                    validationWarnings.Add("Invoice number is missing");
 
                 // Validate and clean invoice number - reject document type labels
                 var invoiceNumber = data.InvoiceNumber?.Trim() ?? "";
@@ -957,15 +1147,34 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
                 }
 
                 if (string.IsNullOrWhiteSpace(data.CustomerName))
-                    validationErrors.Add("Customer name is missing");
+                {
+                    validationWarnings.Add("Customer/Supplier name is missing - set to 'Unknown'");
+                    data.CustomerName = "Unknown";
+                }
 
                 if (data.TotalAmount <= 0)
-                    validationErrors.Add("Total amount must be greater than zero");
-
-                if (validationErrors.Any())
                 {
-                    _logger.LogWarning("Invoice validation failed: {Errors}", string.Join(", ", validationErrors));
-                    return null;
+                    validationWarnings.Add("Total amount is zero or missing");
+                    // Try SubTotal first
+                    if (data.SubTotal > 0)
+                    {
+                        data.TotalAmount = data.SubTotal + data.GSTAmount;
+                    }
+                    // Try to calculate from items if available
+                    if (data.TotalAmount <= 0 && data.Items != null && data.Items.Any())
+                    {
+                        data.TotalAmount = data.Items.Sum(i => Math.Max(0, i.Quantity) * Math.Max(0, i.UnitPrice));
+                    }
+                    if (data.TotalAmount <= 0)
+                    {
+                        data.TotalAmount = 0.01m; // Set minimal amount so invoice can be created and manually corrected
+                        validationWarnings.Add("Total amount defaulted to 0.01 - needs manual correction");
+                    }
+                }
+
+                if (validationWarnings.Any())
+                {
+                    _logger.LogWarning("Invoice validation warnings (proceeding with defaults): {Warnings}", string.Join(", ", validationWarnings));
                 }
 
                 // Parse and validate dates
@@ -1337,9 +1546,9 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
                 var fileSizeMB = fileBytes.Length / 1024.0 / 1024.0;
                 _logger.LogInformation($"Processing multi-invoice PDF: {fileName}, Size: {fileSizeMB:F2} MB");
 
-                if (fileSizeMB > 7)
+                if (fileSizeMB > 50)
                 {
-                    result.Errors.Add($"File too large ({fileSizeMB:F2} MB). Maximum size for bulk processing is 7 MB. Please split the document.");
+                    result.Errors.Add($"File too large ({fileSizeMB:F2} MB). Maximum size for bulk processing is 50 MB. Please split the document.");
                     return result;
                 }
 
@@ -1348,7 +1557,7 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
 
                 await (progressCallback?.Invoke(15, 0, "Extracting all invoices from document...") ?? Task.CompletedTask);
 
-                // Single API call to extract all invoices at once
+                // Single API call to extract all invoices at once (use 16384 tokens for multi-invoice)
                 var allInvoices = await ExtractAllInvoicesFromPdfAsync(base64File, mimeType, apiKey);
 
                 if (allInvoices == null || allInvoices.Count == 0)
@@ -1398,39 +1607,53 @@ Consider: invoice numbers mentioned, amounts, customer names, dates, and referen
         /// </summary>
         private async Task<List<Invoice>> ExtractAllInvoicesFromPdfAsync(string base64File, string mimeType, string apiKey)
         {
-            var prompt = @"Extract ALL invoices from this PDF document. This document contains multiple invoices.
+            var prompt = @"You are an expert invoice data extraction AI. This PDF document contains MULTIPLE SEPARATE INVOICES (possibly one per page or multiple pages per invoice).
+
+CRITICAL: You MUST extract EVERY SINGLE INVOICE from this document. Do NOT stop after the first one. Scan ALL pages.
 
 For EACH invoice found, extract:
-- Invoice number
-- Invoice date (YYYY-MM-DD format)
-- Due date (YYYY-MM-DD format) 
-- Supplier/Vendor name (who sent the invoice)
+- Invoice number (look for 'Invoice No', 'Tax Invoice No', 'INV-', '#', etc.)
+- Invoice date (convert to YYYY-MM-DD format)
+- Due date (convert to YYYY-MM-DD format, or null if not found)
+- Supplier/Vendor name (the company that ISSUED the invoice — look in letterhead, stamps, header)
 - Supplier address, phone, email if available
-- Total amount
-- Line items with description, quantity, unit price
+- Customer name (the company being billed — look for 'Customer:', 'Bill To:', 'Sold To:')
+- Total amount (the final total including tax)
+- Subtotal (before tax) if shown
+- Tax/GST amount if shown
+- ALL line items with description, quantity, unit price
 
 Return a JSON array with ALL invoices found. Each invoice object should have this structure:
 {
   ""invoiceNumber"": ""string"",
   ""invoiceDate"": ""YYYY-MM-DD"",
-  ""dueDate"": ""YYYY-MM-DD"",
+  ""dueDate"": ""YYYY-MM-DD or null"",
   ""supplierName"": ""string"",
   ""supplierAddress"": ""string or null"",
   ""supplierPhone"": ""string or null"",
   ""supplierEmail"": ""string or null"",
+  ""customerName"": ""string or null"",
+  ""customerAddress"": ""string or null"",
   ""totalAmount"": number,
+  ""subtotal"": number or null,
+  ""taxAmount"": number or 0,
   ""items"": [
     {""description"": ""string"", ""quantity"": number, ""unitPrice"": number}
   ],
   ""notes"": ""string or null""
 }
 
-Return ONLY the JSON array, no other text. Example: [{...}, {...}, {...}]";
+IMPORTANT RULES:
+1. Extract ALL invoices — there may be 1, 5, 10, 20+ invoices in this document
+2. Each page or group of pages may be a separate invoice — look for new invoice headers
+3. Return ONLY the JSON array, no other text, no markdown formatting
+4. If supplier info is the same across invoices (same company letterhead), still include it for each";
 
             try
             {
-                _logger.LogInformation("Calling OpenAI API to extract all invoices");
-                var response = await CallGeminiVisionApiAsync(prompt, base64File, mimeType, apiKey);
+                _logger.LogInformation("Calling OpenAI API to extract all invoices (multi-invoice mode)");
+                // Use 16384 tokens to allow extraction of many invoices with line items
+                var response = await CallGeminiVisionApiAsync(prompt, base64File, mimeType, apiKey, 16384);
 
                 if (string.IsNullOrEmpty(response))
                 {
@@ -1446,6 +1669,573 @@ Return ONLY the JSON array, no other text. Example: [{...}, {...}, {...}]";
                 _logger.LogError(ex, "Error extracting all invoices from PDF");
                 throw;
             }
+        }
+
+        /// <summary>
+        /// Advanced multi-page PDF processing with page-boundary detection.
+        /// Step 1: Detect how many invoices and their page ranges.
+        /// Step 2: Extract invoices in chunks (batches of ~10 pages) so the AI can give
+        ///         detailed extraction even for 100-page documents.
+        /// Step 3: Each invoice carries its source page range for separate storage.
+        /// </summary>
+        public async Task<MultiPageExtractionResult> ExtractInvoicesWithPageDetectionAsync(
+            Stream fileStream,
+            string fileName,
+            Func<int, int, string, Task>? progressCallback = null)
+        {
+            var startTime = DateTime.UtcNow;
+            var result = new MultiPageExtractionResult();
+
+            try
+            {
+                var apiKey = await GetApiKeyAsync();
+                if (string.IsNullOrEmpty(apiKey))
+                {
+                    result.Errors.Add("OpenAI API key is not configured");
+                    return result;
+                }
+
+                await (progressCallback?.Invoke(2, 0, "Reading PDF document...") ?? Task.CompletedTask);
+
+                // Read the file content
+                var fileBytes = await ReadStreamAsBytesAsync(fileStream);
+                var fileSizeMB = fileBytes.Length / 1024.0 / 1024.0;
+                _logger.LogInformation($"Processing multi-page PDF: {fileName}, Size: {fileSizeMB:F2} MB");
+
+                if (fileSizeMB > 50)
+                {
+                    result.Errors.Add($"File too large ({fileSizeMB:F2} MB). Maximum size is 50 MB.");
+                    return result;
+                }
+
+                var base64File = Convert.ToBase64String(fileBytes);
+                var mimeType = GetMimeType(fileName);
+
+                // ─── STEP 1: Detect invoice boundaries ──────────────────────────
+                await (progressCallback?.Invoke(5, 0, "Analyzing document structure and detecting invoice boundaries...") ?? Task.CompletedTask);
+
+                var (totalPages, invoiceCount, pageRanges) = await DetectInvoiceBoundariesAsync(base64File, mimeType, apiKey);
+                result.TotalPages = totalPages;
+                result.TotalInvoicesDetected = invoiceCount;
+
+                _logger.LogInformation($"Detected {invoiceCount} invoices across {totalPages} pages");
+                await (progressCallback?.Invoke(15, 0, $"Found {invoiceCount} invoices across {totalPages} pages") ?? Task.CompletedTask);
+
+                if (invoiceCount == 0)
+                {
+                    result.Errors.Add("No invoices detected in the document.");
+                    return result;
+                }
+
+                // ─── STEP 2: Extract invoices in chunks ─────────────────────────
+                // For documents with known page ranges, we instruct the AI to extract
+                // invoices from each range. For unknown ranges, we do a single big extract.
+                if (pageRanges.Count > 0 && pageRanges.Count == invoiceCount)
+                {
+                    // We have explicit page ranges — extract in chunks of ~5 invoices
+                    var chunkSize = 5;
+                    var totalChunks = (int)Math.Ceiling((double)pageRanges.Count / chunkSize);
+
+                    for (int chunk = 0; chunk < totalChunks; chunk++)
+                    {
+                        var chunkRanges = pageRanges.Skip(chunk * chunkSize).Take(chunkSize).ToList();
+                        var chunkStart = chunk * chunkSize + 1;
+                        var chunkEnd = Math.Min(chunkStart + chunkSize - 1, pageRanges.Count);
+
+                        var progressPercent = 15 + (int)((double)(chunk + 1) / totalChunks * 75);
+                        await (progressCallback?.Invoke(progressPercent, result.SuccessfullyExtracted,
+                            $"Extracting invoices {chunkStart}-{chunkEnd} of {invoiceCount}...") ?? Task.CompletedTask);
+
+                        try
+                        {
+                            var chunkInvoices = await ExtractInvoicesForPageRangesAsync(
+                                base64File, mimeType, apiKey, chunkRanges, invoiceCount);
+
+                            // Map page ranges to results
+                            for (int i = 0; i < chunkInvoices.Count && i < chunkRanges.Count; i++)
+                            {
+                                var range = chunkRanges[i];
+                                var pages = ParsePageRange(range);
+                                result.Invoices.Add(new PageAwareInvoice
+                                {
+                                    Invoice = chunkInvoices[i],
+                                    StartPage = pages.start,
+                                    EndPage = pages.end,
+                                    Confidence = "High"
+                                });
+                                result.SuccessfullyExtracted++;
+                            }
+
+                            // Handle any extra invoices beyond the expected count
+                            if (chunkInvoices.Count > chunkRanges.Count)
+                            {
+                                for (int i = chunkRanges.Count; i < chunkInvoices.Count; i++)
+                                {
+                                    result.Invoices.Add(new PageAwareInvoice
+                                    {
+                                        Invoice = chunkInvoices[i],
+                                        StartPage = 0,
+                                        EndPage = 0,
+                                        Confidence = "Medium"
+                                    });
+                                    result.SuccessfullyExtracted++;
+                                    result.Warnings.Add($"Extra invoice detected beyond expected page ranges (Invoice #{result.SuccessfullyExtracted})");
+                                }
+                            }
+                        }
+                        catch (Exception chunkEx)
+                        {
+                            _logger.LogError(chunkEx, $"Error processing chunk {chunk + 1}");
+                            result.FailedExtractions += chunkRanges.Count;
+                            result.Errors.Add($"Failed to extract invoices {chunkStart}-{chunkEnd}: {chunkEx.Message}");
+                        }
+                    }
+                }
+                else
+                {
+                    // No explicit page ranges — do a single comprehensive extraction
+                    await (progressCallback?.Invoke(25, 0, "Extracting all invoices with page detection...") ?? Task.CompletedTask);
+
+                    try
+                    {
+                        var allInvoices = await ExtractAllInvoicesWithPagesAsync(base64File, mimeType, apiKey, totalPages, invoiceCount);
+
+                        foreach (var inv in allInvoices)
+                        {
+                            result.Invoices.Add(inv);
+                            result.SuccessfullyExtracted++;
+                        }
+
+                        // If we got fewer invoices than detected, warn
+                        if (result.SuccessfullyExtracted < invoiceCount)
+                        {
+                            result.Warnings.Add($"Detected {invoiceCount} invoices but only extracted {result.SuccessfullyExtracted}. Some invoices may require manual entry.");
+                            result.FailedExtractions = invoiceCount - result.SuccessfullyExtracted;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error in comprehensive extraction");
+                        result.Errors.Add($"Extraction error: {ex.Message}");
+                    }
+                }
+
+                // ─── STEP 3: Post-processing ────────────────────────────────────
+                await (progressCallback?.Invoke(92, result.SuccessfullyExtracted, "Validating and deduplicating invoice numbers...") ?? Task.CompletedTask);
+
+                // Ensure unique invoice numbers
+                var invoiceNumbers = new HashSet<string>();
+                int counter = 1;
+                foreach (var inv in result.Invoices)
+                {
+                    var num = inv.Invoice.InvoiceNumber;
+                    if (string.IsNullOrEmpty(num) || num == "NEEDS-REVIEW" || invoiceNumbers.Contains(num))
+                    {
+                        inv.Invoice.InvoiceNumber = $"MULTI-{counter:D4}";
+                    }
+                    invoiceNumbers.Add(inv.Invoice.InvoiceNumber);
+                    counter++;
+                }
+
+                // Set page ranges for any invoices that don't have them
+                if (result.Invoices.Any(i => i.StartPage == 0))
+                {
+                    // Auto-assign sequential pages to unassigned invoices
+                    int nextPage = 1;
+                    foreach (var inv in result.Invoices.Where(i => i.StartPage == 0))
+                    {
+                        // Skip past already-assigned pages
+                        while (result.Invoices.Any(i => i.StartPage > 0 && nextPage >= i.StartPage && nextPage <= i.EndPage))
+                            nextPage++;
+                        inv.StartPage = nextPage;
+                        inv.EndPage = nextPage;
+                        nextPage++;
+                    }
+                }
+
+                result.ProcessingTime = DateTime.UtcNow - startTime;
+                result.ProcessingSummary = $"Extracted {result.SuccessfullyExtracted} of {result.TotalInvoicesDetected} invoices " +
+                                          $"from {result.TotalPages} pages in {result.ProcessingTime.TotalSeconds:F1}s";
+
+                await (progressCallback?.Invoke(100, result.SuccessfullyExtracted, result.ProcessingSummary) ?? Task.CompletedTask);
+
+                _logger.LogInformation(result.ProcessingSummary);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in ExtractInvoicesWithPageDetectionAsync");
+                result.Errors.Add($"Processing error: {ex.Message}");
+                result.ProcessingTime = DateTime.UtcNow - startTime;
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Detect the number of invoices and their page boundaries in a multi-page PDF.
+        /// </summary>
+        private async Task<(int totalPages, int invoiceCount, List<string> pageRanges)> DetectInvoiceBoundariesAsync(
+            string base64File, string mimeType, string apiKey)
+        {
+            var prompt = @"You are an expert document analyst. Analyze this PDF document carefully and determine:
+
+1. The TOTAL number of pages in this document
+2. How many SEPARATE INVOICES are contained in this document
+3. The EXACT page ranges for each individual invoice
+
+CRITICAL DETECTION RULES:
+- A new invoice starts when you see: new invoice header, new invoice number, new company letterhead, or a clear page break with a new billing document
+- Some invoices span multiple pages (e.g., an invoice with many line items)
+- Do NOT count continuation pages as separate invoices
+- Look for: 'Invoice', 'Tax Invoice', 'Bill', 'Statement' headers
+- Look for: new invoice numbers, new dates, new totals
+- Look for: 'Page X of Y' indicators that help determine invoice boundaries
+- Count CAREFULLY — accuracy is critical
+
+Return ONLY a valid JSON object with this EXACT structure (no markdown):
+{
+  ""totalPages"": number,
+  ""totalInvoices"": number,
+  ""invoicePageRanges"": [""1"", ""2-3"", ""4"", ""5-6""],
+  ""confidence"": ""high/medium/low"",
+  ""detectionNotes"": ""brief notes about what you found""
+}
+
+Example: A 10-page document with 5 invoices where invoice 2 spans pages 3-4:
+{""totalPages"": 10, ""totalInvoices"": 5, ""invoicePageRanges"": [""1-2"", ""3-4"", ""5-6"", ""7-8"", ""9-10""], ""confidence"": ""high"", ""detectionNotes"": ""Each invoice is 2 pages""}
+
+Return ONLY the JSON object, nothing else.";
+
+            try
+            {
+                var response = await CallGeminiVisionApiAsync(prompt, base64File, mimeType, apiKey);
+
+                if (string.IsNullOrEmpty(response))
+                {
+                    _logger.LogWarning("Empty response from invoice boundary detection");
+                    return (1, 1, new List<string>());
+                }
+
+                var jsonStart = response.IndexOf('{');
+                var jsonEnd = response.LastIndexOf('}');
+                if (jsonStart >= 0 && jsonEnd > jsonStart)
+                {
+                    var jsonResponse = response.Substring(jsonStart, jsonEnd - jsonStart + 1);
+                    using var doc = JsonDocument.Parse(jsonResponse);
+                    var root = doc.RootElement;
+
+                    var totalPages = 1;
+                    if (root.TryGetProperty("totalPages", out var tpProp))
+                    {
+                        if (tpProp.ValueKind == JsonValueKind.Number)
+                            totalPages = tpProp.GetInt32();
+                        else if (tpProp.ValueKind == JsonValueKind.String && int.TryParse(tpProp.GetString(), out var tp))
+                            totalPages = tp;
+                    }
+
+                    var count = 1;
+                    if (root.TryGetProperty("totalInvoices", out var countProp))
+                    {
+                        if (countProp.ValueKind == JsonValueKind.Number)
+                            count = countProp.GetInt32();
+                        else if (countProp.ValueKind == JsonValueKind.String && int.TryParse(countProp.GetString(), out var parsed))
+                            count = parsed;
+                    }
+
+                    var pageRanges = new List<string>();
+                    if (root.TryGetProperty("invoicePageRanges", out var rangesProp) && rangesProp.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var range in rangesProp.EnumerateArray())
+                        {
+                            if (range.ValueKind == JsonValueKind.String)
+                                pageRanges.Add(range.GetString() ?? "");
+                            else if (range.ValueKind == JsonValueKind.Number)
+                                pageRanges.Add(range.GetInt32().ToString());
+                        }
+                    }
+
+                    var confidence = GetJsonString(root, "confidence") ?? "medium";
+                    var notes = GetJsonString(root, "detectionNotes") ?? "";
+                    _logger.LogInformation($"Invoice boundary detection: {count} invoices across {totalPages} pages, confidence: {confidence}, notes: {notes}");
+
+                    return (totalPages, count, pageRanges);
+                }
+
+                return (1, 1, new List<string>());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error detecting invoice boundaries");
+                return (1, 1, new List<string>());
+            }
+        }
+
+        /// <summary>
+        /// Extract invoices from specific page ranges within the PDF.
+        /// </summary>
+        private async Task<List<Invoice>> ExtractInvoicesForPageRangesAsync(
+            string base64File, string mimeType, string apiKey,
+            List<string> pageRanges, int totalInvoices)
+        {
+            var rangesDescription = string.Join(", ", pageRanges.Select((r, i) => $"Invoice {i + 1}: pages {r}"));
+
+            var prompt = $@"This PDF document contains {totalInvoices} separate invoices.
+I need you to extract the invoices found on these specific pages:
+{rangesDescription}
+
+For EACH invoice at the specified pages, extract ALL details.
+Return a JSON array where each element has this structure:
+{{
+  ""pageRange"": ""string (the page range this invoice was found on)"",
+  ""invoiceNumber"": ""string"",
+  ""invoiceDate"": ""YYYY-MM-DD"",
+  ""dueDate"": ""YYYY-MM-DD or null"",
+  ""supplierName"": ""string"",
+  ""supplierAddress"": ""string or null"",
+  ""supplierPhone"": ""string or null"",
+  ""supplierEmail"": ""string or null"",
+  ""customerName"": ""string or null"",
+  ""customerAddress"": ""string or null"",
+  ""totalAmount"": number,
+  ""subtotal"": number or null,
+  ""taxAmount"": number or 0,
+  ""items"": [
+    {{""description"": ""string"", ""quantity"": number, ""unitPrice"": number}}
+  ],
+  ""notes"": ""string or null"",
+  ""confidence"": ""high/medium/low""
+}}
+
+RULES:
+1. Extract ONLY from the specified page ranges
+2. Include ALL line items for each invoice
+3. Convert dates to YYYY-MM-DD format
+4. Invoice numbers must NOT be document type labels (e.g., ""TAX INVOICE"" is not an invoice number)
+5. Return ONLY the JSON array, no markdown, no extra text";
+
+            try
+            {
+                var response = await CallGeminiVisionApiAsync(prompt, base64File, mimeType, apiKey, 16384);
+
+                if (string.IsNullOrEmpty(response))
+                {
+                    _logger.LogWarning("Empty response from page-range extraction");
+                    return new List<Invoice>();
+                }
+
+                return ParseMultiInvoiceResponse(response, 1);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error extracting invoices for page ranges");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Extract all invoices from a PDF with page range metadata in a single call.
+        /// Used when we know the invoice count but not exact page boundaries.
+        /// </summary>
+        private async Task<List<PageAwareInvoice>> ExtractAllInvoicesWithPagesAsync(
+            string base64File, string mimeType, string apiKey,
+            int totalPages, int expectedInvoiceCount)
+        {
+            var prompt = $@"This PDF document has {totalPages} pages and contains approximately {expectedInvoiceCount} separate invoices.
+
+CRITICAL: Extract EVERY invoice from ALL pages. Do NOT stop early.
+
+For EACH invoice found, you MUST include:
+1. The page range where this invoice was found (e.g., ""1"", ""2-3"", ""4-5"")
+2. All standard invoice details
+
+Return a JSON array where each element has this EXACT structure:
+{{
+  ""startPage"": number (first page of this invoice, 1-based),
+  ""endPage"": number (last page of this invoice, 1-based),
+  ""invoiceNumber"": ""string"",
+  ""invoiceDate"": ""YYYY-MM-DD"",
+  ""dueDate"": ""YYYY-MM-DD or null"",
+  ""supplierName"": ""string"",
+  ""supplierAddress"": ""string or null"",
+  ""supplierPhone"": ""string or null"",
+  ""supplierEmail"": ""string or null"",
+  ""customerName"": ""string or null"",
+  ""customerAddress"": ""string or null"",
+  ""totalAmount"": number,
+  ""subtotal"": number or null,
+  ""taxAmount"": number or 0,
+  ""items"": [
+    {{""description"": ""string"", ""quantity"": number, ""unitPrice"": number}}
+  ],
+  ""notes"": ""string or null"",
+  ""confidence"": ""high/medium/low""
+}}
+
+RULES:
+1. Extract ALL invoices across ALL {totalPages} pages
+2. Include page numbers (startPage / endPage) for each invoice — this is REQUIRED
+3. If an invoice spans multiple pages, set endPage > startPage
+4. Convert all dates to YYYY-MM-DD
+5. Return ONLY the JSON array, no markdown";
+
+            try
+            {
+                var response = await CallGeminiVisionApiAsync(prompt, base64File, mimeType, apiKey, 16384);
+
+                if (string.IsNullOrEmpty(response))
+                    return new List<PageAwareInvoice>();
+
+                return ParsePageAwareInvoiceResponse(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in ExtractAllInvoicesWithPagesAsync");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Parse a JSON response containing invoices with page range metadata.
+        /// </summary>
+        private List<PageAwareInvoice> ParsePageAwareInvoiceResponse(string response)
+        {
+            var invoices = new List<PageAwareInvoice>();
+
+            try
+            {
+                var jsonStart = response.IndexOf('[');
+                var jsonEnd = response.LastIndexOf(']');
+
+                if (jsonStart < 0 || jsonEnd <= jsonStart)
+                {
+                    jsonStart = response.IndexOf('{');
+                    jsonEnd = response.LastIndexOf('}');
+                    if (jsonStart >= 0 && jsonEnd > jsonStart)
+                    {
+                        response = "[" + response.Substring(jsonStart, jsonEnd - jsonStart + 1) + "]";
+                        jsonStart = 0;
+                        jsonEnd = response.Length - 1;
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Could not find JSON in page-aware response");
+                        return invoices;
+                    }
+                }
+
+                var jsonResponse = response.Substring(jsonStart, jsonEnd - jsonStart + 1);
+                using var doc = JsonDocument.Parse(jsonResponse);
+
+                int index = 1;
+                foreach (var element in doc.RootElement.EnumerateArray())
+                {
+                    try
+                    {
+                        var startPage = (int)(GetJsonDecimal(element, "startPage") ?? index);
+                        var endPage = (int)(GetJsonDecimal(element, "endPage") ?? startPage);
+
+                        var invoice = new Invoice
+                        {
+                            InvoiceNumber = GetJsonString(element, "invoiceNumber") ?? $"MULTI-{index:D4}",
+                            InvoiceDate = ParseJsonDate(element, "invoiceDate") ?? DateTime.Now,
+                            DueDate = ParseJsonDate(element, "dueDate") ?? DateTime.Now.AddDays(30),
+                            CustomerName = GetJsonString(element, "customerName") ?? GetJsonString(element, "supplierName") ?? "Unknown",
+                            CustomerAddress = GetJsonString(element, "customerAddress") ?? GetJsonString(element, "supplierAddress"),
+                            CustomerPhone = GetJsonString(element, "customerPhone") ?? GetJsonString(element, "supplierPhone"),
+                            CustomerEmail = GetJsonString(element, "customerEmail") ?? GetJsonString(element, "supplierEmail"),
+                            TotalAmount = GetJsonDecimal(element, "totalAmount") ?? 0,
+                            SubTotal = GetJsonDecimal(element, "subtotal") ?? GetJsonDecimal(element, "totalAmount") ?? 0,
+                            GSTAmount = GetJsonDecimal(element, "taxAmount") ?? 0,
+                            Notes = GetJsonString(element, "notes") ?? $"Pages {startPage}-{endPage}",
+                            Status = "Draft",
+                            CreatedDate = DateTime.Now,
+                            InvoiceType = "Payable"
+                        };
+
+                        var supplierName = GetJsonString(element, "supplierName");
+                        if (!string.IsNullOrEmpty(supplierName))
+                        {
+                            invoice.Supplier = new Supplier
+                            {
+                                SupplierName = supplierName,
+                                Address = GetJsonString(element, "supplierAddress"),
+                                Phone = GetJsonString(element, "supplierPhone"),
+                                Email = GetJsonString(element, "supplierEmail")
+                            };
+                        }
+
+                        // Extract line items
+                        if (element.TryGetProperty("items", out var itemsArray) && itemsArray.ValueKind == JsonValueKind.Array)
+                        {
+                            invoice.InvoiceItems = new List<InvoiceItem>();
+                            foreach (var item in itemsArray.EnumerateArray())
+                            {
+                                invoice.InvoiceItems.Add(new InvoiceItem
+                                {
+                                    Description = GetJsonString(item, "description") ?? "Item",
+                                    Quantity = (int)(GetJsonDecimal(item, "quantity") ?? 1),
+                                    UnitPrice = GetJsonDecimal(item, "unitPrice") ?? GetJsonDecimal(item, "amount") ?? 0
+                                });
+                            }
+                        }
+
+                        if (invoice.InvoiceItems != null && invoice.InvoiceItems.Count > 0)
+                        {
+                            invoice.SubTotal = invoice.InvoiceItems.Sum(i => i.TotalPrice);
+                            if (invoice.TotalAmount == 0)
+                                invoice.TotalAmount = invoice.SubTotal + invoice.GSTAmount;
+                        }
+
+                        var confidence = GetJsonString(element, "confidence") ?? "Medium";
+
+                        invoices.Add(new PageAwareInvoice
+                        {
+                            Invoice = invoice,
+                            StartPage = startPage,
+                            EndPage = endPage,
+                            Confidence = confidence
+                        });
+                        index++;
+                    }
+                    catch (Exception itemEx)
+                    {
+                        _logger.LogWarning(itemEx, $"Error parsing page-aware invoice at index {index}");
+                        index++;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error parsing page-aware invoice response");
+            }
+
+            return invoices;
+        }
+
+        /// <summary>
+        /// Parse a page range string like "1", "2-3", "4-5" into start/end page numbers
+        /// </summary>
+        private (int start, int end) ParsePageRange(string range)
+        {
+            if (string.IsNullOrEmpty(range))
+                return (1, 1);
+
+            range = range.Trim();
+            if (range.Contains('-'))
+            {
+                var parts = range.Split('-');
+                if (parts.Length == 2 &&
+                    int.TryParse(parts[0].Trim(), out var start) &&
+                    int.TryParse(parts[1].Trim(), out var end))
+                {
+                    return (start, end);
+                }
+            }
+
+            if (int.TryParse(range, out var single))
+                return (single, single);
+
+            return (1, 1);
         }
 
         /// <summary>
@@ -1786,6 +2576,8 @@ Return the JSON array now:";
             public string? CustomerEmail { get; set; }
             public string? CustomerPhone { get; set; }
             public decimal TotalAmount { get; set; }
+            public decimal SubTotal { get; set; }
+            public decimal GSTAmount { get; set; }
             public string? Notes { get; set; }
             public List<InvoiceItemDto>? Items { get; set; }
             public string? Confidence { get; set; }

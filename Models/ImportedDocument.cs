@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace InvoiceManagement.Models
 {
@@ -20,6 +21,7 @@ namespace InvoiceManagement.Models
         public long FileSize { get; set; }
 
         // Store file content as Base64 or binary
+        [JsonIgnore]
         public byte[] FileContent { get; set; } = Array.Empty<byte>();
 
         [StringLength(50)]

@@ -2318,20 +2318,55 @@ namespace InvoiceManagement.Controllers
         // GET: AiImport/Documents
         public async Task<IActionResult> Documents()
         {
-            var documents = await _context.ImportedDocuments
-                .Include(d => d.Invoice)
-                .Include(d => d.Payment)
-                .OrderByDescending(d => d.UploadDate)
-                .Take(100)
-                .ToListAsync();
+            try
+            {
+                // Project all fields EXCEPT FileContent to avoid OutOfMemoryException
+                // FileContent contains the actual binary file data and is not needed for the listing page
+                var documents = await _context.ImportedDocuments
+                    .Include(d => d.Invoice)
+                    .Include(d => d.Payment)
+                    .OrderByDescending(d => d.UploadDate)
+                    .Take(100)
+                    .Select(d => new ImportedDocument
+                    {
+                        Id = d.Id,
+                        FileName = d.FileName,
+                        OriginalFileName = d.OriginalFileName,
+                        ContentType = d.ContentType,
+                        FileSize = d.FileSize,
+                        FileContent = Array.Empty<byte>(), // Exclude binary content
+                        DocumentType = d.DocumentType,
+                        InvoiceId = d.InvoiceId,
+                        PaymentId = d.PaymentId,
+                        ExtractedText = d.ExtractedText,
+                        ExtractedAccountNumber = d.ExtractedAccountNumber,
+                        ExtractedBankName = d.ExtractedBankName,
+                        ExtractedSupplierName = d.ExtractedSupplierName,
+                        ExtractedCustomerName = d.ExtractedCustomerName,
+                        ProcessingStatus = d.ProcessingStatus,
+                        ProcessingNotes = d.ProcessingNotes,
+                        UploadDate = d.UploadDate,
+                        ProcessedDate = d.ProcessedDate,
+                        UploadedBy = d.UploadedBy,
+                        Invoice = d.Invoice,
+                        Payment = d.Payment
+                    })
+                    .ToListAsync();
 
-            // Load suppliers for dropdown in edit modal
-            ViewBag.Suppliers = await _context.Suppliers
-                .Where(s => s.Status == "Active")
-                .OrderBy(s => s.SupplierName)
-                .ToListAsync();
+                // Load suppliers for dropdown in edit modal
+                ViewBag.Suppliers = await _context.Suppliers
+                    .Where(s => s.Status == "Active")
+                    .OrderBy(s => s.SupplierName)
+                    .ToListAsync();
 
-            return View(documents);
+                return View(documents);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading Documents page");
+                TempData["Error"] = "Failed to load documents: " + ex.Message;
+                return View(new List<ImportedDocument>());
+            }
         }
 
         // GET: AiImport/DownloadDocument/5
@@ -2595,109 +2630,822 @@ namespace InvoiceManagement.Controllers
                             d.ProcessingStatus == "Uploaded" ||
                             string.IsNullOrEmpty(d.ExtractedSupplierName) ||
                             d.ExtractedSupplierName == "Unknown"))
+                    .Select(d => new { d.Id, d.OriginalFileName, d.ContentType })
                     .ToListAsync();
 
                 _logger.LogInformation("ExtractAllDocumentsAjax: Found {Count} unprocessed documents", unprocessedDocs.Count);
 
                 int processedCount = 0;
                 int failedCount = 0;
+                int childDocsCreated = 0;
 
-                foreach (var document in unprocessedDocs)
+                foreach (var docInfo in unprocessedDocs)
                 {
                     try
                     {
-                        // Get the document content
-                        var content = await _documentService.GetDocumentContentAsync(document.Id);
+                        // Check if this is a PDF — PDFs may contain multiple invoices
+                        var extension = Path.GetExtension(docInfo.OriginalFileName ?? "").ToLowerInvariant();
+                        bool isPdf = extension == ".pdf";
+
+                        // Get the document content (loads only the binary content)
+                        var content = await _documentService.GetDocumentContentAsync(docInfo.Id);
                         if (content == null || content.Length == 0)
                         {
-                            _logger.LogWarning("Document {Id} has no content", document.Id);
+                            _logger.LogWarning("Document {Id} has no content", docInfo.Id);
                             failedCount++;
                             continue;
                         }
 
-                        // Create a memory stream for the AI service
-                        using var stream = new MemoryStream(content);
-
-                        // Process with AI
-                        var extractedInvoice = await _aiService.ExtractInvoiceFromFileAsync(stream, document.OriginalFileName ?? "document");
-
-                        if (extractedInvoice == null)
+                        if (isPdf)
                         {
-                            document.ProcessingStatus = "Error";
-                            document.ProcessingNotes = "AI could not extract invoice data.";
-                            failedCount++;
-                            continue;
-                        }
-
-                        // Extract supplier name - it's in CustomerName for supplier invoices (AI prompt stores supplier info there)
-                        // Also check Supplier object which ParseInvoiceFromJson now populates
-                        var supplierName = extractedInvoice.Supplier?.SupplierName
-                            ?? extractedInvoice.CustomerName
-                            ?? "";
-
-                        // Build the extracted data JSON
-                        var extractedJson = System.Text.Json.JsonSerializer.Serialize(new
-                        {
-                            InvoiceNumber = extractedInvoice.InvoiceNumber ?? "",
-                            InvoiceDate = extractedInvoice.InvoiceDate,
-                            DueDate = extractedInvoice.DueDate,
-                            CustomerName = extractedInvoice.CustomerName ?? "",
-                            SubTotal = extractedInvoice.SubTotal,
-                            GSTAmount = extractedInvoice.GSTAmount,
-                            TotalAmount = extractedInvoice.TotalAmount,
-                            Notes = extractedInvoice.Notes ?? "",
-                            InvoiceType = extractedInvoice.InvoiceType ?? "Payable",
-                            ExtractedSupplierName = supplierName,
-                            ExtractedCustomerName = extractedInvoice.CustomerName ?? "",
-                            Items = extractedInvoice.InvoiceItems?.Select(i => new
+                            // Use multi-invoice extraction for PDFs
+                            var childCount = await ProcessMultiInvoicePdfAsync(docInfo.Id, docInfo.OriginalFileName ?? "document.pdf", content);
+                            if (childCount > 0)
                             {
-                                Description = i.Description ?? "",
-                                Quantity = i.Quantity,
-                                UnitPrice = i.UnitPrice
-                            }).ToList()
-                        });
-
-                        // Update document with extracted data
-                        document.ProcessingStatus = "Extracted";
-                        document.ProcessedDate = DateTime.Now;
-                        document.ProcessingNotes = extractedJson;
-                        document.ExtractedSupplierName = supplierName;
-                        document.ExtractedCustomerName = extractedInvoice.CustomerName;
-
-                        // Rename file with invoice number if available
-                        if (!string.IsNullOrWhiteSpace(extractedInvoice.InvoiceNumber))
-                        {
-                            var extension = Path.GetExtension(document.OriginalFileName);
-                            var cleanInvoiceNumber = string.Join("", extractedInvoice.InvoiceNumber.Where(c => !Path.GetInvalidFileNameChars().Contains(c)));
-                            document.OriginalFileName = $"InvNo_{cleanInvoiceNumber}{extension}";
+                                childDocsCreated += childCount;
+                                processedCount++;
+                                _logger.LogInformation("Document {Id} (PDF) split into {Count} separate invoice documents", docInfo.Id, childCount);
+                            }
+                            else
+                            {
+                                // Multi-invoice extraction returned 0 — fall back to single extraction
+                                _logger.LogWarning("Multi-invoice extraction returned 0 for PDF {Id}, falling back to single extraction", docInfo.Id);
+                                var singleResult = await ProcessSingleDocumentExtractionAsync(docInfo.Id, docInfo.OriginalFileName ?? "document", content);
+                                if (singleResult) processedCount++; else failedCount++;
+                            }
                         }
-
-                        processedCount++;
-                        _logger.LogInformation("Document {Id} processed successfully: {InvoiceNumber}", document.Id, extractedInvoice.InvoiceNumber);
+                        else
+                        {
+                            // Non-PDF: use existing single-invoice extraction
+                            var singleResult = await ProcessSingleDocumentExtractionAsync(docInfo.Id, docInfo.OriginalFileName ?? "document", content);
+                            if (singleResult) processedCount++; else failedCount++;
+                        }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error processing document {Id}", document.Id);
-                        document.ProcessingStatus = "Error";
-                        document.ProcessingNotes = $"Error: {ex.Message}";
+                        _logger.LogError(ex, "Error processing document {Id}", docInfo.Id);
+                        try
+                        {
+                            var errorDoc = await _context.ImportedDocuments.FindAsync(docInfo.Id);
+                            if (errorDoc != null)
+                            {
+                                errorDoc.ProcessingStatus = "Error";
+                                errorDoc.ProcessingNotes = $"Error: {ex.Message}";
+                                await _context.SaveChangesAsync();
+                            }
+                        }
+                        catch { /* ignore save errors */ }
                         failedCount++;
                     }
                 }
 
-                await _context.SaveChangesAsync();
+                var message = $"Processed {processedCount} document(s).";
+                if (childDocsCreated > 0)
+                    message += $" Created {childDocsCreated} individual invoice records from multi-page PDFs.";
+                if (failedCount > 0)
+                    message += $" {failedCount} failed.";
 
                 return Json(new
                 {
                     success = true,
-                    message = $"Processed {processedCount} document(s). {(failedCount > 0 ? $"{failedCount} failed." : "")}",
+                    message,
                     processedCount,
-                    failedCount
+                    failedCount,
+                    childDocsCreated
                 });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in ExtractAllDocumentsAjax");
                 return Json(new { success = false, message = $"Error: {ex.Message}" });
+            }
+        }
+
+        /// <summary>
+        /// Processes a single (non-PDF) document with AI extraction and stores the result.
+        /// Returns true if extraction succeeded.
+        /// </summary>
+        private async Task<bool> ProcessSingleDocumentExtractionAsync(int documentId, string originalFileName, byte[] content)
+        {
+            using var stream = new MemoryStream(content);
+            var extractedInvoice = await _aiService.ExtractInvoiceFromFileAsync(stream, originalFileName);
+
+            var document = await _context.ImportedDocuments.FindAsync(documentId);
+            if (document == null) return false;
+
+            if (extractedInvoice == null)
+            {
+                document.ProcessingStatus = "Error";
+                document.ProcessingNotes = "AI could not extract invoice data.";
+                await _context.SaveChangesAsync();
+                return false;
+            }
+
+            var supplierName = extractedInvoice.Supplier?.SupplierName
+                ?? extractedInvoice.CustomerName
+                ?? "";
+
+            var extractedJson = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                InvoiceNumber = extractedInvoice.InvoiceNumber ?? "",
+                InvoiceDate = extractedInvoice.InvoiceDate,
+                DueDate = extractedInvoice.DueDate,
+                CustomerName = extractedInvoice.CustomerName ?? "",
+                SubTotal = extractedInvoice.SubTotal,
+                GSTAmount = extractedInvoice.GSTAmount,
+                TotalAmount = extractedInvoice.TotalAmount,
+                Notes = extractedInvoice.Notes ?? "",
+                InvoiceType = extractedInvoice.InvoiceType ?? "Payable",
+                ExtractedSupplierName = supplierName,
+                ExtractedCustomerName = extractedInvoice.CustomerName ?? "",
+                Items = extractedInvoice.InvoiceItems?.Select(i => new
+                {
+                    Description = i.Description ?? "",
+                    Quantity = i.Quantity,
+                    UnitPrice = i.UnitPrice
+                }).ToList()
+            });
+
+            document.ProcessingStatus = "Extracted";
+            document.ProcessedDate = DateTime.Now;
+            document.ProcessingNotes = extractedJson;
+            document.ExtractedSupplierName = supplierName;
+            document.ExtractedCustomerName = extractedInvoice.CustomerName;
+
+            if (!string.IsNullOrWhiteSpace(extractedInvoice.InvoiceNumber))
+            {
+                var ext = Path.GetExtension(document.OriginalFileName);
+                var cleanInvoiceNumber = string.Join("", extractedInvoice.InvoiceNumber.Where(c => !Path.GetInvalidFileNameChars().Contains(c)));
+                document.OriginalFileName = $"InvNo_{cleanInvoiceNumber}{ext}";
+            }
+
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("Document {Id} processed successfully: {InvoiceNumber}", documentId, extractedInvoice.InvoiceNumber);
+            return true;
+        }
+
+        /// <summary>
+        /// Processes a multi-page PDF by extracting all invoices and creating a separate 
+        /// ImportedDocument record for each invoice found. Each child document goes through
+        /// the existing single-invoice review flow (ReviewInvoiceById → ReviewInvoice → SaveInvoice).
+        /// The parent PDF document is marked as "Processed" with metadata about child documents.
+        /// Returns the number of child documents created.
+        /// </summary>
+        private async Task<int> ProcessMultiInvoicePdfAsync(int parentDocumentId, string originalFileName, byte[] content)
+        {
+            _logger.LogInformation("Processing multi-invoice PDF: Document {Id}, File: {FileName}", parentDocumentId, originalFileName);
+
+            // Use multi-invoice extraction
+            using var stream = new MemoryStream(content);
+            var result = await _aiService.ExtractMultipleInvoicesFromPdfAsync(stream, originalFileName);
+
+            if (result.Invoices == null || result.Invoices.Count == 0)
+            {
+                _logger.LogWarning("Multi-invoice extraction found 0 invoices in document {Id}", parentDocumentId);
+                return 0;
+            }
+
+            // If only 1 invoice found, treat it like a single document (no splitting needed)
+            if (result.Invoices.Count == 1)
+            {
+                _logger.LogInformation("PDF {Id} contains only 1 invoice, processing as single document", parentDocumentId);
+                var singleInvoice = result.Invoices[0];
+                var supplierName = singleInvoice.Supplier?.SupplierName ?? singleInvoice.CustomerName ?? "";
+
+                var extractedJson = BuildExtractedInvoiceJson(singleInvoice, supplierName);
+
+                var document = await _context.ImportedDocuments.FindAsync(parentDocumentId);
+                if (document == null) return 0;
+
+                document.ProcessingStatus = "Extracted";
+                document.ProcessedDate = DateTime.Now;
+                document.ProcessingNotes = extractedJson;
+                document.ExtractedSupplierName = supplierName;
+                document.ExtractedCustomerName = singleInvoice.CustomerName;
+
+                if (!string.IsNullOrWhiteSpace(singleInvoice.InvoiceNumber))
+                {
+                    var ext = Path.GetExtension(document.OriginalFileName);
+                    var cleanNum = string.Join("", singleInvoice.InvoiceNumber.Where(c => !Path.GetInvalidFileNameChars().Contains(c)));
+                    document.OriginalFileName = $"InvNo_{cleanNum}{ext}";
+                }
+
+                await _context.SaveChangesAsync();
+                return 1;
+            }
+
+            // Multiple invoices found — create a child ImportedDocument for each
+            _logger.LogInformation("PDF {Id} contains {Count} invoices — creating separate document records", parentDocumentId, result.Invoices.Count);
+
+            int childCount = 0;
+            var parentDoc = await _context.ImportedDocuments.FindAsync(parentDocumentId);
+            if (parentDoc == null) return 0;
+
+            foreach (var invoice in result.Invoices)
+            {
+                try
+                {
+                    var supplierName = invoice.Supplier?.SupplierName ?? invoice.CustomerName ?? "Unknown";
+                    var invoiceNumber = invoice.InvoiceNumber ?? $"INV-{childCount + 1:D4}";
+                    var cleanInvoiceNumber = string.Join("", invoiceNumber.Where(c => !Path.GetInvalidFileNameChars().Contains(c)));
+
+                    var extractedJson = BuildExtractedInvoiceJson(invoice, supplierName);
+
+                    // Try to match supplier
+                    Supplier? matchedSupplier = null;
+                    if (!string.IsNullOrEmpty(supplierName))
+                    {
+                        matchedSupplier = await _entityLookupService.FindSupplierByNameAsync(supplierName);
+                    }
+
+                    // Try to match customer
+                    Customer? matchedCustomer = null;
+                    if (!string.IsNullOrEmpty(invoice.CustomerName))
+                    {
+                        matchedCustomer = await _entityLookupService.FindCustomerByNameAsync(invoice.CustomerName);
+                    }
+
+                    // Add supplier/customer match info to JSON
+                    var fullJson = BuildExtractedInvoiceJsonWithMatches(invoice, supplierName, matchedSupplier, matchedCustomer);
+
+                    // Create child ImportedDocument with the same PDF content
+                    var childDoc = new ImportedDocument
+                    {
+                        FileName = $"{Guid.NewGuid()}_InvNo_{cleanInvoiceNumber}.pdf",
+                        OriginalFileName = $"InvNo_{cleanInvoiceNumber}.pdf",
+                        ContentType = "application/pdf",
+                        FileSize = content.Length,
+                        FileContent = content, // Same PDF — the parent document's bytes
+                        DocumentType = "Invoice",
+                        ProcessingStatus = "Extracted",
+                        ProcessingNotes = fullJson,
+                        ExtractedSupplierName = supplierName,
+                        ExtractedCustomerName = invoice.CustomerName,
+                        UploadDate = DateTime.Now,
+                        ProcessedDate = DateTime.Now,
+                        UploadedBy = parentDoc.UploadedBy
+                    };
+
+                    _context.ImportedDocuments.Add(childDoc);
+                    await _context.SaveChangesAsync();
+                    childCount++;
+
+                    _logger.LogInformation("Created child document {ChildId} for invoice {InvoiceNumber} from parent PDF {ParentId}",
+                        childDoc.Id, invoiceNumber, parentDocumentId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error creating child document for invoice {InvoiceNumber} from parent PDF {ParentId}",
+                        invoice.InvoiceNumber, parentDocumentId);
+                }
+            }
+
+            // Mark the parent document as processed
+            parentDoc.ProcessingStatus = "Processed";
+            parentDoc.ProcessedDate = DateTime.Now;
+            parentDoc.ProcessingNotes = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                MultiInvoicePdf = true,
+                TotalInvoicesExtracted = childCount,
+                TotalInvoicesDetected = result.TotalInvoicesDetected,
+                ProcessingSummary = result.ProcessingSummary,
+                ExtractedAt = DateTime.Now
+            });
+            parentDoc.ExtractedSupplierName = result.Invoices.FirstOrDefault()?.Supplier?.SupplierName
+                ?? result.Invoices.FirstOrDefault()?.CustomerName
+                ?? "Multiple Suppliers";
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Multi-invoice PDF {Id}: Created {Count} child documents", parentDocumentId, childCount);
+            return childCount;
+        }
+
+        /// <summary>
+        /// Builds extracted invoice JSON for storage in ProcessingNotes (without supplier/customer matching).
+        /// </summary>
+        private string BuildExtractedInvoiceJson(Invoice invoice, string supplierName)
+        {
+            return System.Text.Json.JsonSerializer.Serialize(new
+            {
+                InvoiceNumber = invoice.InvoiceNumber ?? "",
+                InvoiceDate = invoice.InvoiceDate,
+                DueDate = invoice.DueDate,
+                CustomerName = invoice.CustomerName ?? "",
+                CustomerAddress = invoice.CustomerAddress ?? "",
+                CustomerEmail = invoice.CustomerEmail ?? "",
+                CustomerPhone = invoice.CustomerPhone ?? "",
+                SubTotal = invoice.SubTotal,
+                GSTAmount = invoice.GSTAmount,
+                TotalAmount = invoice.TotalAmount,
+                Notes = invoice.Notes ?? "",
+                InvoiceType = invoice.InvoiceType ?? "Payable",
+                ExtractedSupplierName = supplierName,
+                ExtractedCustomerName = invoice.CustomerName ?? "",
+                Items = invoice.InvoiceItems?.Select(i => new
+                {
+                    Description = i.Description ?? "",
+                    Quantity = i.Quantity,
+                    UnitPrice = i.UnitPrice
+                }).ToList()
+            });
+        }
+
+        /// <summary>
+        /// Builds extracted invoice JSON with supplier/customer match info for ReviewInvoiceById.
+        /// </summary>
+        private string BuildExtractedInvoiceJsonWithMatches(Invoice invoice, string supplierName, Supplier? matchedSupplier, Customer? matchedCustomer)
+        {
+            return System.Text.Json.JsonSerializer.Serialize(new
+            {
+                InvoiceNumber = invoice.InvoiceNumber ?? "",
+                InvoiceDate = invoice.InvoiceDate,
+                DueDate = invoice.DueDate,
+                CustomerName = invoice.CustomerName ?? "",
+                CustomerAddress = invoice.CustomerAddress ?? "",
+                CustomerEmail = invoice.CustomerEmail ?? "",
+                CustomerPhone = invoice.CustomerPhone ?? "",
+                SubTotal = invoice.SubTotal,
+                GSTAmount = invoice.GSTAmount,
+                TotalAmount = invoice.TotalAmount,
+                Notes = invoice.Notes ?? "",
+                InvoiceType = invoice.InvoiceType ?? "Payable",
+                ExtractedSupplierName = supplierName,
+                ExtractedCustomerName = invoice.CustomerName ?? "",
+                MatchedSupplierId = matchedSupplier?.Id,
+                MatchedSupplierName = matchedSupplier?.SupplierName,
+                MatchedCustomerId = matchedCustomer?.Id,
+                MatchedCustomerName = matchedCustomer?.CustomerName,
+                MatchConfidence = matchedSupplier != null || matchedCustomer != null ? "High" : "None",
+                Items = invoice.InvoiceItems?.Select(i => new
+                {
+                    Description = i.Description ?? "",
+                    Quantity = i.Quantity,
+                    UnitPrice = i.UnitPrice
+                }).ToList()
+            });
+        }
+
+        // ════════════════════════════════════════════════════════════════════
+        // MULTI-PAGE PDF IMPORT — Up to 100 pages, page-boundary detection
+        // ════════════════════════════════════════════════════════════════════
+
+        // GET: AiImport/MultiPagePdf
+        public async Task<IActionResult> MultiPagePdf()
+        {
+            ViewBag.Suppliers = await _context.Suppliers
+                .Where(s => s.Status == "Active")
+                .OrderBy(s => s.SupplierName)
+                .ToListAsync();
+
+            ViewBag.Customers = await _context.Customers
+                .Where(c => c.Status == "Active")
+                .OrderBy(c => c.CustomerName)
+                .ToListAsync();
+
+            return View();
+        }
+
+        // POST: AiImport/ProcessMultiPagePdfAjax — AJAX endpoint for multi-page PDF processing
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> ProcessMultiPagePdfAjax(IFormFile file)
+        {
+            try
+            {
+                if (file == null || file.Length == 0)
+                {
+                    return Json(new { success = false, message = "Please select a PDF file to upload." });
+                }
+
+                var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+                if (extension != ".pdf")
+                {
+                    return Json(new { success = false, message = "Multi-Page PDF Import only supports PDF files." });
+                }
+
+                if (file.Length > _maxFileSize)
+                {
+                    return Json(new { success = false, message = $"File too large. Maximum size is {_maxFileSize / 1024 / 1024}MB." });
+                }
+
+                _logger.LogInformation("ProcessMultiPagePdfAjax: Processing {FileName} ({Size} bytes)", file.FileName, file.Length);
+
+                // Store the master document
+                var userName = User.Identity?.Name ?? "System";
+                var document = await _documentService.StoreDocumentAsync(file, "Invoice", userName);
+
+                _logger.LogInformation("Stored master document {Id} for multi-page PDF: {FileName}", document.Id, file.FileName);
+
+                // Process with advanced page-boundary detection
+                using var stream = new MemoryStream(document.FileContent);
+                var result = await _aiService.ExtractInvoicesWithPageDetectionAsync(stream, file.FileName);
+
+                if (result.Errors.Any() && result.SuccessfullyExtracted == 0)
+                {
+                    document.ProcessingStatus = "Error";
+                    document.ProcessingNotes = string.Join("; ", result.Errors);
+                    await _context.SaveChangesAsync();
+
+                    return Json(new { success = false, message = $"Processing failed: {string.Join("; ", result.Errors)}" });
+                }
+
+                // Serialize the full extraction result into ProcessingNotes for the review page
+                var extractionData = new
+                {
+                    MultiPagePdf = true,
+                    TotalPages = result.TotalPages,
+                    TotalInvoicesDetected = result.TotalInvoicesDetected,
+                    SuccessfullyExtracted = result.SuccessfullyExtracted,
+                    FailedExtractions = result.FailedExtractions,
+                    ProcessingTimeSeconds = result.ProcessingTime.TotalSeconds,
+                    ProcessingSummary = result.ProcessingSummary,
+                    Warnings = result.Warnings,
+                    Errors = result.Errors,
+                    Invoices = result.Invoices.Select(inv => new
+                    {
+                        StartPage = inv.StartPage,
+                        EndPage = inv.EndPage,
+                        PageRange = inv.PageRange,
+                        Confidence = inv.Confidence,
+                        InvoiceNumber = inv.Invoice.InvoiceNumber ?? "",
+                        InvoiceDate = inv.Invoice.InvoiceDate,
+                        DueDate = inv.Invoice.DueDate,
+                        CustomerName = inv.Invoice.CustomerName ?? "",
+                        CustomerAddress = inv.Invoice.CustomerAddress ?? "",
+                        CustomerEmail = inv.Invoice.CustomerEmail ?? "",
+                        CustomerPhone = inv.Invoice.CustomerPhone ?? "",
+                        SubTotal = inv.Invoice.SubTotal,
+                        GSTAmount = inv.Invoice.GSTAmount,
+                        TotalAmount = inv.Invoice.TotalAmount,
+                        Notes = inv.Invoice.Notes ?? "",
+                        InvoiceType = inv.Invoice.InvoiceType ?? "Payable",
+                        SupplierName = inv.Invoice.Supplier?.SupplierName ?? "",
+                        SupplierAddress = inv.Invoice.Supplier?.Address ?? "",
+                        SupplierPhone = inv.Invoice.Supplier?.Phone ?? "",
+                        SupplierEmail = inv.Invoice.Supplier?.Email ?? "",
+                        Items = inv.Invoice.InvoiceItems?.Select(i => new
+                        {
+                            Description = i.Description ?? "",
+                            Quantity = i.Quantity,
+                            UnitPrice = i.UnitPrice
+                        }).ToList()
+                    }).ToList()
+                };
+
+                document.ProcessingStatus = "Extracted";
+                document.ProcessedDate = DateTime.Now;
+                document.ProcessingNotes = System.Text.Json.JsonSerializer.Serialize(extractionData);
+                await _context.SaveChangesAsync();
+
+                return Json(new
+                {
+                    success = true,
+                    message = result.ProcessingSummary,
+                    documentId = document.Id,
+                    redirectUrl = Url.Action("ReviewSplitInvoices", new { id = document.Id }),
+                    totalPages = result.TotalPages,
+                    totalInvoices = result.SuccessfullyExtracted
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in ProcessMultiPagePdfAjax");
+                return Json(new { success = false, message = $"Processing error: {ex.Message}" });
+            }
+        }
+
+        // GET: AiImport/ReviewSplitInvoices/5 — Review page for split invoices from multi-page PDF
+        public async Task<IActionResult> ReviewSplitInvoices(int id)
+        {
+            var document = await _context.ImportedDocuments.FindAsync(id);
+            if (document == null)
+            {
+                TempData["Error"] = "Document not found.";
+                return RedirectToAction(nameof(MultiPagePdf));
+            }
+
+            if (string.IsNullOrEmpty(document.ProcessingNotes))
+            {
+                TempData["Error"] = "No extracted data found. Please try processing the document again.";
+                return RedirectToAction(nameof(MultiPagePdf));
+            }
+
+            try
+            {
+                var extractedData = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(document.ProcessingNotes);
+
+                // Load suppliers and customers for matching
+                var suppliers = (await _entityLookupService.GetAllSuppliersAsync()).ToList();
+                var customers = (await _entityLookupService.GetAllCustomersAsync()).ToList();
+
+                var model = new MultiPagePdfViewModel
+                {
+                    MasterDocumentId = document.Id,
+                    OriginalFileName = document.OriginalFileName ?? "",
+                    TotalPages = extractedData.TryGetProperty("TotalPages", out var tp) ? tp.GetInt32() : 0,
+                    TotalInvoicesDetected = extractedData.TryGetProperty("TotalInvoicesDetected", out var tid) ? tid.GetInt32() : 0,
+                    SuccessfullyExtracted = extractedData.TryGetProperty("SuccessfullyExtracted", out var se) ? se.GetInt32() : 0,
+                    FailedExtractions = extractedData.TryGetProperty("FailedExtractions", out var fe) ? fe.GetInt32() : 0,
+                    ProcessingTimeSeconds = extractedData.TryGetProperty("ProcessingTimeSeconds", out var pts) ? pts.GetDouble() : 0,
+                    ProcessingSummary = extractedData.TryGetProperty("ProcessingSummary", out var ps) ? ps.GetString() ?? "" : "",
+                    AvailableSuppliers = suppliers,
+                    AvailableCustomers = customers
+                };
+
+                // Parse warnings
+                if (extractedData.TryGetProperty("Warnings", out var warnings) && warnings.ValueKind == System.Text.Json.JsonValueKind.Array)
+                {
+                    foreach (var w in warnings.EnumerateArray())
+                        model.Warnings.Add(w.GetString() ?? "");
+                }
+
+                // Parse errors
+                if (extractedData.TryGetProperty("Errors", out var errors) && errors.ValueKind == System.Text.Json.JsonValueKind.Array)
+                {
+                    foreach (var e in errors.EnumerateArray())
+                        model.Errors.Add(e.GetString() ?? "");
+                }
+
+                // Parse invoices
+                if (extractedData.TryGetProperty("Invoices", out var invoicesArray) &&
+                    invoicesArray.ValueKind == System.Text.Json.JsonValueKind.Array)
+                {
+                    int index = 1;
+                    foreach (var inv in invoicesArray.EnumerateArray())
+                    {
+                        try
+                        {
+                            // Parse line items
+                            var items = new List<AiImportInvoiceItemViewModel>();
+                            if (inv.TryGetProperty("Items", out var itemsElement) &&
+                                itemsElement.ValueKind == System.Text.Json.JsonValueKind.Array)
+                            {
+                                foreach (var item in itemsElement.EnumerateArray())
+                                {
+                                    items.Add(new AiImportInvoiceItemViewModel
+                                    {
+                                        Description = GetJsonStringValue(item, "Description") ?? "",
+                                        Quantity = GetJsonDecimalValue(item, "Quantity") ?? 0,
+                                        UnitPrice = GetJsonDecimalValue(item, "UnitPrice") ?? 0
+                                    });
+                                }
+                            }
+
+                            var supplierName = GetJsonStringValue(inv, "SupplierName") ?? "";
+                            var customerName = GetJsonStringValue(inv, "CustomerName") ?? "";
+
+                            // Try to match supplier
+                            Supplier? matchedSupplier = null;
+                            if (!string.IsNullOrEmpty(supplierName))
+                            {
+                                matchedSupplier = suppliers.FirstOrDefault(s =>
+                                    s.SupplierName.Contains(supplierName, StringComparison.OrdinalIgnoreCase) ||
+                                    supplierName.Contains(s.SupplierName, StringComparison.OrdinalIgnoreCase));
+                            }
+
+                            // Try to match customer
+                            Customer? matchedCustomer = null;
+                            if (!string.IsNullOrEmpty(customerName))
+                            {
+                                matchedCustomer = customers.FirstOrDefault(c =>
+                                    c.CustomerName.Contains(customerName, StringComparison.OrdinalIgnoreCase) ||
+                                    customerName.Contains(c.CustomerName, StringComparison.OrdinalIgnoreCase));
+                            }
+
+                            model.SplitInvoices.Add(new SplitInvoiceEntry
+                            {
+                                Index = index,
+                                Selected = true,
+                                PageRange = GetJsonStringValue(inv, "PageRange") ?? $"{index}",
+                                StartPage = (int)(GetJsonDecimalValue(inv, "StartPage") ?? index),
+                                EndPage = (int)(GetJsonDecimalValue(inv, "EndPage") ?? index),
+                                Confidence = GetJsonStringValue(inv, "Confidence") ?? "Medium",
+                                InvoiceNumber = GetJsonStringValue(inv, "InvoiceNumber") ?? $"INV-{index:D4}",
+                                InvoiceDate = GetJsonDateValue(inv, "InvoiceDate") ?? DateTime.Now,
+                                DueDate = GetJsonDateValue(inv, "DueDate") ?? DateTime.Now.AddDays(30),
+                                CustomerName = customerName,
+                                CustomerAddress = GetJsonStringValue(inv, "CustomerAddress") ?? "",
+                                CustomerEmail = GetJsonStringValue(inv, "CustomerEmail") ?? "",
+                                CustomerPhone = GetJsonStringValue(inv, "CustomerPhone") ?? "",
+                                SubTotal = GetJsonDecimalValue(inv, "SubTotal") ?? 0,
+                                GSTAmount = GetJsonDecimalValue(inv, "GSTAmount") ?? 0,
+                                TotalAmount = GetJsonDecimalValue(inv, "TotalAmount") ?? 0,
+                                Notes = GetJsonStringValue(inv, "Notes") ?? "",
+                                InvoiceType = GetJsonStringValue(inv, "InvoiceType") ?? "Payable",
+                                ExtractedSupplierName = supplierName,
+                                ExtractedCustomerName = customerName,
+                                MatchedSupplierId = matchedSupplier?.Id,
+                                MatchedSupplierName = matchedSupplier?.SupplierName,
+                                MatchedCustomerId = matchedCustomer?.Id,
+                                MatchedCustomerName = matchedCustomer?.CustomerName,
+                                MatchConfidence = matchedSupplier != null || matchedCustomer != null ? "High" : "None",
+                                Items = items
+                            });
+                            index++;
+                        }
+                        catch (Exception invEx)
+                        {
+                            _logger.LogWarning(invEx, "Error parsing split invoice at index {Index}", index);
+                            index++;
+                        }
+                    }
+                }
+
+                // Check for duplicate invoice numbers
+                var invoiceNumbers = model.SplitInvoices.Select(i => i.InvoiceNumber).Where(n => !string.IsNullOrEmpty(n)).ToList();
+                var existingInvoices = await _context.Invoices
+                    .Where(i => invoiceNumbers.Contains(i.InvoiceNumber))
+                    .Select(i => i.InvoiceNumber)
+                    .ToListAsync();
+
+                model.DuplicateCount = existingInvoices.Count;
+                model.DuplicateNumbers = existingInvoices.Take(10).ToList();
+
+                TempData["Success"] = $"Successfully extracted {model.SplitInvoices.Count} invoices from {model.TotalPages} pages. Please review and save.";
+                return View(model);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading split invoice review for document {Id}", id);
+                TempData["Error"] = "Error loading extracted data. Please try processing the document again.";
+                return RedirectToAction(nameof(MultiPagePdf));
+            }
+        }
+
+        // POST: AiImport/SaveSplitInvoices — Save selected invoices from multi-page PDF split
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveSplitInvoices(MultiPagePdfViewModel model)
+        {
+            if (model.SplitInvoices == null || model.SplitInvoices.Count == 0)
+            {
+                TempData["Error"] = "No invoices to save.";
+                return RedirectToAction(nameof(MultiPagePdf));
+            }
+
+            var selectedInvoices = model.SplitInvoices.Where(i => i.Selected).ToList();
+            if (selectedInvoices.Count == 0)
+            {
+                TempData["Error"] = "No invoices were selected for saving.";
+                return RedirectToAction("ReviewSplitInvoices", new { id = model.MasterDocumentId });
+            }
+
+            try
+            {
+                // Load master document content for creating child documents
+                var masterContent = await _documentService.GetDocumentContentAsync(model.MasterDocumentId);
+                var masterDoc = await _context.ImportedDocuments.FindAsync(model.MasterDocumentId);
+
+                int savedCount = 0;
+                var errors = new List<string>();
+
+                foreach (var entry in selectedInvoices)
+                {
+                    try
+                    {
+                        // Check for existing invoice
+                        var invoiceNumber = entry.InvoiceNumber;
+                        var existingInvoice = await _context.Invoices
+                            .Include(i => i.InvoiceItems)
+                            .FirstOrDefaultAsync(i => i.InvoiceNumber == invoiceNumber);
+
+                        Invoice invoice;
+
+                        if (existingInvoice != null)
+                        {
+                            // Generate unique invoice number
+                            var baseNumber = invoiceNumber;
+                            var suffix = 1;
+                            while (await _context.Invoices.AnyAsync(i => i.InvoiceNumber == invoiceNumber))
+                            {
+                                invoiceNumber = $"{baseNumber}-{suffix:D2}";
+                                suffix++;
+                            }
+                            _logger.LogInformation("Invoice {Base} exists, using {New}", baseNumber, invoiceNumber);
+                            invoice = new Invoice();
+                        }
+                        else
+                        {
+                            invoice = new Invoice();
+                        }
+
+                        // Determine customer name
+                        var customerName = entry.CustomerName;
+                        if (string.IsNullOrWhiteSpace(customerName))
+                            customerName = entry.ExtractedSupplierName ?? entry.ExtractedCustomerName ?? "Unknown";
+
+                        // Set invoice properties
+                        invoice.InvoiceNumber = invoiceNumber;
+                        invoice.InvoiceDate = entry.InvoiceDate ?? DateTime.Now;
+                        invoice.DueDate = entry.DueDate ?? DateTime.Now.AddDays(30);
+                        invoice.CustomerName = customerName;
+                        invoice.CustomerAddress = entry.CustomerAddress;
+                        invoice.CustomerEmail = entry.CustomerEmail;
+                        invoice.CustomerPhone = entry.CustomerPhone;
+                        invoice.SubTotal = entry.SubTotal;
+                        invoice.GSTAmount = entry.GSTAmount;
+                        invoice.GSTEnabled = entry.GSTAmount > 0;
+                        invoice.GSTRate = entry.GSTAmount > 0 && entry.SubTotal > 0 ? (entry.GSTAmount / entry.SubTotal) * 100 : 0;
+                        invoice.TotalAmount = entry.TotalAmount;
+                        invoice.Notes = $"{entry.Notes} (Multi-page PDF import, pages {entry.PageRange}, from: {model.MasterDocumentId})";
+                        invoice.InvoiceType = entry.InvoiceType ?? "Payable";
+                        invoice.PaidAmount = 0;
+                        invoice.Status = "Draft";
+                        invoice.CreatedDate = DateTime.Now;
+                        invoice.ModifiedDate = DateTime.Now;
+
+                        // Set supplier if matched/selected
+                        if (entry.SelectedSupplierId.HasValue)
+                            invoice.SupplierId = entry.SelectedSupplierId.Value;
+                        else if (entry.MatchedSupplierId.HasValue)
+                            invoice.SupplierId = entry.MatchedSupplierId.Value;
+
+                        // Set customer if matched/selected
+                        if (entry.SelectedCustomerId.HasValue)
+                            invoice.CustomerId = entry.SelectedCustomerId.Value;
+                        else if (entry.MatchedCustomerId.HasValue)
+                            invoice.CustomerId = entry.MatchedCustomerId.Value;
+
+                        _context.Invoices.Add(invoice);
+                        await _context.SaveChangesAsync();
+
+                        // Add line items
+                        if (entry.Items != null && entry.Items.Count > 0)
+                        {
+                            foreach (var item in entry.Items)
+                            {
+                                _context.InvoiceItems.Add(new InvoiceItem
+                                {
+                                    InvoiceId = invoice.Id,
+                                    Description = item.Description,
+                                    Quantity = (int)item.Quantity,
+                                    UnitPrice = item.UnitPrice
+                                });
+                            }
+                            await _context.SaveChangesAsync();
+                        }
+
+                        // Create a child ImportedDocument for this invoice and link it
+                        if (masterContent != null && masterContent.Length > 0)
+                        {
+                            var cleanNum = string.Join("", invoiceNumber.Where(c => !Path.GetInvalidFileNameChars().Contains(c)));
+                            var childDoc = new ImportedDocument
+                            {
+                                FileName = $"{Guid.NewGuid()}_InvNo_{cleanNum}.pdf",
+                                OriginalFileName = $"InvNo_{cleanNum}_Pages_{entry.PageRange}.pdf",
+                                ContentType = "application/pdf",
+                                FileSize = masterContent.Length,
+                                FileContent = masterContent,
+                                DocumentType = "Invoice",
+                                ProcessingStatus = "Completed",
+                                ProcessingNotes = $"Extracted from multi-page PDF (pages {entry.PageRange}). Master document ID: {model.MasterDocumentId}",
+                                ExtractedSupplierName = entry.ExtractedSupplierName,
+                                ExtractedCustomerName = entry.ExtractedCustomerName,
+                                InvoiceId = invoice.Id,
+                                UploadDate = DateTime.Now,
+                                ProcessedDate = DateTime.Now,
+                                UploadedBy = masterDoc?.UploadedBy
+                            };
+
+                            _context.ImportedDocuments.Add(childDoc);
+                            await _context.SaveChangesAsync();
+                        }
+
+                        savedCount++;
+                        _logger.LogInformation("Saved split invoice {InvoiceNumber} (pages {Pages}) as Invoice ID {Id}",
+                            invoiceNumber, entry.PageRange, invoice.Id);
+                    }
+                    catch (Exception itemEx)
+                    {
+                        errors.Add($"Invoice {entry.InvoiceNumber} (pages {entry.PageRange}): {itemEx.Message}");
+                        _logger.LogError(itemEx, "Error saving split invoice {InvoiceNumber}", entry.InvoiceNumber);
+                    }
+                }
+
+                // Update master document status
+                if (masterDoc != null)
+                {
+                    masterDoc.ProcessingStatus = "Completed";
+                    masterDoc.ProcessedDate = DateTime.Now;
+                    await _context.SaveChangesAsync();
+                }
+
+                if (errors.Count > 0)
+                {
+                    TempData["Warning"] = $"Saved {savedCount} of {selectedInvoices.Count} invoices. Errors: {string.Join("; ", errors.Take(3))}";
+                }
+                else
+                {
+                    TempData["Success"] = $"Successfully created {savedCount} invoices from multi-page PDF ({model.TotalPages} pages).";
+                }
+
+                return RedirectToAction("Index", "Invoices");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error saving split invoices from document {Id}", model.MasterDocumentId);
+                TempData["Error"] = $"Error saving invoices: {ex.Message}";
+                return RedirectToAction("ReviewSplitInvoices", new { id = model.MasterDocumentId });
             }
         }
 
@@ -2715,17 +3463,13 @@ namespace InvoiceManagement.Controllers
             try
             {
                 var ids = documentIds.Split(',').Select(int.Parse).ToList();
-                var documents = await _context.ImportedDocuments
+
+                // Use ExecuteUpdateAsync to update without loading FileContent into memory
+                var updateCount = await _context.ImportedDocuments
                     .Where(d => ids.Contains(d.Id))
-                    .ToListAsync();
+                    .ExecuteUpdateAsync(s => s.SetProperty(d => d.ExtractedSupplierName, supplierName.Trim()));
 
-                foreach (var doc in documents)
-                {
-                    doc.ExtractedSupplierName = supplierName.Trim();
-                }
-
-                await _context.SaveChangesAsync();
-                TempData["Success"] = $"Supplier name updated to '{supplierName}' for {documents.Count} document(s).";
+                TempData["Success"] = $"Supplier name updated to '{supplierName}' for {updateCount} document(s).";
             }
             catch (Exception ex)
             {

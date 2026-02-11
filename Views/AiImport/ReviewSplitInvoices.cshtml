@@ -1,0 +1,405 @@
+@model InvoiceManagement.Models.ViewModels.MultiPagePdfViewModel
+@{
+    ViewData["Title"] = "Review Split Invoices";
+
+    string FormatCurrency(decimal amount)
+    {
+        return $"K {amount:N2}";
+    }
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-file-earmark-pdf"></i> Review Split Invoices</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-action="MultiPagePdf" class="btn btn-secondary me-2">
+            <i class="bi bi-arrow-left"></i> Upload Another
+        </a>
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="bi bi-house"></i> AI Import
+        </a>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>@TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Warning"] != null)
+{
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-circle me-2"></i>@TempData["Warning"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- Summary Card -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center shadow-sm border-0 bg-light">
+            <div class="card-body py-3">
+                <i class="bi bi-file-earmark-pdf text-danger fs-3"></i>
+                <h4 class="mb-0 mt-1">@Model.TotalPages</h4>
+                <small class="text-muted">Total Pages</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center shadow-sm border-0 bg-light">
+            <div class="card-body py-3">
+                <i class="bi bi-receipt text-primary fs-3"></i>
+                <h4 class="mb-0 mt-1">@Model.TotalInvoicesDetected</h4>
+                <small class="text-muted">Invoices Detected</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center shadow-sm border-0 bg-light">
+            <div class="card-body py-3">
+                <i class="bi bi-check-circle text-success fs-3"></i>
+                <h4 class="mb-0 mt-1">@Model.SuccessfullyExtracted</h4>
+                <small class="text-muted">Extracted</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center shadow-sm border-0 bg-light">
+            <div class="card-body py-3">
+                <i class="bi bi-clock text-info fs-3"></i>
+                <h4 class="mb-0 mt-1">@Model.ProcessingTimeSeconds.ToString("F1")s</h4>
+                <small class="text-muted">Processing Time</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.ProcessingSummary))
+{
+    <div class="alert alert-info border-0 mb-3">
+        <i class="bi bi-info-circle me-2"></i>@Model.ProcessingSummary
+    </div>
+}
+
+@if (Model.Warnings.Any())
+{
+    <div class="alert alert-warning border-0 mb-3">
+        <h6 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>Warnings</h6>
+        <ul class="mb-0 small">
+            @foreach (var warning in Model.Warnings)
+            {
+                <li>@warning</li>
+            }
+        </ul>
+    </div>
+}
+
+@if (Model.DuplicateCount > 0)
+{
+    <div class="alert alert-danger border-0 mb-3">
+        <h6 class="alert-heading"><i class="bi bi-exclamation-octagon me-2"></i>@Model.DuplicateCount Duplicate Invoice Number(s) Found</h6>
+        <p class="mb-0 small">The following invoice numbers already exist: <strong>@string.Join(", ", Model.DuplicateNumbers)</strong>
+        @if (Model.DuplicateCount > 10) { <span> (and @(Model.DuplicateCount - 10) more)</span> }
+        . Duplicates will be saved with a unique suffix.</p>
+    </div>
+}
+
+<!-- Form -->
+<form asp-action="SaveSplitInvoices" method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="MasterDocumentId" value="@Model.MasterDocumentId" />
+    <input type="hidden" name="TotalPages" value="@Model.TotalPages" />
+    <input type="hidden" name="TotalInvoicesDetected" value="@Model.TotalInvoicesDetected" />
+
+    <!-- Action Buttons -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <button type="button" class="btn btn-outline-primary btn-sm me-2" id="selectAll">
+                <i class="bi bi-check2-all me-1"></i>Select All
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="deselectAll">
+                <i class="bi bi-x-circle me-1"></i>Deselect All
+            </button>
+            <span class="ms-3 text-muted small" id="selectionCount">@Model.SplitInvoices.Count selected</span>
+        </div>
+        <div>
+            <span class="badge bg-warning text-dark me-2">
+                <i class="bi bi-file-earmark-pdf me-1"></i>@Model.OriginalFileName
+            </span>
+            <button type="submit" class="btn btn-success btn-lg" id="saveBtn">
+                <i class="bi bi-check-circle me-2"></i>Save Selected Invoices
+            </button>
+        </div>
+    </div>
+
+    <!-- Invoice Cards -->
+    <div class="row g-3">
+        @for (int i = 0; i < Model.SplitInvoices.Count; i++)
+        {
+            var inv = Model.SplitInvoices[i];
+            var confidenceClass = inv.Confidence?.ToLower() == "high" ? "bg-success" : 
+                                  inv.Confidence?.ToLower() == "medium" ? "bg-warning text-dark" : "bg-secondary";
+            var borderClass = inv.Confidence?.ToLower() == "high" ? "border-success" : 
+                              inv.Confidence?.ToLower() == "medium" ? "border-warning" : "border-secondary";
+            
+            <div class="col-12">
+                <div class="card shadow-sm invoice-card @borderClass" style="border-left: 4px solid;">
+                    <div class="card-body">
+                        <!-- Header Row -->
+                        <div class="d-flex align-items-start mb-3">
+                            <div class="form-check me-3 mt-1">
+                                <input class="form-check-input invoice-select" type="checkbox" 
+                                       name="SplitInvoices[@i].Selected" value="true"
+                                       id="select_@i" @(inv.Selected ? "checked" : "")>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h5 class="mb-0">
+                                            <i class="bi bi-receipt text-primary me-1"></i>
+                                            Invoice #@inv.InvoiceNumber
+                                        </h5>
+                                        <small class="text-muted">Invoice @(i + 1) of @Model.SplitInvoices.Count</small>
+                                    </div>
+                                    <div class="text-end">
+                                        <span class="badge bg-info me-1">
+                                            <i class="bi bi-file-earmark me-1"></i>Pages @inv.PageRange
+                                        </span>
+                                        <span class="badge @confidenceClass">
+                                            <i class="bi bi-stars me-1"></i>@inv.Confidence
+                                        </span>
+                                        <h4 class="mb-0 mt-1 text-success fw-bold">@FormatCurrency(inv.TotalAmount)</h4>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Details Row -->
+                        <div class="row g-3">
+                            <!-- Invoice Info -->
+                            <div class="col-md-4">
+                                <div class="mb-2">
+                                    <label class="form-label small fw-bold text-muted mb-0">Invoice Number</label>
+                                    <input type="text" class="form-control form-control-sm" 
+                                           name="SplitInvoices[@i].InvoiceNumber" value="@inv.InvoiceNumber" />
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label small fw-bold text-muted mb-0">Invoice Date</label>
+                                    <input type="date" class="form-control form-control-sm" 
+                                           name="SplitInvoices[@i].InvoiceDate" 
+                                           value="@(inv.InvoiceDate?.ToString("yyyy-MM-dd"))" />
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label small fw-bold text-muted mb-0">Due Date</label>
+                                    <input type="date" class="form-control form-control-sm" 
+                                           name="SplitInvoices[@i].DueDate" 
+                                           value="@(inv.DueDate?.ToString("yyyy-MM-dd"))" />
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label small fw-bold text-muted mb-0">Invoice Type</label>
+                                    <select class="form-select form-select-sm" name="SplitInvoices[@i].InvoiceType">
+                                        <option value="Payable" selected="@(inv.InvoiceType == "Payable")">Payable</option>
+                                        <option value="Sales" selected="@(inv.InvoiceType == "Sales")">Sales</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Amounts -->
+                            <div class="col-md-4">
+                                <div class="mb-2">
+                                    <label class="form-label small fw-bold text-muted mb-0">Customer/Supplier Name</label>
+                                    <input type="text" class="form-control form-control-sm" 
+                                           name="SplitInvoices[@i].CustomerName" value="@inv.CustomerName" />
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label small fw-bold text-muted mb-0">Sub Total</label>
+                                    <input type="number" step="0.01" class="form-control form-control-sm" 
+                                           name="SplitInvoices[@i].SubTotal" value="@inv.SubTotal" />
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label small fw-bold text-muted mb-0">GST/Tax Amount</label>
+                                    <input type="number" step="0.01" class="form-control form-control-sm" 
+                                           name="SplitInvoices[@i].GSTAmount" value="@inv.GSTAmount" />
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label small fw-bold text-muted mb-0">Total Amount</label>
+                                    <input type="number" step="0.01" class="form-control form-control-sm fw-bold" 
+                                           name="SplitInvoices[@i].TotalAmount" value="@inv.TotalAmount" />
+                                </div>
+                            </div>
+
+                            <!-- Entity Matching -->
+                            <div class="col-md-4">
+                                @if (!string.IsNullOrEmpty(inv.ExtractedSupplierName))
+                                {
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold text-muted mb-0">Extracted Supplier</label>
+                                        <div class="input-group input-group-sm">
+                                            <span class="input-group-text"><i class="bi bi-building"></i></span>
+                                            <input type="text" class="form-control" value="@inv.ExtractedSupplierName" readonly />
+                                        </div>
+                                    </div>
+                                }
+                                <div class="mb-2">
+                                    <label class="form-label small fw-bold text-muted mb-0">
+                                        Match Supplier
+                                        @if (inv.MatchedSupplierId.HasValue)
+                                        {
+                                            <span class="badge bg-success ms-1" style="font-size: 0.65em;">Matched</span>
+                                        }
+                                    </label>
+                                    <select class="form-select form-select-sm" name="SplitInvoices[@i].SelectedSupplierId">
+                                        <option value="">-- Select Supplier --</option>
+                                        @foreach (var s in Model.AvailableSuppliers)
+                                        {
+                                            var isSelected = inv.MatchedSupplierId == s.Id || inv.SelectedSupplierId == s.Id;
+                                            <option value="@s.Id" selected="@isSelected">@s.SupplierName</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label small fw-bold text-muted mb-0">
+                                        Match Customer
+                                        @if (inv.MatchedCustomerId.HasValue)
+                                        {
+                                            <span class="badge bg-success ms-1" style="font-size: 0.65em;">Matched</span>
+                                        }
+                                    </label>
+                                    <select class="form-select form-select-sm" name="SplitInvoices[@i].SelectedCustomerId">
+                                        <option value="">-- Select Customer --</option>
+                                        @foreach (var c in Model.AvailableCustomers)
+                                        {
+                                            var isSelected = inv.MatchedCustomerId == c.Id || inv.SelectedCustomerId == c.Id;
+                                            <option value="@c.Id" selected="@isSelected">@c.CustomerName</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label small fw-bold text-muted mb-0">Notes</label>
+                                    <input type="text" class="form-control form-control-sm" 
+                                           name="SplitInvoices[@i].Notes" value="@inv.Notes" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Line Items (collapsible) -->
+                        @if (inv.Items != null && inv.Items.Count > 0)
+                        {
+                            <div class="mt-2">
+                                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse"
+                                        data-bs-target="#items_@i">
+                                    <i class="bi bi-list-ul me-1"></i>@inv.Items.Count Line Item(s)
+                                </button>
+                                <div class="collapse mt-2" id="items_@i">
+                                    <table class="table table-sm table-bordered mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Description</th>
+                                                <th class="text-end" style="width: 100px;">Qty</th>
+                                                <th class="text-end" style="width: 120px;">Unit Price</th>
+                                                <th class="text-end" style="width: 120px;">Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @for (int j = 0; j < inv.Items.Count; j++)
+                                            {
+                                                var item = inv.Items[j];
+                                                <tr>
+                                                    <td>
+                                                        <input type="text" class="form-control form-control-sm border-0"
+                                                               name="SplitInvoices[@i].Items[@j].Description" value="@item.Description" />
+                                                    </td>
+                                                    <td>
+                                                        <input type="number" step="0.01" class="form-control form-control-sm border-0 text-end"
+                                                               name="SplitInvoices[@i].Items[@j].Quantity" value="@item.Quantity" />
+                                                    </td>
+                                                    <td>
+                                                        <input type="number" step="0.01" class="form-control form-control-sm border-0 text-end"
+                                                               name="SplitInvoices[@i].Items[@j].UnitPrice" value="@item.UnitPrice" />
+                                                    </td>
+                                                    <td class="text-end fw-bold">@FormatCurrency(item.Quantity * item.UnitPrice)</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        }
+
+                        <!-- Hidden fields for data that needs to be posted but isn't editable -->
+                        <input type="hidden" name="SplitInvoices[@i].Index" value="@inv.Index" />
+                        <input type="hidden" name="SplitInvoices[@i].PageRange" value="@inv.PageRange" />
+                        <input type="hidden" name="SplitInvoices[@i].StartPage" value="@inv.StartPage" />
+                        <input type="hidden" name="SplitInvoices[@i].EndPage" value="@inv.EndPage" />
+                        <input type="hidden" name="SplitInvoices[@i].Confidence" value="@inv.Confidence" />
+                        <input type="hidden" name="SplitInvoices[@i].ExtractedSupplierName" value="@inv.ExtractedSupplierName" />
+                        <input type="hidden" name="SplitInvoices[@i].ExtractedCustomerName" value="@inv.ExtractedCustomerName" />
+                        <input type="hidden" name="SplitInvoices[@i].MatchedSupplierId" value="@inv.MatchedSupplierId" />
+                        <input type="hidden" name="SplitInvoices[@i].MatchedSupplierName" value="@inv.MatchedSupplierName" />
+                        <input type="hidden" name="SplitInvoices[@i].MatchedCustomerId" value="@inv.MatchedCustomerId" />
+                        <input type="hidden" name="SplitInvoices[@i].MatchedCustomerName" value="@inv.MatchedCustomerName" />
+                        <input type="hidden" name="SplitInvoices[@i].MatchConfidence" value="@inv.MatchConfidence" />
+                        <input type="hidden" name="SplitInvoices[@i].CustomerAddress" value="@inv.CustomerAddress" />
+                        <input type="hidden" name="SplitInvoices[@i].CustomerEmail" value="@inv.CustomerEmail" />
+                        <input type="hidden" name="SplitInvoices[@i].CustomerPhone" value="@inv.CustomerPhone" />
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Bottom Save Button -->
+    @if (Model.SplitInvoices.Count > 3)
+    {
+        <div class="d-flex justify-content-end mt-4">
+            <button type="submit" class="btn btn-success btn-lg">
+                <i class="bi bi-check-circle me-2"></i>Save Selected Invoices
+            </button>
+        </div>
+    }
+</form>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const selectAll = document.getElementById('selectAll');
+            const deselectAll = document.getElementById('deselectAll');
+            const checkboxes = document.querySelectorAll('.invoice-select');
+            const selectionCount = document.getElementById('selectionCount');
+
+            function updateCount() {
+                const count = document.querySelectorAll('.invoice-select:checked').length;
+                selectionCount.textContent = count + ' selected';
+            }
+
+            selectAll.addEventListener('click', () => {
+                checkboxes.forEach(cb => cb.checked = true);
+                updateCount();
+            });
+
+            deselectAll.addEventListener('click', () => {
+                checkboxes.forEach(cb => cb.checked = false);
+                updateCount();
+            });
+
+            checkboxes.forEach(cb => cb.addEventListener('change', updateCount));
+        });
+    </script>
+}
+
+<style>
+    .invoice-card {
+        transition: all 0.2s ease;
+    }
+    .invoice-card:hover {
+        box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1) !important;
+    }
+</style>

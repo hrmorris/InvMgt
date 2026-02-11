@@ -236,7 +236,9 @@
                                                     </button>
                                                     <button type="button" class="btn btn-sm btn-outline-secondary me-2"
                                                         title="Edit Supplier Name"
-                                                        onclick="event.stopPropagation(); editSupplier('@string.Join(",", supplierGroup.Select(d => d.Id))', '@supplierGroup.Key.Replace("'", "\\'")');">
+                                                        data-doc-ids="@string.Join(",", supplierGroup.Select(d => d.Id))"
+                                                        data-supplier-name="@supplierGroup.Key"
+                                                        onclick="event.stopPropagation(); editSupplier(this.getAttribute('data-doc-ids'), this.getAttribute('data-supplier-name'));">
                                                         <i class="bi bi-pencil"></i>
                                                     </button>
                                                 </h2>
@@ -262,6 +264,7 @@
                                                                         <th>Size</th>
                                                                         <th>Status</th>
                                                                         <th>Linked To</th>
+                                                                        <th>Uploaded</th>
                                                                         <th class="text-center" style="width: 150px;">Actions</th>
                                                                     </tr>
                                                                 </thead>
@@ -477,7 +480,9 @@
                                                                                     <button type="button"
                                                                                         class="btn btn-outline-danger btn-sm"
                                                                                         title="Delete"
-                                                                                        onclick="confirmDelete(@doc.Id, '@doc.OriginalFileName')">
+                                                                                        data-doc-id="@doc.Id"
+                                                                                        data-doc-name="@doc.OriginalFileName"
+                                                                                        onclick="confirmDelete(parseInt(this.getAttribute('data-doc-id')), this.getAttribute('data-doc-name'))">
                                                                                         <i class="bi bi-trash"></i>
                                                                                     </button>
                                                                                 </div>

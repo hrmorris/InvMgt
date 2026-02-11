@@ -19,7 +19,6 @@ namespace InvoiceManagement.Services
             return await _context.Invoices
                 .Include(i => i.InvoiceItems)
                 .Include(i => i.Payments)
-                .Include(i => i.ImportedDocuments)
                 .OrderByDescending(i => i.InvoiceDate)
                 .ToListAsync();
         }
@@ -32,7 +31,6 @@ namespace InvoiceManagement.Services
                 .Include(i => i.Supplier)
                 .Include(i => i.PaymentAllocations)
                     .ThenInclude(pa => pa.Payment)
-                .Include(i => i.ImportedDocuments)
                 .FirstOrDefaultAsync(i => i.Id == id);
         }
 

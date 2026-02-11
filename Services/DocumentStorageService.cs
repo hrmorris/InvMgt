@@ -56,6 +56,27 @@ namespace InvoiceManagement.Services
             return await _context.ImportedDocuments
                 .Where(d => d.InvoiceId == invoiceId)
                 .OrderByDescending(d => d.UploadDate)
+                .Select(d => new ImportedDocument
+                {
+                    Id = d.Id,
+                    FileName = d.FileName,
+                    OriginalFileName = d.OriginalFileName,
+                    ContentType = d.ContentType,
+                    FileSize = d.FileSize,
+                    DocumentType = d.DocumentType,
+                    InvoiceId = d.InvoiceId,
+                    PaymentId = d.PaymentId,
+                    ExtractedText = d.ExtractedText,
+                    ExtractedAccountNumber = d.ExtractedAccountNumber,
+                    ExtractedBankName = d.ExtractedBankName,
+                    ExtractedSupplierName = d.ExtractedSupplierName,
+                    ExtractedCustomerName = d.ExtractedCustomerName,
+                    ProcessingStatus = d.ProcessingStatus,
+                    ProcessingNotes = d.ProcessingNotes,
+                    UploadDate = d.UploadDate,
+                    ProcessedDate = d.ProcessedDate,
+                    UploadedBy = d.UploadedBy
+                })
                 .ToListAsync();
         }
 
@@ -64,6 +85,27 @@ namespace InvoiceManagement.Services
             return await _context.ImportedDocuments
                 .Where(d => d.PaymentId == paymentId)
                 .OrderByDescending(d => d.UploadDate)
+                .Select(d => new ImportedDocument
+                {
+                    Id = d.Id,
+                    FileName = d.FileName,
+                    OriginalFileName = d.OriginalFileName,
+                    ContentType = d.ContentType,
+                    FileSize = d.FileSize,
+                    DocumentType = d.DocumentType,
+                    InvoiceId = d.InvoiceId,
+                    PaymentId = d.PaymentId,
+                    ExtractedText = d.ExtractedText,
+                    ExtractedAccountNumber = d.ExtractedAccountNumber,
+                    ExtractedBankName = d.ExtractedBankName,
+                    ExtractedSupplierName = d.ExtractedSupplierName,
+                    ExtractedCustomerName = d.ExtractedCustomerName,
+                    ProcessingStatus = d.ProcessingStatus,
+                    ProcessingNotes = d.ProcessingNotes,
+                    UploadDate = d.UploadDate,
+                    ProcessedDate = d.ProcessedDate,
+                    UploadedBy = d.UploadedBy
+                })
                 .ToListAsync();
         }
 

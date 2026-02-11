@@ -29,10 +29,10 @@
 
     <div class="row justify-content-center g-4">
         <!-- Import Invoice -->
-        <div class="col-lg-4 col-md-6">
+        <div class="col-lg-3 col-md-6">
             <div class="card h-100 shadow-sm border-0 hover-shadow">
                 <div class="card-body text-center p-5">
-                    <div class="bg-info bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-4" 
+                    <div class="bg-info bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-4"
                          style="width: 100px; height: 100px;">
                         <i class="bi bi-receipt text-info" style="font-size: 3rem;"></i>
                     </div>
@@ -55,10 +55,10 @@
         </div>
 
         <!-- Import Payment -->
-        <div class="col-lg-4 col-md-6">
+        <div class="col-lg-3 col-md-6">
             <div class="card h-100 shadow-sm border-0 hover-shadow">
                 <div class="card-body text-center p-5">
-                    <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-4" 
+                    <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-4"
                          style="width: 100px; height: 100px;">
                         <i class="bi bi-credit-card text-success" style="font-size: 3rem;"></i>
                     </div>
@@ -80,11 +80,42 @@
             </div>
         </div>
 
+        <!-- Multi-Page PDF Import -->
+        <div class="col-lg-3 col-md-6">
+            <div class="card h-100 shadow-sm border-0 hover-shadow border-warning"
+                 style="border-top: 3px solid #ffc107 !important;">
+                <div class="card-body text-center p-5">
+                    <div class="bg-warning bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-4"
+                         style="width: 100px; height: 100px;">
+                        <i class="bi bi-file-earmark-pdf text-warning" style="font-size: 3rem;"></i>
+                    </div>
+                    <h3 class="card-title">Multi-Page PDF
+                        <span class="badge bg-warning text-dark ms-1"
+                              style="font-size: 0.5em; vertical-align: middle;">NEW</span>
+                    </h3>
+                    <p class="card-text text-muted">
+                        Upload a single PDF with multiple invoices — AI splits and extracts each one.
+                    </p>
+                    <ul class="list-unstyled text-start text-muted small mb-4">
+                        <li><i class="bi bi-check-circle text-success me-2"></i>Up to <strong>100 pages</strong> per PDF
+                        </li>
+                        <li><i class="bi bi-check-circle text-success me-2"></i>Auto page-boundary detection</li>
+                        <li><i class="bi bi-check-circle text-success me-2"></i>Individual invoice storage</li>
+                        <li><i class="bi bi-check-circle text-success me-2"></i>Page-range tracking</li>
+                        <li><i class="bi bi-check-circle text-success me-2"></i>Supplier/Customer matching</li>
+                    </ul>
+                    <a asp-action="MultiPagePdf" class="btn btn-warning btn-lg px-5">
+                        <i class="bi bi-scissors me-2"></i>Split & Import
+                    </a>
+                </div>
+            </div>
+        </div>
+
         <!-- Batch Import -->
-        <div class="col-lg-4 col-md-6">
+        <div class="col-lg-3 col-md-6">
             <div class="card h-100 shadow-sm border-0 hover-shadow">
                 <div class="card-body text-center p-5">
-                    <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-4" 
+                    <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-4"
                          style="width: 100px; height: 100px;">
                         <i class="bi bi-files text-primary" style="font-size: 3rem;"></i>
                     </div>
@@ -168,7 +199,7 @@
             </h4>
             <div class="row g-4">
                 <div class="col-md-3 text-center">
-                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
                          style="width: 50px; height: 50px;">
                         <span class="fw-bold">1</span>
                     </div>
@@ -176,7 +207,7 @@
                     <p class="small text-muted">Select your invoice or payment document</p>
                 </div>
                 <div class="col-md-3 text-center">
-                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
                          style="width: 50px; height: 50px;">
                         <span class="fw-bold">2</span>
                     </div>
@@ -184,7 +215,7 @@
                     <p class="small text-muted">AI extracts data and matches entities</p>
                 </div>
                 <div class="col-md-3 text-center">
-                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
                          style="width: 50px; height: 50px;">
                         <span class="fw-bold">3</span>
                     </div>
@@ -192,7 +223,7 @@
                     <p class="small text-muted">Verify extracted data and select entities</p>
                 </div>
                 <div class="col-md-3 text-center">
-                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
                          style="width: 50px; height: 50px;">
                         <span class="fw-bold">4</span>
                     </div>
@@ -208,6 +239,7 @@
     .hover-shadow {
         transition: all 0.3s ease;
     }
+
     .hover-shadow:hover {
         transform: translateY(-5px);
         box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;

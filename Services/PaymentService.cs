@@ -47,7 +47,6 @@ namespace InvoiceManagement.Services
                 .Include(p => p.PaymentAllocations)
                     .ThenInclude(pa => pa.Invoice)
                         .ThenInclude(i => i.Supplier)
-                .Include(p => p.ImportedDocuments)
                 .FirstOrDefaultAsync(p => p.Id == id);
         }
 

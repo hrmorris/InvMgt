@@ -92,11 +92,32 @@ namespace InvoiceManagement.Controllers
                 return NotFound();
             }
 
-            // Get available unlinked documents for attachment
+            // Get available unlinked documents for attachment (exclude FileContent to save memory)
             var availableDocuments = await _context.ImportedDocuments
                 .Where(d => d.InvoiceId == null && d.PaymentId == null && d.DocumentType == "Invoice")
                 .OrderByDescending(d => d.UploadDate)
                 .Take(50)
+                .Select(d => new ImportedDocument
+                {
+                    Id = d.Id,
+                    FileName = d.FileName,
+                    OriginalFileName = d.OriginalFileName,
+                    ContentType = d.ContentType,
+                    FileSize = d.FileSize,
+                    DocumentType = d.DocumentType,
+                    InvoiceId = d.InvoiceId,
+                    PaymentId = d.PaymentId,
+                    ExtractedText = d.ExtractedText,
+                    ExtractedAccountNumber = d.ExtractedAccountNumber,
+                    ExtractedBankName = d.ExtractedBankName,
+                    ExtractedSupplierName = d.ExtractedSupplierName,
+                    ExtractedCustomerName = d.ExtractedCustomerName,
+                    ProcessingStatus = d.ProcessingStatus,
+                    ProcessingNotes = d.ProcessingNotes,
+                    UploadDate = d.UploadDate,
+                    ProcessedDate = d.ProcessedDate,
+                    UploadedBy = d.UploadedBy
+                })
                 .ToListAsync();
             ViewBag.AvailableDocuments = availableDocuments;
 
@@ -199,18 +220,60 @@ namespace InvoiceManagement.Controllers
             var customers = await _customerService.GetAllCustomersAsync();
             ViewBag.Customers = customers.Where(c => c.Status == "Active").OrderBy(c => c.CustomerName).ToList();
 
-            // Get available unlinked documents for attachment
+            // Get available unlinked documents for attachment (exclude FileContent to save memory)
             var availableDocuments = await _context.ImportedDocuments
                 .Where(d => d.InvoiceId == null && d.PaymentId == null && d.DocumentType == "Invoice")
                 .OrderByDescending(d => d.UploadDate)
                 .Take(50)
+                .Select(d => new ImportedDocument
+                {
+                    Id = d.Id,
+                    FileName = d.FileName,
+                    OriginalFileName = d.OriginalFileName,
+                    ContentType = d.ContentType,
+                    FileSize = d.FileSize,
+                    DocumentType = d.DocumentType,
+                    InvoiceId = d.InvoiceId,
+                    PaymentId = d.PaymentId,
+                    ExtractedText = d.ExtractedText,
+                    ExtractedAccountNumber = d.ExtractedAccountNumber,
+                    ExtractedBankName = d.ExtractedBankName,
+                    ExtractedSupplierName = d.ExtractedSupplierName,
+                    ExtractedCustomerName = d.ExtractedCustomerName,
+                    ProcessingStatus = d.ProcessingStatus,
+                    ProcessingNotes = d.ProcessingNotes,
+                    UploadDate = d.UploadDate,
+                    ProcessedDate = d.ProcessedDate,
+                    UploadedBy = d.UploadedBy
+                })
                 .ToListAsync();
             ViewBag.AvailableDocuments = availableDocuments;
 
-            // Get documents already linked to this invoice
+            // Get documents already linked to this invoice (exclude FileContent to save memory)
             var linkedDocuments = await _context.ImportedDocuments
                 .Where(d => d.InvoiceId == id)
                 .OrderByDescending(d => d.UploadDate)
+                .Select(d => new ImportedDocument
+                {
+                    Id = d.Id,
+                    FileName = d.FileName,
+                    OriginalFileName = d.OriginalFileName,
+                    ContentType = d.ContentType,
+                    FileSize = d.FileSize,
+                    DocumentType = d.DocumentType,
+                    InvoiceId = d.InvoiceId,
+                    PaymentId = d.PaymentId,
+                    ExtractedText = d.ExtractedText,
+                    ExtractedAccountNumber = d.ExtractedAccountNumber,
+                    ExtractedBankName = d.ExtractedBankName,
+                    ExtractedSupplierName = d.ExtractedSupplierName,
+                    ExtractedCustomerName = d.ExtractedCustomerName,
+                    ProcessingStatus = d.ProcessingStatus,
+                    ProcessingNotes = d.ProcessingNotes,
+                    UploadDate = d.UploadDate,
+                    ProcessedDate = d.ProcessedDate,
+                    UploadedBy = d.UploadedBy
+                })
                 .ToListAsync();
             ViewBag.LinkedDocuments = linkedDocuments;
 
@@ -361,13 +424,18 @@ namespace InvoiceManagement.Controllers
 
                 await _invoiceService.UpdateInvoiceAsync(invoice);
 
-                // Update linked documents with the supplier/customer name
+                // Update linked documents with the supplier/customer name (exclude FileContent)
                 var linkedDocuments = await _context.ImportedDocuments
                     .Where(d => d.InvoiceId == invoice.Id)
+                    .Select(d => new { d.Id })
                     .ToListAsync();
 
                 if (linkedDocuments.Any())
                 {
+                    var linkedIds = linkedDocuments.Select(d => d.Id).ToList();
+                    var docsToUpdate = await _context.ImportedDocuments
+                        .Where(d => linkedIds.Contains(d.Id))
+                        .ToListAsync();
                     var supplierName = invoice.InvoiceType == "Sales"
                         ? invoice.CustomerName
                         : (invoice.Supplier?.SupplierName ?? invoice.CustomerName);
@@ -382,7 +450,7 @@ namespace InvoiceManagement.Controllers
                         }
                     }
 
-                    foreach (var doc in linkedDocuments)
+                    foreach (var doc in docsToUpdate)
                     {
                         doc.ExtractedSupplierName = supplierName;
                     }
