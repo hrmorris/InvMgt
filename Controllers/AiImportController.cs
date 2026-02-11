@@ -3350,20 +3350,20 @@ namespace InvoiceManagement.Controllers
                         if (string.IsNullOrWhiteSpace(customerName))
                             customerName = entry.ExtractedSupplierName ?? entry.ExtractedCustomerName ?? "Unknown";
 
-                        // Set invoice properties
-                        invoice.InvoiceNumber = invoiceNumber;
+                        // Set invoice properties (truncate to match DB column constraints)
+                        invoice.InvoiceNumber = Truncate(invoiceNumber, 50);
                         invoice.InvoiceDate = entry.InvoiceDate ?? DateTime.Now;
                         invoice.DueDate = entry.DueDate ?? DateTime.Now.AddDays(30);
-                        invoice.CustomerName = customerName;
-                        invoice.CustomerAddress = entry.CustomerAddress;
-                        invoice.CustomerEmail = entry.CustomerEmail;
-                        invoice.CustomerPhone = entry.CustomerPhone;
+                        invoice.CustomerName = Truncate(customerName, 200);
+                        invoice.CustomerAddress = Truncate(entry.CustomerAddress, 500);
+                        invoice.CustomerEmail = Truncate(entry.CustomerEmail, 100);
+                        invoice.CustomerPhone = Truncate(entry.CustomerPhone, 20);
                         invoice.SubTotal = entry.SubTotal;
                         invoice.GSTAmount = entry.GSTAmount;
                         invoice.GSTEnabled = entry.GSTAmount > 0;
                         invoice.GSTRate = entry.GSTAmount > 0 && entry.SubTotal > 0 ? (entry.GSTAmount / entry.SubTotal) * 100 : 0;
                         invoice.TotalAmount = entry.TotalAmount;
-                        invoice.Notes = $"{entry.Notes} (Multi-page PDF import, pages {entry.PageRange}, from: {model.MasterDocumentId})";
+                        invoice.Notes = Truncate($"{entry.Notes} (Multi-page PDF import, pages {entry.PageRange}, from: {model.MasterDocumentId})", 500);
                         invoice.InvoiceType = entry.InvoiceType ?? "Payable";
                         invoice.PaidAmount = 0;
                         invoice.Status = "Draft";
@@ -3393,8 +3393,8 @@ namespace InvoiceManagement.Controllers
                                 _context.InvoiceItems.Add(new InvoiceItem
                                 {
                                     InvoiceId = invoice.Id,
-                                    Description = item.Description,
-                                    Quantity = (int)item.Quantity,
+                                    Description = Truncate(item.Description, 200),
+                                    Quantity = Math.Max(1, (int)Math.Ceiling(item.Quantity)),
                                     UnitPrice = item.UnitPrice
                                 });
                             }
@@ -3435,6 +3435,14 @@ namespace InvoiceManagement.Controllers
                     {
                         errors.Add($"Invoice {entry.InvoiceNumber} (pages {entry.PageRange}): {itemEx.Message}");
                         _logger.LogError(itemEx, "Error saving split invoice {InvoiceNumber}", entry.InvoiceNumber);
+
+                        // Clear failed entities from change tracker to prevent poisoning subsequent saves
+                        foreach (var failedEntry in _context.ChangeTracker.Entries()
+                            .Where(e => e.State == Microsoft.EntityFrameworkCore.EntityState.Added ||
+                                        e.State == Microsoft.EntityFrameworkCore.EntityState.Modified))
+                        {
+                            failedEntry.State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+                        }
                     }
                 }
 
@@ -3865,6 +3873,13 @@ namespace InvoiceManagement.Controllers
                 _logger.LogError(ex, "Error getting invoices list");
                 return Json(new List<object>());
             }
+        }
+
+        // Helper: Truncate a string to fit database column constraints
+        private static string? Truncate(string? value, int maxLength)
+        {
+            if (string.IsNullOrEmpty(value)) return value;
+            return value.Length <= maxLength ? value : value[..maxLength];
         }
     }
 }
