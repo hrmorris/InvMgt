@@ -2490,7 +2490,7 @@ namespace InvoiceManagement.Controllers
                 using var stream = new MemoryStream(content);
 
                 // Process with AI based on document type
-                if (document.DocumentType == "Invoice")
+                if (document.DocumentType == "Invoice" || document.DocumentType == "Invoice-Bulk" || document.DocumentType == "Invoice-MultiPage")
                 {
                     var extractedInvoice = await _aiService.ExtractInvoiceFromFileAsync(stream, document.OriginalFileName ?? "document");
 

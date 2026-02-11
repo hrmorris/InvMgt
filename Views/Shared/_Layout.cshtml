@@ -242,6 +242,8 @@
                                         class="bi bi-robot text-purple"></i> AI Import Invoice</a></li>
                             <li><a class="dropdown-item" asp-controller="AiImport" asp-action="Payment"><i
                                         class="bi bi-robot text-purple"></i> AI Import Payment</a></li>
+                            <li><a class="dropdown-item" asp-controller="AiImport" asp-action="MultiPagePdf"><i
+                                        class="bi bi-file-earmark-pdf text-warning"></i> Multi-Page PDF</a></li>
                             <li>
                                 <hr class="dropdown-divider">
                             </li>
@@ -361,6 +363,12 @@
                                 <a class="nav-link" asp-controller="AiImport" asp-action="Payment">
                                     <i class="bi bi-robot"></i>
                                     AI Import Payments
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="AiImport" asp-action="MultiPagePdf">
+                                    <i class="bi bi-file-earmark-pdf"></i>
+                                    Multi-Page PDF
                                 </a>
                             </li>
                             <li class="nav-item">
