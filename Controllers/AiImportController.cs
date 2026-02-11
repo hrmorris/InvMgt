@@ -3033,17 +3033,33 @@ namespace InvoiceManagement.Controllers
                 // Store the master document
                 var userName = User.Identity?.Name ?? "System";
                 var document = await _documentService.StoreDocumentAsync(file, "Invoice", userName);
+                var documentId = document.Id;
 
-                _logger.LogInformation("Stored master document {Id} for multi-page PDF: {FileName}", document.Id, file.FileName);
+                _logger.LogInformation("Stored master document {Id} for multi-page PDF: {FileName}", documentId, file.FileName);
 
-                // Process with advanced page-boundary detection
-                using var stream = new MemoryStream(document.FileContent);
+                // Read PDF bytes from the stored document BEFORE long AI processing
+                // to avoid holding a stale EF context across the lengthy API calls
+                var pdfBytes = document.FileContent;
+
+                // Detach the entity so the DB connection isn't held open during AI processing
+                _context.Entry(document).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+                document = null; // Force re-fetch later
+
+                // Process with advanced page-boundary detection (LONG operation - multiple AI API calls)
+                using var stream = new MemoryStream(pdfBytes);
                 var result = await _aiService.ExtractInvoicesWithPageDetectionAsync(stream, file.FileName);
+
+                // Re-fetch the document with a fresh connection after AI processing completes
+                var freshDocument = await _context.ImportedDocuments.FindAsync(documentId);
+                if (freshDocument == null)
+                {
+                    return Json(new { success = false, message = "Document was removed during processing." });
+                }
 
                 if (result.Errors.Any() && result.SuccessfullyExtracted == 0)
                 {
-                    document.ProcessingStatus = "Error";
-                    document.ProcessingNotes = string.Join("; ", result.Errors);
+                    freshDocument.ProcessingStatus = "Error";
+                    freshDocument.ProcessingNotes = string.Join("; ", result.Errors);
                     await _context.SaveChangesAsync();
 
                     return Json(new { success = false, message = $"Processing failed: {string.Join("; ", result.Errors)}" });
@@ -3092,17 +3108,17 @@ namespace InvoiceManagement.Controllers
                     }).ToList()
                 };
 
-                document.ProcessingStatus = "Extracted";
-                document.ProcessedDate = DateTime.Now;
-                document.ProcessingNotes = System.Text.Json.JsonSerializer.Serialize(extractionData);
+                freshDocument.ProcessingStatus = "Extracted";
+                freshDocument.ProcessedDate = DateTime.Now;
+                freshDocument.ProcessingNotes = System.Text.Json.JsonSerializer.Serialize(extractionData);
                 await _context.SaveChangesAsync();
 
                 return Json(new
                 {
                     success = true,
                     message = result.ProcessingSummary,
-                    documentId = document.Id,
-                    redirectUrl = Url.Action("ReviewSplitInvoices", new { id = document.Id }),
+                    documentId = freshDocument.Id,
+                    redirectUrl = Url.Action("ReviewSplitInvoices", new { id = freshDocument.Id }),
                     totalPages = result.TotalPages,
                     totalInvoices = result.SuccessfullyExtracted
                 });

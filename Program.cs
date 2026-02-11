@@ -194,7 +194,14 @@ builder.Services.AddAntiforgery(options =>
 if (databaseProvider == "PostgreSQL")
 {
     builder.Services.AddDbContext<ApplicationDbContext>(options =>
-        options.UseNpgsql(connectionString));
+        options.UseNpgsql(connectionString, npgsqlOptions =>
+        {
+            npgsqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(30),
+                errorCodesToAdd: null);
+            npgsqlOptions.CommandTimeout(300); // 5-minute command timeout for large operations
+        }));
 }
 else
 {
