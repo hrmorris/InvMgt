@@ -143,7 +143,7 @@
                 </div>
 
                 @if (!string.IsNullOrEmpty(Model.ExtractedSupplierName) ||
-                                        !string.IsNullOrEmpty(Model.ExtractedCustomerName) || !string.IsNullOrEmpty(Model.ExtractedBankName))
+                                                        !string.IsNullOrEmpty(Model.ExtractedCustomerName) || !string.IsNullOrEmpty(Model.ExtractedBankName))
                 {
                     <div class="card shadow mb-3">
                         <div class="card-header bg-success text-white">
@@ -242,16 +242,6 @@
                                 Detect and extract <strong>multiple invoices</strong> from this PDF using AI page-boundary
                                 detection.
                             </p>
-
-                            <!-- Multi-Page Progress (hidden by default) -->
-                            <div id="multiPageProgress" class="d-none mt-3">
-                                <hr />
-                                <div class="text-center">
-                                    <div class="spinner-border text-warning mb-2" role="status"></div>
-                                    <p class="mb-1 fw-bold" id="multiPageStatusText">Analyzing pages...</p>
-                                    <p class="small text-muted mb-0">This may take 30-90 seconds for large documents.</p>
-                                </div>
-                            </div>
                         }
 
                         <!-- AI Analysis Results (hidden by default) -->
@@ -277,256 +267,149 @@
 
     @section Scripts {
         <script>
-                document.addEventListener('DOMContentLoaded', function () {
-                    const documentId = @Model.Id;
-                    const editNameBtn = document.getElementById('editNameBtn');
-                    const editNameBtn2 = document.getElementById('editNameBtn2');
-                    const editNameForm = document.getElementById('editNameForm');
-                    const fileNameDisplay = document.getElementById('fileNameDisplay');
-                    const fileNameDisplaySidebar = document.getElementById('fileNameDisplaySidebar');
-                    const fileNameInput = document.getElementById('fileNameInput');
-                    const saveNameBtn = document.getElementById('saveNameBtn');
-                    const cancelNameBtn = document.getElementById('cancelNameBtn');
-                    const documentTitle = document.getElementById('documentTitle');
+                        document.addEventListener('DOMContentLoaded', function () {
+                            const documentId = @Model.Id;
+                            const editNameBtn = document.getElementById('editNameBtn');
+                            const editNameBtn2 = document.getElementById('editNameBtn2');
+                            const editNameForm = document.getElementById('editNameForm');
+                            const fileNameDisplay = document.getElementById('fileNameDisplay');
+                            const fileNameDisplaySidebar = document.getElementById('fileNameDisplaySidebar');
+                            const fileNameInput = document.getElementById('fileNameInput');
+                            const saveNameBtn = document.getElementById('saveNameBtn');
+                            const cancelNameBtn = document.getElementById('cancelNameBtn');
+                            const documentTitle = document.getElementById('documentTitle');
 
-                    function showEditForm() {
-                        documentTitle.classList.add('d-none');
-                        editNameForm.classList.remove('d-none');
-                        fileNameInput.focus();
-                        fileNameInput.select();
-                    }
-
-                    function hideEditForm() {
-                        documentTitle.classList.remove('d-none');
-                        editNameForm.classList.add('d-none');
-                        fileNameInput.value = fileNameDisplay.textContent;
-                    }
-
-                    async function saveFileName() {
-                        const newName = fileNameInput.value.trim();
-                        if (!newName) {
-                            alert('File name cannot be empty.');
-                            return;
-                        }
-
-                        saveNameBtn.disabled = true;
-                        saveNameBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-
-                        try {
-                            const formData = new FormData();
-                            formData.append('id', documentId);
-                            formData.append('fileName', newName);
-
-                            const response = await fetch('@Url.Action("UpdateDocumentName", "AiImport")', {
-                                method: 'POST',
-                                body: formData
-                            });
-
-                            if (!response.ok) {
-                                throw new Error(`HTTP error! status: ${response.status}`);
+                            function showEditForm() {
+                                documentTitle.classList.add('d-none');
+                                editNameForm.classList.remove('d-none');
+                                fileNameInput.focus();
+                                fileNameInput.select();
                             }
 
-                            const result = await response.json();
-
-                            if (result.success) {
-                                fileNameDisplay.textContent = result.newName;
-                                fileNameDisplaySidebar.textContent = result.newName;
-                                fileNameInput.value = result.newName;
-                                hideEditForm();
-
-                                // Show success toast
-                                const toast = document.createElement('div');
-                                toast.className = 'position-fixed bottom-0 end-0 p-3';
-                                toast.style.zIndex = '11';
-                                toast.innerHTML = `
-                                                        <div class="toast show bg-success text-white" role="alert">
-                                                            <div class="toast-body">
-                                                                <i class="bi bi-check-circle me-2"></i>${result.message}
-                                                            </div>
-                                                        </div>
-                                                    `;
-                                document.body.appendChild(toast);
-                                setTimeout(() => toast.remove(), 3000);
-                            } else {
-                                alert(result.message);
-                            }
-                        } catch (error) {
-                            console.error('Error:', error);
-                            alert('Error updating file name. Please try again.');
-                        } finally {
-                            saveNameBtn.disabled = false;
-                            saveNameBtn.innerHTML = '<i class="bi bi-check-lg"></i>';
-                        }
-                    }
-
-                    // Event listeners
-                    editNameBtn.addEventListener('click', showEditForm);
-                    editNameBtn2.addEventListener('click', showEditForm);
-                    cancelNameBtn.addEventListener('click', hideEditForm);
-                    saveNameBtn.addEventListener('click', saveFileName);
-
-                    // Save on Enter key
-                    fileNameInput.addEventListener('keydown', function (e) {
-                        if (e.key === 'Enter') {
-                            e.preventDefault();
-                            saveFileName();
-                        } else if (e.key === 'Escape') {
-                            hideEditForm();
-                        }
-                    });
-
-                    // AI Analysis functionality
-                    const analyzeBtn = document.getElementById('analyzeBtn');
-                    const analysisResults = document.getElementById('analysisResults');
-
-                    analyzeBtn.addEventListener('click', async function () {
-                        analyzeBtn.disabled = true;
-                        analyzeBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Analyzing...';
-
-                        try {
-                            const formData = new FormData();
-                            formData.append('id', documentId);
-
-                            const response = await fetch('@Url.Action("AnalyzeDocument", "AiImport")', {
-                                method: 'POST',
-                                body: formData,
-                                credentials: 'same-origin'
-                            });
-
-                            // Check if we got redirected (session expired)
-                            if (response.redirected || response.url.includes('/Account/Login')) {
-                                showToast('Session expired. Please refresh the page and try again.', 'error');
-                                analyzeBtn.disabled = false;
-                                analyzeBtn.innerHTML = '<i class="bi bi-robot me-1"></i>Run AI Analysis';
-                                return;
+                            function hideEditForm() {
+                                documentTitle.classList.remove('d-none');
+                                editNameForm.classList.add('d-none');
+                                fileNameInput.value = fileNameDisplay.textContent;
                             }
 
-                            if (!response.ok) {
-                                throw new Error(`HTTP error! status: ${response.status}`);
-                            }
+                            async function saveFileName() {
+                                const newName = fileNameInput.value.trim();
+                                if (!newName) { alert('File name cannot be empty.'); return; }
 
-                            // Check content type before parsing JSON
-                            const contentType = response.headers.get('content-type');
-                            if (!contentType || !contentType.includes('application/json')) {
-                                throw new Error('Server returned non-JSON response. You may need to log in again.');
-                            }
+                                saveNameBtn.disabled = true;
+                                saveNameBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
 
-                            const result = await response.json();
+                                try {
+                                    const formData = new FormData();
+                                    formData.append('id', documentId);
+                                    formData.append('fileName', newName);
 
-                            if (result.success) {
-                                // Update UI with extracted data
-                                analysisResults.classList.remove('d-none');
-
-                                document.getElementById('resultInvoiceNumber').textContent = result.data.invoiceNumber || '-';
-                                document.getElementById('resultInvoiceDate').textContent = result.data.invoiceDate ? new Date(result.data.invoiceDate).toLocaleDateString('en-GB') : '-';
-                                document.getElementById('resultEntity').textContent = result.data.supplierName || result.data.customerName || '-';
-                                document.getElementById('resultAmount').textContent = result.data.totalAmount ? 'K ' + parseFloat(result.data.totalAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-';
-
-                                // Update file name display if it was renamed
-                                if (result.data.newFileName) {
-                                    fileNameDisplay.textContent = result.data.newFileName;
-                                    fileNameDisplaySidebar.textContent = result.data.newFileName;
-                                    fileNameInput.value = result.data.newFileName;
+                                    const response = await fetch('@Url.Action("UpdateDocumentName", "AiImport")', {
+                                        method: 'POST', body: formData
+                                    });
+                                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                                    const result = await response.json();
+                                    if (result.success) {
+                                        fileNameDisplay.textContent = result.newName;
+                                        fileNameDisplaySidebar.textContent = result.newName;
+                                        fileNameInput.value = result.newName;
+                                        hideEditForm();
+                                        ProgressModal.toast(result.message, 'success');
+                                    } else {
+                                        alert(result.message);
+                                    }
+                                } catch (error) {
+                                    console.error('Error:', error);
+                                    alert('Error updating file name. Please try again.');
+                                } finally {
+                                    saveNameBtn.disabled = false;
+                                    saveNameBtn.innerHTML = '<i class="bi bi-check-lg"></i>';
                                 }
-
-                                // Show success toast
-                                showToast(result.message + ' Redirecting to review...', 'success');
-
-                                // Redirect to ReviewInvoice page after a short delay
-                                setTimeout(() => {
-                                    window.location.href = '@Url.Action("ReviewInvoice", "AiImport")?documentId=' + documentId;
-                                }, 1500);
-                            } else {
-                                showToast(result.message, 'danger');
-                                analyzeBtn.innerHTML = '<i class="bi bi-cpu me-1"></i>Run AI Analysis';
-                            }
-                        } catch (error) {
-                            console.error('Error:', error);
-                            showToast('Error analyzing document. Please try again.', 'danger');
-                            analyzeBtn.innerHTML = '<i class="bi bi-cpu me-1"></i>Run AI Analysis';
-                        } finally {
-                            analyzeBtn.disabled = false;
-                        }
-                    });
-
-                    function showToast(message, type) {
-                        const existingToast = document.querySelector('.auto-toast');
-                        if (existingToast) existingToast.remove();
-
-                        const toast = document.createElement('div');
-                        toast.className = 'auto-toast position-fixed bottom-0 end-0 p-3';
-                        toast.style.zIndex = '11';
-                        toast.innerHTML = `
-                                        <div class="toast show bg-${type} text-white" role="alert">
-                                            <div class="toast-body">
-                                                <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>${message}
-                                            </div>
-                                        </div>
-                                    `;
-                        document.body.appendChild(toast);
-                        setTimeout(() => toast.remove(), 4000);
-                    }
-
-                    // Multi-Page PDF Analysis functionality
-                    const multiPageBtn = document.getElementById('multiPageBtn');
-                    if (multiPageBtn) {
-                        const multiPageProgress = document.getElementById('multiPageProgress');
-                        const multiPageStatusText = document.getElementById('multiPageStatusText');
-
-                        multiPageBtn.addEventListener('click', async function () {
-                            if (!confirm('Run Multi-Page PDF Analysis?\n\nThis will detect and extract all invoices from this PDF. This may take 30-90 seconds.')) {
-                                return;
                             }
 
-                            multiPageBtn.disabled = true;
-                            multiPageBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
-                            multiPageProgress.classList.remove('d-none');
-                            multiPageStatusText.textContent = 'Detecting invoice boundaries...';
+                            editNameBtn.addEventListener('click', showEditForm);
+                            editNameBtn2.addEventListener('click', showEditForm);
+                            cancelNameBtn.addEventListener('click', hideEditForm);
+                            saveNameBtn.addEventListener('click', saveFileName);
+                            fileNameInput.addEventListener('keydown', function (e) {
+                                if (e.key === 'Enter') { e.preventDefault(); saveFileName(); }
+                                else if (e.key === 'Escape') { hideEditForm(); }
+                            });
 
-                            try {
+                            // AI Analysis — uses global ProgressModal
+                            const analyzeBtn = document.getElementById('analyzeBtn');
+                            const analysisResults = document.getElementById('analysisResults');
+
+                            analyzeBtn.addEventListener('click', function () {
+                                analyzeBtn.disabled = true;
                                 const formData = new FormData();
                                 formData.append('id', documentId);
 
-                                const response = await fetch('@Url.Action("ReprocessAsMultiPagePdfAjax", "AiImport")', {
-                                    method: 'POST',
-                                    body: formData,
-                                    credentials: 'same-origin'
+                                ProgressModal.runWithProgress({
+                                    title: 'AI Invoice Analysis',
+                                    icon: 'robot',
+                                    colorClass: 'warning',
+                                    color: '#ffc107',
+                                    url: '@Url.Action("AnalyzeDocument", "AiImport")',
+                                    formData: formData,
+                                    stages: ProgressModal.aiAnalysisStages(),
+                                    stageInterval: 3000,
+                                    onSuccess: function (result, progress) {
+                                        // Update sidebar data
+                                        analysisResults.classList.remove('d-none');
+                                        document.getElementById('resultInvoiceNumber').textContent = result.data?.invoiceNumber || '-';
+                                        document.getElementById('resultInvoiceDate').textContent = result.data?.invoiceDate ? new Date(result.data.invoiceDate).toLocaleDateString('en-GB') : '-';
+                                        document.getElementById('resultEntity').textContent = result.data?.supplierName || result.data?.customerName || '-';
+                                        document.getElementById('resultAmount').textContent = result.data?.totalAmount ? 'K ' + parseFloat(result.data.totalAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-';
+
+                                        if (result.data?.newFileName) {
+                                            fileNameDisplay.textContent = result.data.newFileName;
+                                            fileNameDisplaySidebar.textContent = result.data.newFileName;
+                                            fileNameInput.value = result.data.newFileName;
+                                        }
+
+                                        progress.complete(
+                                            (result.message || 'Analysis complete!') + ' Redirecting to review...',
+                                            '@Url.Action("ReviewInvoice", "AiImport")?documentId=' + documentId
+                                        );
+                                    },
+                                    onError: function () {
+                                        analyzeBtn.disabled = false;
+                                    }
                                 });
+                            });
 
-                                if (response.redirected || response.url.includes('/Account/Login')) {
-                                    showToast('Session expired. Please refresh and try again.', 'danger');
-                                    return;
-                                }
+                            // Multi-Page PDF Analysis — uses global ProgressModal
+                            const multiPageBtn = document.getElementById('multiPageBtn');
+                            if (multiPageBtn) {
+                                multiPageBtn.addEventListener('click', function () {
+                                    multiPageBtn.disabled = true;
+                                    const formData = new FormData();
+                                    formData.append('id', documentId);
 
-                                const contentType = response.headers.get('content-type');
-                                if (!contentType || !contentType.includes('application/json')) {
-                                    throw new Error('Server returned non-JSON response.');
-                                }
-
-                                const result = await response.json();
-
-                                if (result.success) {
-                                    multiPageStatusText.textContent = `Found ${result.totalInvoices} invoices! Redirecting...`;
-                                    showToast(`${result.message}`, 'success');
-
-                                    setTimeout(() => {
-                                        window.location.href = result.redirectUrl;
-                                    }, 1500);
-                                } else {
-                                    multiPageProgress.classList.add('d-none');
-                                    showToast(result.message, 'danger');
-                                    multiPageBtn.disabled = false;
-                                    multiPageBtn.innerHTML = '<i class="bi bi-files me-1"></i>Run Multi-Page PDF Analysis';
-                                }
-                            } catch (error) {
-                                console.error('Error:', error);
-                                multiPageProgress.classList.add('d-none');
-                                showToast('Error processing document. Please try again.', 'danger');
-                                multiPageBtn.disabled = false;
-                                multiPageBtn.innerHTML = '<i class="bi bi-files me-1"></i>Run Multi-Page PDF Analysis';
+                                    ProgressModal.runWithProgress({
+                                        title: 'Multi-Page PDF Analysis',
+                                        icon: 'files',
+                                        colorClass: 'warning',
+                                        color: '#ffc107',
+                                        url: '@Url.Action("ReprocessAsMultiPagePdfAjax", "AiImport")',
+                                        formData: formData,
+                                        stages: ProgressModal.reprocessStages(),
+                                        stageInterval: 4000,
+                                        confirm: true,
+                                        confirmMessage: 'Run Multi-Page PDF Analysis?\n\nThis will detect and extract all invoices from this PDF. This may take 30-90 seconds.',
+                                        onSuccess: function (result, progress) {
+                                            progress.complete(
+                                                `Extracted ${result.totalInvoices || '?'} invoices from ${result.totalPages || '?'} pages!`,
+                                                result.redirectUrl
+                                            );
+                                        },
+                                        onError: function () {
+                                            multiPageBtn.disabled = false;
+                                        }
+                                    });
+                                });
                             }
                         });
-                    }
-                });
         </script>
     }

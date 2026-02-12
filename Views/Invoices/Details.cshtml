@@ -56,506 +56,179 @@
         <p class="mb-2">This invoice has been <strong>over-allocated</strong>. The paid amount
             (<strong>@FormatCurrency(Model.PaidAmount)</strong>) exceeds the invoice total
             (<strong>@FormatCurrency(Model.TotalAmount)</strong>) by <strong
-                class="text-danger">@FormatCurrency(Model.PaidAmount - Model.TotalAmount)</strong>.</p>
-        <hr>
-        <p class="mb-0"><strong>Action Required:</strong> Please review the payment allocations and remove or adjust
-            incorrect allocations to reconcile this invoice with the correct payment amount.</p>
-        <div class="mt-3">
-            <a asp-controller="Payments" asp-action="Index" class="btn btn-outline-light me-2">
-                <i class="bi bi-credit-card"></i> Go to Payments
-            </a>
-            <form asp-action="RecalculatePaidAmount" asp-route-id="@Model.Id" method="post" class="d-inline">
-                @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-warning"
-                    onclick="return confirm('This will recalculate the paid amount based on actual allocations. Continue?')">
-                    <i class="bi bi-arrow-clockwise"></i> Recalculate Paid Amount
-                </button>
-            </form>
-        </div>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-}
-
-<div class="row">
-    <div class="col-md-8">
-        <div class="card shadow mb-4">
-            <div class="card-header py-3">
-                <h6 class="m-0 font-weight-bold text-primary">Invoice Information</h6>
-            </div>
-            <div class="card-body">
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <strong>Invoice Number:</strong> @Model.InvoiceNumber
-                    </div>
-                    <div class="col-md-6">
-                        <strong>Status:</strong> <span
-                            class="status-badge status-@Model.Status.ToLower()">@Model.Status</span>
-                    </div>
+            class="text-danger">@FormatCurrency(Model.PaidAmount - Model.TotalAmount)</strong>.</p>
+            <hr>
+            <p class="mb-0"><strong>Action Required:</strong> Please review the payment allocations and remove or adjust
+                incorrect allocations to reconcile this invoice with the correct payment amount.</p>
+                <div class="mt-3">
+                    <a asp-controller="Payments" asp-action="Index" class="btn btn-outline-light me-2">
+                        <i class="bi bi-credit-card"></i> Go to Payments
+                    </a>
+                    <form asp-action="RecalculatePaidAmount" asp-route-id="@Model.Id" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-warning"
+                                onclick="return confirm('This will recalculate the paid amount based on actual allocations. Continue?')">
+                            <i class="bi bi-arrow-clockwise"></i> Recalculate Paid Amount
+                        </button>
+                    </form>
                 </div>
-                <div class="row mb-3">
-                    <div class="col-md-12">
-                        <strong>Type:</strong>
-                        @if (Model.InvoiceType == "Supplier" || Model.SupplierId.HasValue)
-                        {
-                            <span class="badge bg-warning text-dark">Supplier Invoice (Payable)</span>
-                        }
-                        else
-                        {
-                            <span class="badge bg-info">Customer Invoice (Receivable)</span>
-                        }
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <strong>Invoice Date:</strong> @Model.InvoiceDate.ToString("dd/MM/yyyy")
-                    </div>
-                    <div class="col-md-6">
-                        <strong>Due Date:</strong> @Model.DueDate.ToString("dd/MM/yyyy")
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col-md-12">
-                        <strong>@(Model.InvoiceType == "Supplier" || Model.SupplierId.HasValue ? "Supplier" :
-                                                        "Customer"):</strong>
-                        @if (Model.Supplier != null)
-                        {
-                            <a asp-controller="Admin" asp-action="EditSupplier" asp-route-id="@Model.SupplierId"
-                                class="text-decoration-none">
-                                <i class="bi bi-building me-1"></i>@Model.Supplier.SupplierName
-                            </a>
-                            @if (!string.IsNullOrEmpty(Model.Supplier.BankAccountNumber))
-                            {
-                                <br />
-
-                                <small class="text-muted font-monospace">Bank Account:
-                                    @Model.Supplier.BankAccountNumber</small>
-                            }
-                        }
-                        else
-                        {
-                            @Model.CustomerName
-                        }
-                    </div>
-                </div>
-                @if (!string.IsNullOrEmpty(Model.CustomerAddress))
-                {
-                    <div class="row mb-3">
-                        <div class="col-md-12">
-                            <strong>Address:</strong> @Model.CustomerAddress
-                        </div>
-                    </div>
-                }
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <strong>Email:</strong> @Model.CustomerEmail
-                    </div>
-                    <div class="col-md-6">
-                        <strong>Phone:</strong> @Model.CustomerPhone
-                    </div>
-                </div>
-                @if (!string.IsNullOrEmpty(Model.Notes))
-                {
-                    <div class="row mb-3">
-                        <div class="col-md-12">
-                            <strong>Notes:</strong><br />
-                            @Model.Notes
-                        </div>
-                    </div>
-                }
-            </div>
-        </div>
-
-        <div class="card shadow mb-4">
-            <div class="card-header py-3">
-                <h6 class="m-0 font-weight-bold text-primary">Invoice Items</h6>
-            </div>
-            <div class="card-body">
-                <table class="table table-bordered">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Description</th>
-                            <th>Quantity</th>
-                            <th>Unit Price</th>
-                            <th>Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @{
-                            int index = 1;
-                        }
-                        @foreach (var item in Model.InvoiceItems)
-                        {
-                            <tr>
-                                <td>@index</td>
-                                <td>@item.Description</td>
-                                <td>@item.Quantity</td>
-                                <td>@FormatCurrency(item.UnitPrice)</td>
-                                <td>@FormatCurrency(item.TotalPrice)</td>
-                            </tr>
-                            index++;
-                        }
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        @if (Model.Payments.Any())
-        {
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Payment History</h6>
-                </div>
-                <div class="card-body">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Payment #</th>
-                                <th>Date</th>
-                                <th>Amount</th>
-                                <th>Method</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var payment in Model.Payments)
-                            {
-                                <tr>
-                                    <td>@payment.PaymentNumber</td>
-                                    <td>@payment.PaymentDate.ToString("dd/MM/yyyy")</td>
-                                    <td>@FormatCurrency(payment.Amount)</td>
-                                    <td>@payment.PaymentMethod</td>
-                                    <td>
-                                        <a asp-controller="Payments" asp-action="Details" asp-route-id="@payment.Id"
-                                            class="btn btn-sm btn-outline-primary">
-                                            View
-                                        </a>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         }
 
-        <!-- Imported Documents Section -->
-        <div class="card shadow mb-4">
-            <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                <h6 class="m-0 font-weight-bold text-primary">
-                    <i class="bi bi-folder2-open me-1"></i>Imported Documents
-                </h6>
-                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal"
-                    data-bs-target="#uploadDocumentModal">
-                    <i class="bi bi-upload me-1"></i>Upload Document
-                </button>
-            </div>
-            <div class="card-body">
-                @if (Model.ImportedDocuments != null && Model.ImportedDocuments.Any())
-                {
-                    <div class="table-responsive">
-                        <table class="table table-hover table-sm">
-                            <thead>
-                                <tr>
-                                    <th>File Name</th>
-                                    <th>Supplier/Customer</th>
-                                    <th>Invoice #</th>
-                                    <th>Date</th>
-                                    <th class="text-end">Amount</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var doc in Model.ImportedDocuments.OrderByDescending(d => d.UploadDate))
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Invoice Information</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <strong>Invoice Number:</strong> @Model.InvoiceNumber
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Status:</strong> <span
+                                class="status-badge status-@Model.Status.ToLower()">@Model.Status</span>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <strong>Type:</strong>
+                                @if (Model.InvoiceType == "Supplier" || Model.SupplierId.HasValue)
                                 {
-                                    @* Parse ProcessingNotes JSON for invoice details *@
-                                            string docInvoiceNumber = "";
-                                    DateTime? docInvoiceDate = null;
-                                    decimal docTotalAmount = 0;
-                                    string docSupplierName = doc.ExtractedSupplierName ?? doc.ExtractedCustomerName ?? "";
-
-                                    if (!string.IsNullOrEmpty(doc.ProcessingNotes))
+                                    <span class="badge bg-warning text-dark">Supplier Invoice (Payable)</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-info">Customer Invoice (Receivable)</span>
+                                }
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <strong>Invoice Date:</strong> @Model.InvoiceDate.ToString("dd/MM/yyyy")
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Due Date:</strong> @Model.DueDate.ToString("dd/MM/yyyy")
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <strong>@(Model.InvoiceType == "Supplier" || Model.SupplierId.HasValue ? "Supplier" :
+                                                                                            "Customer"):</strong>
+                                    @if (Model.Supplier != null)
                                     {
-                                        try
+                                        <a asp-controller="Admin" asp-action="EditSupplier" asp-route-id="@Model.SupplierId"
+                                               class="text-decoration-none">
+                                            <i class="bi bi-building me-1"></i>@Model.Supplier.SupplierName
+                                        </a>
+                                        @if (!string.IsNullOrEmpty(Model.Supplier.BankAccountNumber))
                                         {
-                                            var json = System.Text.Json.JsonDocument.Parse(doc.ProcessingNotes);
-                                            if (json.RootElement.TryGetProperty("InvoiceNumber", out var invNum))
-                                                docInvoiceNumber = invNum.GetString() ?? "";
-                                            if (json.RootElement.TryGetProperty("InvoiceDate", out var invDate) && invDate.ValueKind !=
-                                            System.Text.Json.JsonValueKind.Null)
-                                                docInvoiceDate = invDate.GetDateTime();
-                                            if (json.RootElement.TryGetProperty("TotalAmount", out var amt))
-                                                docTotalAmount = amt.GetDecimal();
-                                            if (string.IsNullOrEmpty(docSupplierName))
-                                            {
-                                                if (json.RootElement.TryGetProperty("ExtractedSupplierName", out var supName))
-                                                    docSupplierName = supName.GetString() ?? "";
-                                                if (string.IsNullOrEmpty(docSupplierName) && json.RootElement.TryGetProperty("CustomerName",
-                                                out var custName))
-                                                    docSupplierName = custName.GetString() ?? "";
+                                            <br />
+
+                                            <small class="text-muted font-monospace">Bank Account:
+                                                @Model.Supplier.BankAccountNumber</small>
                                             }
                                         }
-                                        catch { }
-                                    }
-
-                                    <tr>
-                                        <td>
-                                            <i
-                                                class="bi @(doc.ContentType?.Contains("pdf") == true ? "bi-file-pdf text-danger" : doc.ContentType?.Contains("image") == true ? "bi-file-image text-primary" : "bi-file-earmark") me-1"></i>
-                                            @doc.OriginalFileName
-                                        </td>
-                                        <td>
-                                            @if (!string.IsNullOrEmpty(docSupplierName))
-                                            {
-                                                <small class="text-primary fw-bold">@docSupplierName</small>
-                                            }
-                                            else
-                                            {
-                                                <span class="text-muted fst-italic small">-</span>
-                                            }
-                                        </td>
-                                        <td>
-                                            @if (!string.IsNullOrEmpty(docInvoiceNumber))
-                                            {
-                                                <code class="small">@docInvoiceNumber</code>
-                                            }
-                                            else
-                                            {
-                                                <span class="text-muted">-</span>
-                                            }
-                                        </td>
-                                        <td>
-                                            @if (docInvoiceDate.HasValue)
-                                            {
-                                                <small>@docInvoiceDate.Value.ToString("dd/MM/yyyy")</small>
-                                            }
-                                            else
-                                            {
-                                                <span class="text-muted">-</span>
-                                            }
-                                        </td>
-                                        <td class="text-end">
-                                            @if (docTotalAmount > 0)
-                                            {
-                                                <strong class="small text-success">@FormatCurrency(docTotalAmount)</strong>
-                                            }
-                                            else
-                                            {
-                                                <span class="text-muted">-</span>
-                                            }
-                                        </td>
-                                        <td>
-                                            <span
-                                                class="badge @(doc.ProcessingStatus == "Processed" ? "bg-success" : doc.ProcessingStatus == "Error" ? "bg-danger" : "bg-warning")">
-                                                @doc.ProcessingStatus
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div class="btn-group btn-group-sm">
-                                                <a asp-controller="AiImport" asp-action="ViewDocument" asp-route-id="@doc.Id"
-                                                    class="btn btn-outline-info" title="Preview">
-                                                    <i class="bi bi-eye"></i>
-                                                </a>
-                                                <a asp-controller="AiImport" asp-action="DownloadDocument"
-                                                    asp-route-id="@doc.Id" class="btn btn-outline-primary" title="Download">
-                                                    <i class="bi bi-download"></i>
-                                                </a>
-                                                <form asp-controller="AiImport" asp-action="DeleteDocument"
-                                                    asp-route-id="@doc.Id" method="post" class="d-inline"
-                                                    onsubmit="return confirm('Delete this document?');">
-                                                    @Html.AntiForgeryToken()
-                                                    <input type="hidden" name="returnUrl"
-                                                        value="@Url.Action("Details", "Invoices", new { id = Model.Id })" />
-                                                    <button type="submit" class="btn btn-outline-danger" title="Delete">
-                                                        <i class="bi bi-trash"></i>
-                                                    </button>
-                                                </form>
-                                            </div>
-                                        </td>
-                                    </tr>
+                                        else
+                                        {
+                                            @Model.CustomerName
+                                        }
+                                    </div>
+                                </div>
+                                @if (!string.IsNullOrEmpty(Model.CustomerAddress))
+                                {
+                                    <div class="row mb-3">
+                                        <div class="col-md-12">
+                                            <strong>Address:</strong> @Model.CustomerAddress
+                                        </div>
+                                    </div>
                                 }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-                else
-                {
-                    <div class="text-center text-muted py-3">
-                        <i class="bi bi-folder2 display-6"></i>
-                        <p class="mt-2 mb-0">No documents attached to this invoice.</p>
-                    </div>
-                }
-
-                @{
-                    var availableDocuments = ViewBag.AvailableDocuments as List<ImportedDocument> ?? new
-                    List<ImportedDocument>();
-
-                    // Parse ProcessingNotes JSON to extract invoice info for sorting
-                    var docsWithInfo = availableDocuments.Select(doc =>
-                    {
-                        string supplierName = doc.ExtractedSupplierName ?? "";
-                        string invoiceNumber = "";
-                        DateTime? invoiceDate = null;
-                        decimal totalAmount = 0;
-
-                        if (!string.IsNullOrEmpty(doc.ProcessingNotes))
-                        {
-                            try
-                            {
-                                var json = System.Text.Json.JsonDocument.Parse(doc.ProcessingNotes);
-                                if (json.RootElement.TryGetProperty("InvoiceNumber", out var invNum))
-                                    invoiceNumber = invNum.GetString() ?? "";
-                                if (json.RootElement.TryGetProperty("InvoiceDate", out var invDate) && invDate.ValueKind !=
-                                            System.Text.Json.JsonValueKind.Null)
-                                    invoiceDate = invDate.GetDateTime();
-                                if (json.RootElement.TryGetProperty("TotalAmount", out var amt))
-                                    totalAmount = amt.GetDecimal();
-                                if (string.IsNullOrEmpty(supplierName) && json.RootElement.TryGetProperty("ExtractedSupplierName", out
-                                            var supName))
-                                    supplierName = supName.GetString() ?? "";
-                            }
-                            catch { }
-                        }
-
-                        return new
-                        {
-                            Document = doc,
-                            SupplierName = supplierName,
-                            InvoiceNumber = invoiceNumber,
-                            InvoiceDate = invoiceDate,
-                            TotalAmount = totalAmount,
-                            Year = invoiceDate?.Year ?? doc.UploadDate.Year,
-                            Month = invoiceDate?.Month ?? doc.UploadDate.Month
-                        };
-                    })
-                    .OrderByDescending(x => x.Year)
-                    .ThenByDescending(x => x.Month)
-                    .ThenBy(x => x.SupplierName)
-                    .ThenByDescending(x => x.InvoiceDate)
-                    .ThenBy(x => x.InvoiceNumber)
-                    .ThenByDescending(x => x.TotalAmount)
-                    .ToList();
-
-                    var groupedDocs = docsWithInfo.GroupBy(x => new { x.Year, x.Month });
-                }
-                @if (availableDocuments.Any())
-                {
-                    <hr class="my-3" />
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="mb-0"><i class="bi bi-folder text-warning me-1"></i>Available Documents to Link
-                            (@availableDocuments.Count)</h6>
-                        @{
-                            // Count docs that need processing: unprocessed OR have unknown supplier
-                            var needsProcessingCount = availableDocuments.Count(d =>
-                            string.IsNullOrEmpty(d.ProcessingNotes) ||
-                            string.IsNullOrEmpty(d.ExtractedSupplierName) ||
-                            d.ExtractedSupplierName == "Unknown");
-                        }
-                        @if (needsProcessingCount > 0)
-                        {
-                            <button type="button" class="btn btn-sm btn-primary" id="btnExtractAll"
-                                onclick="extractAllDocuments()">
-                                <i class="bi bi-robot me-1"></i>AI Extract All (@needsProcessingCount)
-                            </button>
-                        }
-                    </div>
-                    <p class="text-muted small">Documents organized by year, month, supplier, and invoice details:</p>
-
-                    @foreach (var monthGroup in groupedDocs)
-                    {
-                        var monthName = new DateTime(monthGroup.Key.Year, monthGroup.Key.Month, 1).ToString("MMMM yyyy");
-                        <div class="card mb-3 border-secondary">
-                            <div class="card-header bg-light py-2">
-                                <strong><i class="bi bi-calendar3 me-2"></i>@monthName</strong>
-                                <span class="badge bg-secondary float-end">@monthGroup.Count() document(s)</span>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <strong>Email:</strong> @Model.CustomerEmail
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>Phone:</strong> @Model.CustomerPhone
+                                    </div>
+                                </div>
+                                @if (!string.IsNullOrEmpty(Model.Notes))
+                                {
+                                    <div class="row mb-3">
+                                        <div class="col-md-12">
+                                            <strong>Notes:</strong><br />
+                                            @Model.Notes
+                                        </div>
+                                    </div>
+                                }
                             </div>
-                            <div class="card-body p-0">
-                                <div class="table-responsive">
-                                    <table class="table table-hover table-sm mb-0">
-                                        <thead class="table-light">
+                        </div>
+
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Invoice Items</h6>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Description</th>
+                                            <th>Quantity</th>
+                                            <th>Unit Price</th>
+                                            <th>Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @{
+                                            int index = 1;
+                                        }
+                                        @foreach (var item in Model.InvoiceItems)
+                                        {
                                             <tr>
-                                                <th style="width: 30px;"></th>
-                                                <th>Supplier</th>
-                                                <th>Invoice #</th>
+                                                <td>@index</td>
+                                                <td>@item.Description</td>
+                                                <td>@item.Quantity</td>
+                                                <td>@FormatCurrency(item.UnitPrice)</td>
+                                                <td>@FormatCurrency(item.TotalPrice)</td>
+                                            </tr>
+                                            index++;
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        @if (Model.Payments.Any())
+                        {
+                            <div class="card shadow mb-4">
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-primary">Payment History</h6>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Payment #</th>
                                                 <th>Date</th>
-                                                <th class="text-end">Amount</th>
-                                                <th>File</th>
+                                                <th>Amount</th>
+                                                <th>Method</th>
                                                 <th>Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            @foreach (var item in monthGroup)
+                                            @foreach (var payment in Model.Payments)
                                             {
-                                                var doc = item.Document;
                                                 <tr>
-                                                    <td class="text-center">
-                                                        <i
-                                                            class="bi @(doc.ContentType?.Contains("pdf") == true ? "bi-file-pdf text-danger" : doc.ContentType?.Contains("image") == true ? "bi-file-image text-primary" : "bi-file-earmark")"></i>
-                                                    </td>
+                                                    <td>@payment.PaymentNumber</td>
+                                                    <td>@payment.PaymentDate.ToString("dd/MM/yyyy")</td>
+                                                    <td>@FormatCurrency(payment.Amount)</td>
+                                                    <td>@payment.PaymentMethod</td>
                                                     <td>
-                                                        @if (!string.IsNullOrEmpty(item.SupplierName))
-                                                        {
-                                                            <strong>@item.SupplierName</strong>
-                                                        }
-                                                        else
-                                                        {
-                                                            <span class="text-muted fst-italic">Unknown</span>
-                                                        }
-                                                    </td>
-                                                    <td>
-                                                        @if (!string.IsNullOrEmpty(item.InvoiceNumber))
-                                                        {
-                                                            <code>@item.InvoiceNumber</code>
-                                                        }
-                                                        else
-                                                        {
-                                                            <span class="text-muted">-</span>
-                                                        }
-                                                    </td>
-                                                    <td>
-                                                        @if (item.InvoiceDate.HasValue)
-                                                        {
-                                                            @item.InvoiceDate.Value.ToString("dd/MM/yyyy")
-                                                        }
-                                                        else
-                                                        {
-                                                            <span class="text-muted">-</span>
-                                                        }
-                                                    </td>
-                                                    <td class="text-end">
-                                                        @if (item.TotalAmount > 0)
-                                                        {
-                                                            <strong>@FormatCurrency(item.TotalAmount)</strong>
-                                                        }
-                                                        else
-                                                        {
-                                                            <span class="text-muted">-</span>
-                                                        }
-                                                    </td>
-                                                    <td>
-                                                        <small class="text-muted" title="@doc.OriginalFileName">
-                                                            @(doc.OriginalFileName.Length > 20 ? doc.OriginalFileName.Substring(0,
-                                                                                                            17) + "..." : doc.OriginalFileName)
-                                                        </small>
-                                                    </td>
-                                                    <td>
-                                                        <form asp-controller="Invoices" asp-action="LinkDocument" method="post"
-                                                            class="d-inline">
-                                                            @Html.AntiForgeryToken()
-                                                            <input type="hidden" name="documentId" value="@doc.Id" />
-                                                            <input type="hidden" name="invoiceId" value="@Model.Id" />
-                                                            <input type="hidden" name="returnUrl"
-                                                                value="@Url.Action("Details", "Invoices", new { id = Model.Id })" />
-                                                            <button type="submit" class="btn btn-sm btn-success"
-                                                                title="Link to this invoice">
-                                                                <i class="bi bi-link-45deg"></i>
-                                                            </button>
-                                                        </form>
-                                                        <a asp-controller="AiImport" asp-action="ViewDocument"
-                                                            asp-route-id="@doc.Id" class="btn btn-sm btn-outline-info"
-                                                            title="Preview" target="_blank">
-                                                            <i class="bi bi-eye"></i>
+                                                        <a asp-controller="Payments" asp-action="Details" asp-route-id="@payment.Id"
+                                                               class="btn btn-sm btn-outline-primary">
+                                                            View
                                                         </a>
                                                     </td>
                                                 </tr>
@@ -564,160 +237,490 @@
                                     </table>
                                 </div>
                             </div>
-                        </div>
-                    }
-                }
+                        }
+
+                        <!-- Imported Documents Section -->
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                                <h6 class="m-0 font-weight-bold text-primary">
+                                    <i class="bi bi-folder2-open me-1"></i>Imported Documents
+                                </h6>
+                                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal"
+                                        data-bs-target="#uploadDocumentModal">
+                                    <i class="bi bi-upload me-1"></i>Upload Document
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                @if (Model.ImportedDocuments != null && Model.ImportedDocuments.Any())
+                                {
+                                    <div class="table-responsive">
+                                        <table class="table table-hover table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>File Name</th>
+                                                    <th>Supplier/Customer</th>
+                                                    <th>Invoice #</th>
+                                                    <th>Date</th>
+                                                    <th class="text-end">Amount</th>
+                                                    <th>Status</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var doc in Model.ImportedDocuments.OrderByDescending(d => d.UploadDate))
+                                                {
+                                                    @* Parse ProcessingNotes JSON for invoice details *@
+                                                    string docInvoiceNumber = "";
+                                                    DateTime? docInvoiceDate = null;
+                                                    decimal docTotalAmount = 0;
+                                                    string docSupplierName = doc.ExtractedSupplierName ?? doc.ExtractedCustomerName ?? "";
+
+                                                    if (!string.IsNullOrEmpty(doc.ProcessingNotes))
+                                                    {
+                                                        try
+                                                        {
+                                                            var json = System.Text.Json.JsonDocument.Parse(doc.ProcessingNotes);
+                                                            if (json.RootElement.TryGetProperty("InvoiceNumber", out var invNum))
+                                                                docInvoiceNumber = invNum.GetString() ?? "";
+                                                            if (json.RootElement.TryGetProperty("InvoiceDate", out var invDate) && invDate.ValueKind !=
+                                                            System.Text.Json.JsonValueKind.Null)
+                                                                docInvoiceDate = invDate.GetDateTime();
+                                                            if (json.RootElement.TryGetProperty("TotalAmount", out var amt))
+                                                                docTotalAmount = amt.GetDecimal();
+                                                            if (string.IsNullOrEmpty(docSupplierName))
+                                                            {
+                                                                if (json.RootElement.TryGetProperty("ExtractedSupplierName", out var supName))
+                                                                    docSupplierName = supName.GetString() ?? "";
+                                                                if (string.IsNullOrEmpty(docSupplierName) && json.RootElement.TryGetProperty("CustomerName",
+                                                                out var custName))
+                                                                    docSupplierName = custName.GetString() ?? "";
+                                                            }
+                                                        }
+                                                        catch { }
+                                                    }
+
+                                                    <tr>
+                                                        <td>
+                                                            <i
+                                                            class="bi @(doc.ContentType?.Contains("pdf") == true ? "bi-file-pdf text-danger" : doc.ContentType?.Contains("image") == true ? "bi-file-image text-primary" : "bi-file-earmark") me-1"></i>
+                                                            @doc.OriginalFileName
+                                                        </td>
+                                                        <td>
+                                                            @if (!string.IsNullOrEmpty(docSupplierName))
+                                                            {
+                                                                <small class="text-primary fw-bold">@docSupplierName</small>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="text-muted fst-italic small">-</span>
+                                                            }
+                                                        </td>
+                                                        <td>
+                                                            @if (!string.IsNullOrEmpty(docInvoiceNumber))
+                                                            {
+                                                                <code class="small">@docInvoiceNumber</code>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="text-muted">-</span>
+                                                            }
+                                                        </td>
+                                                        <td>
+                                                            @if (docInvoiceDate.HasValue)
+                                                            {
+                                                                <small>@docInvoiceDate.Value.ToString("dd/MM/yyyy")</small>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="text-muted">-</span>
+                                                            }
+                                                        </td>
+                                                        <td class="text-end">
+                                                            @if (docTotalAmount > 0)
+                                                            {
+                                                                <strong class="small text-success">@FormatCurrency(docTotalAmount)</strong>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="text-muted">-</span>
+                                                            }
+                                                        </td>
+                                                        <td>
+                                                            <span
+                                                                class="badge @(doc.ProcessingStatus == "Processed" ? "bg-success" : doc.ProcessingStatus == "Error" ? "bg-danger" : "bg-warning")">
+                                                                @doc.ProcessingStatus
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <div class="btn-group btn-group-sm">
+                                                                <a asp-controller="AiImport" asp-action="ViewDocument" asp-route-id="@doc.Id"
+                                                                       class="btn btn-outline-info" title="Preview">
+                                                                    <i class="bi bi-eye"></i>
+                                                                </a>
+                                                                <a asp-controller="AiImport" asp-action="DownloadDocument"
+                                                                       asp-route-id="@doc.Id" class="btn btn-outline-primary" title="Download">
+                                                                    <i class="bi bi-download"></i>
+                                                                </a>
+                                                                <form asp-controller="AiImport" asp-action="DeleteDocument"
+                                                                      asp-route-id="@doc.Id" method="post" class="d-inline"
+                                                                      onsubmit="return confirm('Delete this document?');">
+                                                                    @Html.AntiForgeryToken()
+                                                                    <input type="hidden" name="returnUrl"
+                                                                           value="@Url.Action("Details", "Invoices", new { id = Model.Id })" />
+                                                                    <button type="submit" class="btn btn-outline-danger" title="Delete">
+                                                                        <i class="bi bi-trash"></i>
+                                                                    </button>
+                                                                </form>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="text-center text-muted py-3">
+                                        <i class="bi bi-folder2 display-6"></i>
+                                        <p class="mt-2 mb-0">No documents attached to this invoice.</p>
+                                    </div>
+                                }
+
+                                @{
+                                    var availableDocuments = ViewBag.AvailableDocuments as List<ImportedDocument> ?? new
+                                    List<ImportedDocument>();
+
+                                    // Parse ProcessingNotes JSON to extract invoice info for sorting
+                                    var docsWithInfo = availableDocuments.Select(doc =>
+                                    {
+                                        string supplierName = doc.ExtractedSupplierName ?? "";
+                                        string invoiceNumber = "";
+                                        DateTime? invoiceDate = null;
+                                        decimal totalAmount = 0;
+
+                                        if (!string.IsNullOrEmpty(doc.ProcessingNotes))
+                                        {
+                                            try
+                                            {
+                                                var json = System.Text.Json.JsonDocument.Parse(doc.ProcessingNotes);
+                                                if (json.RootElement.TryGetProperty("InvoiceNumber", out var invNum))
+                                                    invoiceNumber = invNum.GetString() ?? "";
+                                                if (json.RootElement.TryGetProperty("InvoiceDate", out var invDate) && invDate.ValueKind !=
+                                                            System.Text.Json.JsonValueKind.Null)
+                                                    invoiceDate = invDate.GetDateTime();
+                                                if (json.RootElement.TryGetProperty("TotalAmount", out var amt))
+                                                    totalAmount = amt.GetDecimal();
+                                                if (string.IsNullOrEmpty(supplierName) && json.RootElement.TryGetProperty("ExtractedSupplierName", out
+                                                            var supName))
+                                                    supplierName = supName.GetString() ?? "";
+                                            }
+                                            catch { }
+                                        }
+
+                                        return new
+                                        {
+                                            Document = doc,
+                                            SupplierName = supplierName,
+                                            InvoiceNumber = invoiceNumber,
+                                            InvoiceDate = invoiceDate,
+                                            TotalAmount = totalAmount,
+                                            Year = invoiceDate?.Year ?? doc.UploadDate.Year,
+                                            Month = invoiceDate?.Month ?? doc.UploadDate.Month
+                                        };
+                                    })
+                                    .OrderByDescending(x => x.Year)
+                                    .ThenByDescending(x => x.Month)
+                                    .ThenBy(x => x.SupplierName)
+                                    .ThenByDescending(x => x.InvoiceDate)
+                                    .ThenBy(x => x.InvoiceNumber)
+                                    .ThenByDescending(x => x.TotalAmount)
+                                    .ToList();
+
+                                    var groupedDocs = docsWithInfo.GroupBy(x => new { x.Year, x.Month });
+                                }
+                                @if (availableDocuments.Any())
+                                {
+                                    <hr class="my-3" />
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h6 class="mb-0"><i class="bi bi-folder text-warning me-1"></i>Available Documents to Link
+                                            (@availableDocuments.Count)</h6>
+                                            @{
+                                                // Count docs that need processing: unprocessed OR have unknown supplier
+                                                var needsProcessingCount = availableDocuments.Count(d =>
+                                                string.IsNullOrEmpty(d.ProcessingNotes) ||
+                                                string.IsNullOrEmpty(d.ExtractedSupplierName) ||
+                                                d.ExtractedSupplierName == "Unknown");
+                                            }
+                                            @if (needsProcessingCount > 0)
+                                            {
+                                                <button type="button" class="btn btn-sm btn-primary" id="btnExtractAll"
+                                                        onclick="extractAllDocuments()">
+                                                    <i class="bi bi-robot me-1"></i>AI Extract All (@needsProcessingCount)
+                                                </button>
+                                            }
+                                        </div>
+                                        <p class="text-muted small">Documents organized by year, month, supplier, and invoice details:</p>
+
+                                        @foreach (var monthGroup in groupedDocs)
+                                        {
+                                            var monthName = new DateTime(monthGroup.Key.Year, monthGroup.Key.Month, 1).ToString("MMMM yyyy");
+                                            <div class="card mb-3 border-secondary">
+                                                <div class="card-header bg-light py-2">
+                                                    <strong><i class="bi bi-calendar3 me-2"></i>@monthName</strong>
+                                                    <span class="badge bg-secondary float-end">@monthGroup.Count() document(s)</span>
+                                                </div>
+                                                <div class="card-body p-0">
+                                                    <div class="table-responsive">
+                                                        <table class="table table-hover table-sm mb-0">
+                                                            <thead class="table-light">
+                                                                <tr>
+                                                                    <th style="width: 30px;"></th>
+                                                                    <th>Supplier</th>
+                                                                    <th>Invoice #</th>
+                                                                    <th>Date</th>
+                                                                    <th class="text-end">Amount</th>
+                                                                    <th>File</th>
+                                                                    <th>Actions</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                @foreach (var item in monthGroup)
+                                                                {
+                                                                    var doc = item.Document;
+                                                                    <tr>
+                                                                        <td class="text-center">
+                                                                            <i
+                                                                            class="bi @(doc.ContentType?.Contains("pdf") == true ? "bi-file-pdf text-danger" : doc.ContentType?.Contains("image") == true ? "bi-file-image text-primary" : "bi-file-earmark")"></i>
+                                                                        </td>
+                                                                        <td>
+                                                                            @if (!string.IsNullOrEmpty(item.SupplierName))
+                                                                            {
+                                                                                <strong>@item.SupplierName</strong>
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                <span class="text-muted fst-italic">Unknown</span>
+                                                                            }
+                                                                        </td>
+                                                                        <td>
+                                                                            @if (!string.IsNullOrEmpty(item.InvoiceNumber))
+                                                                            {
+                                                                                <code>@item.InvoiceNumber</code>
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                <span class="text-muted">-</span>
+                                                                            }
+                                                                        </td>
+                                                                        <td>
+                                                                            @if (item.InvoiceDate.HasValue)
+                                                                            {
+                                                                                @item.InvoiceDate.Value.ToString("dd/MM/yyyy")
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                <span class="text-muted">-</span>
+                                                                            }
+                                                                        </td>
+                                                                        <td class="text-end">
+                                                                            @if (item.TotalAmount > 0)
+                                                                            {
+                                                                                <strong>@FormatCurrency(item.TotalAmount)</strong>
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                <span class="text-muted">-</span>
+                                                                            }
+                                                                        </td>
+                                                                        <td>
+                                                                            <small class="text-muted" title="@doc.OriginalFileName">
+                                                                                @(doc.OriginalFileName.Length > 20 ? doc.OriginalFileName.Substring(0,
+                                                                                                                                17) + "..." : doc.OriginalFileName)
+                                                                            </small>
+                                                                        </td>
+                                                                        <td>
+                                                                            <form asp-controller="Invoices" asp-action="LinkDocument" method="post"
+                                                                                  class="d-inline">
+                                                                                @Html.AntiForgeryToken()
+                                                                                <input type="hidden" name="documentId" value="@doc.Id" />
+                                                                                <input type="hidden" name="invoiceId" value="@Model.Id" />
+                                                                                <input type="hidden" name="returnUrl"
+                                                                                       value="@Url.Action("Details", "Invoices", new { id = Model.Id })" />
+                                                                                <button type="submit" class="btn btn-sm btn-success"
+                                                                                        title="Link to this invoice">
+                                                                                    <i class="bi bi-link-45deg"></i>
+                                                                                </button>
+                                                                            </form>
+                                                                            <a asp-controller="AiImport" asp-action="ViewDocument"
+                                                                                   asp-route-id="@doc.Id" class="btn btn-sm btn-outline-info"
+                                                                                   title="Preview" target="_blank">
+                                                                                <i class="bi bi-eye"></i>
+                                                                            </a>
+                                                                        </td>
+                                                                    </tr>
+                                                                }
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    }
                 else if (!(Model.ImportedDocuments != null && Model.ImportedDocuments.Any()))
-                {
-                    <div class="text-center mt-3">
-                        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal"
-                            data-bs-target="#uploadDocumentModal">
-                            <i class="bi bi-upload me-1"></i>Upload First Document
-                        </button>
-                    </div>
-                }
-            </div>
-        </div>
-    </div>
+                                    {
+                                        <div class="text-center mt-3">
+                                            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal"
+                                                    data-bs-target="#uploadDocumentModal">
+                                                <i class="bi bi-upload me-1"></i>Upload First Document
+                                            </button>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
 
-    <div class="col-md-4">
-        <div class="card shadow mb-4">
-            <div class="card-header py-3 bg-primary text-white">
-                <h6 class="m-0 font-weight-bold">Invoice Summary</h6>
-            </div>
-            <div class="card-body">
-                <div class="d-flex justify-content-between mb-2">
-                    <span>Subtotal:</span>
-                    <span class="text-end">@FormatCurrency(Model.SubTotal)</span>
-                </div>
-                @if (Model.GSTEnabled && Model.GSTAmount > 0)
-                {
-                    <div class="d-flex justify-content-between mb-2">
-                        <span>GST (@(Model.GSTRate)%):</span>
-                        <span class="text-end">@FormatCurrency(Model.GSTAmount)</span>
-                    </div>
-                }
-                else if (!Model.GSTEnabled)
-                {
-                    <div class="d-flex justify-content-between mb-2 text-muted">
-                        <span><i class="bi bi-x-circle"></i> GST:</span>
-                        <span class="text-end">Not Applied</span>
-                    </div>
-                }
-                <hr />
-                <div class="d-flex justify-content-between mb-3">
-                    <strong>Total Amount:</strong>
-                    <span class="text-end"><strong>@FormatCurrency(Model.TotalAmount)</strong></span>
-                </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <strong>Paid Amount:</strong>
-                    <span class="text-success text-end">@FormatCurrency(Model.PaidAmount)</span>
-                </div>
-                <hr />
-                <div class="d-flex justify-content-between">
-                    <strong>Balance Due:</strong>
-                    @if (Model.BalanceAmount < -0.01m)
-                    {
-                        <span class="text-danger text-end h5">@FormatCurrency(Model.BalanceAmount) <i
-                                class="bi bi-exclamation-triangle-fill" title="Over-allocated!"></i></span>
-                    }
+                        <div class="col-md-4">
+                            <div class="card shadow mb-4">
+                                <div class="card-header py-3 bg-primary text-white">
+                                    <h6 class="m-0 font-weight-bold">Invoice Summary</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Subtotal:</span>
+                                        <span class="text-end">@FormatCurrency(Model.SubTotal)</span>
+                                    </div>
+                                    @if (Model.GSTEnabled && Model.GSTAmount > 0)
+                                    {
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span>GST (@(Model.GSTRate)%):</span>
+                                            <span class="text-end">@FormatCurrency(Model.GSTAmount)</span>
+                                        </div>
+                                    }
+                                    else if (!Model.GSTEnabled)
+                                    {
+                                        <div class="d-flex justify-content-between mb-2 text-muted">
+                                            <span><i class="bi bi-x-circle"></i> GST:</span>
+                                            <span class="text-end">Not Applied</span>
+                                        </div>
+                                    }
+                                    <hr />
+                                    <div class="d-flex justify-content-between mb-3">
+                                        <strong>Total Amount:</strong>
+                                        <span class="text-end"><strong>@FormatCurrency(Model.TotalAmount)</strong></span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <strong>Paid Amount:</strong>
+                                        <span class="text-success text-end">@FormatCurrency(Model.PaidAmount)</span>
+                                    </div>
+                                    <hr />
+                                    <div class="d-flex justify-content-between">
+                                        <strong>Balance Due:</strong>
+                                        @if (Model.BalanceAmount < -0.01m)
+                                        {
+                                            <span class="text-danger text-end h5">@FormatCurrency(Model.BalanceAmount) <i
+                                                class="bi bi-exclamation-triangle-fill" title="Over-allocated!"></i></span>
+                                            }
                     else if (Math.Abs(Model.BalanceAmount) <= 0.01m)
-                    {
-                        <span class="text-success text-end h5">@FormatCurrency(0)</span>
-                    }
-                    else
-                    {
-                        <span class="text-warning text-end h5">@FormatCurrency(Model.BalanceAmount)</span>
-                    }
-                </div>
-            </div>
-        </div>
+                                            {
+                                                <span class="text-success text-end h5">@FormatCurrency(0)</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-warning text-end h5">@FormatCurrency(Model.BalanceAmount)</span>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
 
-        <div class="card shadow">
-            <div class="card-body text-center">
-                <p class="text-muted">Created: @Model.CreatedDate.ToString("yyyy-MM-dd HH:mm")</p>
-                @if (Model.ModifiedDate.HasValue)
-                {
-                    <p class="text-muted">Modified: @Model.ModifiedDate.Value.ToString("yyyy-MM-dd HH:mm")</p>
-                }
-            </div>
-        </div>
-    </div>
-</div>
+                                <div class="card shadow">
+                                    <div class="card-body text-center">
+                                        <p class="text-muted">Created: @Model.CreatedDate.ToString("yyyy-MM-dd HH:mm")</p>
+                                        @if (Model.ModifiedDate.HasValue)
+                                        {
+                                            <p class="text-muted">Modified: @Model.ModifiedDate.Value.ToString("yyyy-MM-dd HH:mm")</p>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-<!-- Upload Document Modal -->
-<div class="modal fade" id="uploadDocumentModal" tabindex="-1" aria-labelledby="uploadDocumentModalLabel"
-    aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="uploadDocumentModalLabel">
-                    <i class="bi bi-upload me-2"></i>Upload Document
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form asp-controller="AiImport" asp-action="UploadDocumentToInvoice" method="post"
-                enctype="multipart/form-data">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="invoiceId" value="@Model.Id" />
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="documentFile" class="form-label">Select File</label>
-                        <input type="file" class="form-control" id="documentFile" name="file" required
-                            accept=".pdf,.png,.jpg,.jpeg,.gif,.webp">
-                        <div class="form-text">Supported formats: PDF, PNG, JPG, JPEG, GIF, WEBP (max 500MB)</div>
-                    </div>
-                    <div class="mb-3">
-                        <label for="documentNotes" class="form-label">Notes (Optional)</label>
-                        <textarea class="form-control" id="documentNotes" name="notes" rows="2"
-                            placeholder="Enter any notes about this document..."></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-upload me-1"></i>Upload
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+                        <!-- Upload Document Modal -->
+                        <div class="modal fade" id="uploadDocumentModal" tabindex="-1" aria-labelledby="uploadDocumentModalLabel"
+                             aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="uploadDocumentModalLabel">
+                                            <i class="bi bi-upload me-2"></i>Upload Document
+                                        </h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <form asp-controller="AiImport" asp-action="UploadDocumentToInvoice" method="post"
+                                          enctype="multipart/form-data">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="invoiceId" value="@Model.Id" />
+                                        <div class="modal-body">
+                                            <div class="mb-3">
+                                                <label for="documentFile" class="form-label">Select File</label>
+                                                <input type="file" class="form-control" id="documentFile" name="file" required
+                                                       accept=".pdf,.png,.jpg,.jpeg,.gif,.webp">
+                                                <div class="form-text">Supported formats: PDF, PNG, JPG, JPEG, GIF, WEBP (max 500MB)</div>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="documentNotes" class="form-label">Notes (Optional)</label>
+                                                <textarea class="form-control" id="documentNotes" name="notes" rows="2"
+                                                          placeholder="Enter any notes about this document..."></textarea>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="bi bi-upload me-1"></i>Upload
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
 
-@section Scripts {
-    <script>
-        async function extractAllDocuments() {
-            const btn = document.getElementById('btnExtractAll');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Processing...';
-            btn.disabled = true;
+                        @section Scripts {
+                            <script>
+                                    function extractAllDocuments() {
+                                        const btn = document.getElementById('btnExtractAll');
+                                        btn.disabled = true;
 
-            try {
-                const response = await fetch('/AiImport/ExtractAllDocumentsAjax', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
-                    }
-                });
+                                        const formData = new FormData();
+                                        const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
 
-                const result = await response.json();
-
-                if (result.success) {
-                    // Show success message and reload
-                    alert(`Successfully extracted ${result.processedCount} document(s). ${result.failedCount > 0 ? result.failedCount + ' failed.' : ''}`);
-                    location.reload();
-                } else {
-                    alert('Error: ' + (result.message || 'Unknown error'));
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Error processing documents. Please try again.');
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
-        }
-    </script>
-}
+                                        ProgressModal.runWithProgress({
+                                            title: 'AI Extracting Documents',
+                                            icon: 'robot',
+                                            colorClass: 'primary',
+                                            color: '#0d6efd',
+                                            url: '/AiImport/ExtractAllDocumentsAjax',
+                                            formData: formData,
+                                            fetchOptions: {
+                                                method: 'POST',
+                                                headers: {
+                                                    'Content-Type': 'application/json',
+                                                    'RequestVerificationToken': token
+                                                }
+                                            },
+                                            stages: ProgressModal.batchStages(),
+                                            stageInterval: 4000,
+                                            onSuccess: function (result, progress) {
+                                                var msg = 'Successfully extracted ' + (result.processedCount || 0) + ' document(s).';
+                                                if (result.failedCount > 0) {
+                                                    msg += ' ' + result.failedCount + ' failed.';
+                                                }
+                                                progress.complete(msg);
+                                                setTimeout(function () { location.reload(); }, 2000);
+                                            },
+                                            onError: function () {
+                                                btn.disabled = false;
+                                            }
+                                        });
+                                    }
+                            </script>
+                        }

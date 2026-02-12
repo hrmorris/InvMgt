@@ -635,31 +635,6 @@
     </div>
 </div>
 
-<!-- AI Processing Progress Modal -->
-<div class="modal fade" id="aiProgressModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">
-                    <i class="bi bi-robot me-2"></i>AI Processing Documents
-                </h5>
-            </div>
-            <div class="modal-body text-center py-4">
-                <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
-                    <span class="visually-hidden">Processing...</span>
-                </div>
-                <h5 id="aiProgressText">Processing documents...</h5>
-                <p class="text-muted" id="aiProgressDetails">Please wait while AI extracts information from all
-                    documents.</p>
-                <div class="progress mt-3" style="height: 25px;">
-                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
-                        id="aiProgressBar" style="width: 0%">0%</div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 @section Scripts {
     <script>
         // Combined filter function
@@ -957,71 +932,39 @@
 
         async function aiProcessAll() {
             var btn = document.getElementById('btnAiProcessAll');
-            var originalText = btn.innerHTML;
             btn.disabled = true;
 
-            // Show progress modal
-            var progressModal = new bootstrap.Modal(document.getElementById('aiProgressModal'));
-            progressModal.show();
-
-            document.getElementById('aiProgressBar').style.width = '10%';
-            document.getElementById('aiProgressBar').textContent = '10%';
-            document.getElementById('aiProgressText').textContent = 'Starting AI extraction...';
-
-            try {
-                const response = await fetch('/AiImport/ExtractAllDocumentsAjax', {
+            const formData = new FormData();
+            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+            
+            ProgressModal.runWithProgress({
+                title: 'AI Processing Documents',
+                icon: 'robot',
+                colorClass: 'primary',
+                color: '#0d6efd',
+                url: '/AiImport/ExtractAllDocumentsAjax',
+                formData: formData,
+                fetchOptions: {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                        'RequestVerificationToken': token
                     }
-                });
-
-                document.getElementById('aiProgressBar').style.width = '90%';
-                document.getElementById('aiProgressBar').textContent = '90%';
-
-                const result = await response.json();
-
-                document.getElementById('aiProgressBar').style.width = '100%';
-                document.getElementById('aiProgressBar').textContent = '100%';
-                document.getElementById('aiProgressBar').classList.remove('progress-bar-animated');
-
-                if (result.success) {
-                    document.getElementById('aiProgressText').textContent = 'Processing Complete!';
-                    document.getElementById('aiProgressDetails').innerHTML =
-                        '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Successfully processed ' +
-                        result.processedCount + ' document(s).</span>' +
-                        (result.failedCount > 0 ? '<br><span class="text-warning">' + result.failedCount + ' document(s) failed.</span>' : '');
-
-                    setTimeout(function () {
-                        progressModal.hide();
-                        location.reload();
-                    }, 2000);
-                } else {
-                    document.getElementById('aiProgressText').textContent = 'Error';
-                    document.getElementById('aiProgressDetails').innerHTML =
-                        '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>' + (result.message || 'Unknown error') + '</span>';
-                    document.getElementById('aiProgressBar').classList.add('bg-danger');
-
-                    setTimeout(function () {
-                        progressModal.hide();
-                        btn.disabled = false;
-                        btn.innerHTML = originalText;
-                    }, 3000);
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                document.getElementById('aiProgressText').textContent = 'Error';
-                document.getElementById('aiProgressDetails').innerHTML =
-                    '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>Failed to process documents. Please try again.</span>';
-                document.getElementById('aiProgressBar').classList.add('bg-danger');
-
-                setTimeout(function () {
-                    progressModal.hide();
+                },
+                stages: ProgressModal.batchStages(),
+                stageInterval: 4000,
+                onSuccess: function (result, progress) {
+                    var msg = 'Successfully processed ' + (result.processedCount || 0) + ' document(s).';
+                    if (result.failedCount > 0) {
+                        msg += ' ' + result.failedCount + ' document(s) failed.';
+                    }
+                    progress.complete(msg);
+                    setTimeout(function () { location.reload(); }, 2000);
+                },
+                onError: function () {
                     btn.disabled = false;
-                    btn.innerHTML = originalText;
-                }, 3000);
-            }
+                }
+            });
         }
     </script>
 }

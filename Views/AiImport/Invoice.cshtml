@@ -56,9 +56,9 @@
                             <div class="row g-3">
                                 <div class="col-md-6">
                                     <div class="form-check card p-3 h-100 border-2" id="singleModeCard"
-                                        style="border-color: #0d6efd !important;">
+                                         style="border-color: #0d6efd !important;">
                                         <input class="form-check-input" type="radio" name="importMode" id="singleMode"
-                                            value="single" checked>
+                                               value="single" checked>
                                         <label class="form-check-label w-100" for="singleMode">
                                             <div class="d-flex align-items-center">
                                                 <i class="bi bi-file-earmark-text text-primary fs-2 me-3"></i>
@@ -73,7 +73,7 @@
                                 <div class="col-md-6">
                                     <div class="form-check card p-3 h-100 border-2" id="bulkModeCard">
                                         <input class="form-check-input" type="radio" name="importMode" id="bulkMode"
-                                            value="bulk">
+                                               value="bulk">
                                         <label class="form-check-label w-100" for="bulkMode">
                                             <div class="d-flex align-items-center">
                                                 <i class="bi bi-files text-success fs-2 me-3"></i>
@@ -102,7 +102,7 @@
                             <span class="badge bg-primary ms-2"><i class="bi bi-files me-1"></i>Multi-File</span>
                         </label>
                         <div class="upload-area border border-2 border-dashed rounded p-4 text-center" id="uploadArea"
-                            style="border-color: #0d6efd !important; cursor: pointer;">
+                             style="border-color: #0d6efd !important; cursor: pointer;">
                             <div class="d-flex justify-content-center align-items-center mb-2">
                                 <i class="bi bi-file-earmark-pdf text-danger fs-2 me-1" style="opacity: 0.7;"></i>
                                 <i class="bi bi-cloud-arrow-up display-4 text-primary mx-2"></i>
@@ -117,202 +117,127 @@
                                 <i class="bi bi-plus-circle-fill text-primary me-2"></i>
                                 <span class="text-primary fw-medium small">Select multiple files at once
                                     (Ctrl+Click)</span>
+                                </div>
+                            </div>
+                            <input type="file" class="form-control d-none" id="file" name="files"
+                                   accept=".pdf,.jpg,.jpeg,.png,.gif,.webp" multiple required />
+                            <div id="fileInfo" class="mt-2 d-none">
+                                <div id="fileList">
+                                    <!-- File items will be added here dynamically -->
+                                </div>
+                                <div class="d-flex gap-2 mt-2">
+                                    <button type="button" class="btn btn-outline-primary" id="addMoreFiles">
+                                        <i class="bi bi-plus-circle me-1"></i> Add More Files
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" id="clearAllFiles">
+                                        <i class="bi bi-x-circle me-1"></i> Clear All
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                        <input type="file" class="form-control d-none" id="file" name="files"
-                            accept=".pdf,.jpg,.jpeg,.png,.gif,.webp" multiple required />
-                        <div id="fileInfo" class="mt-2 d-none">
-                            <div id="fileList">
-                                <!-- File items will be added here dynamically -->
-                            </div>
-                            <div class="d-flex gap-2 mt-2">
-                                <button type="button" class="btn btn-outline-primary" id="addMoreFiles">
-                                    <i class="bi bi-plus-circle me-1"></i> Add More Files
-                                </button>
-                                <button type="button" class="btn btn-outline-secondary" id="clearAllFiles">
-                                    <i class="bi bi-x-circle me-1"></i> Clear All
-                                </button>
-                            </div>
-                        </div>
-                    </div>
 
-                    <!-- Analysis Options -->
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <h6 class="mb-0"><i class="bi bi-gear me-2"></i>Analysis Options</h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="form-check mb-2">
-                                <input type="checkbox" class="form-check-input" id="deepAnalysis" name="deepAnalysis"
-                                    checked />
-                                <label class="form-check-label" for="deepAnalysis">
-                                    <strong>Deep Document Analysis</strong>
-                                    <br /><small class="text-muted">Extract all text, tables, and structured
+                        <!-- Analysis Options -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h6 class="mb-0"><i class="bi bi-gear me-2"></i>Analysis Options</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-check mb-2">
+                                    <input type="checkbox" class="form-check-input" id="deepAnalysis" name="deepAnalysis"
+                                           checked />
+                                    <label class="form-check-label" for="deepAnalysis">
+                                        <strong>Deep Document Analysis</strong>
+                                        <br /><small class="text-muted">Extract all text, tables, and structured
                                         data</small>
-                                </label>
-                            </div>
-                            <div class="form-check mb-2">
-                                <input type="checkbox" class="form-check-input" id="autoMatchEntities"
-                                    name="autoMatchEntities" checked />
-                                <label class="form-check-label" for="autoMatchEntities">
-                                    <strong>Auto-Match Customers/Suppliers</strong>
-                                    <br /><small class="text-muted">Match to existing entities by name</small>
-                                </label>
-                            </div>
-                            <div class="form-check">
-                                <input type="checkbox" class="form-check-input" id="extractLineItems"
-                                    name="extractLineItems" checked />
-                                <label class="form-check-label" for="extractLineItems">
-                                    <strong>Extract Line Items</strong>
-                                    <br /><small class="text-muted">Identify individual invoice items with quantities
+                                    </label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input type="checkbox" class="form-check-input" id="autoMatchEntities"
+                                           name="autoMatchEntities" checked />
+                                    <label class="form-check-label" for="autoMatchEntities">
+                                        <strong>Auto-Match Customers/Suppliers</strong>
+                                        <br /><small class="text-muted">Match to existing entities by name</small>
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="extractLineItems"
+                                           name="extractLineItems" checked />
+                                    <label class="form-check-label" for="extractLineItems">
+                                        <strong>Extract Line Items</strong>
+                                        <br /><small class="text-muted">Identify individual invoice items with quantities
                                         and prices</small>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-primary btn-lg" id="processBtn">
-                            <i class="bi bi-cpu me-2"></i>Start AI Analysis
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-4">
-        <div class="card shadow mb-3">
-            <div class="card-header bg-success text-white">
-                <h6 class="m-0"><i class="bi bi-check-circle"></i> What Gets Extracted</h6>
-            </div>
-            <div class="card-body">
-                <ul class="list-unstyled mb-0">
-                    <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Invoice Number</li>
-                    <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Invoice Date</li>
-                    <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Due Date</li>
-                    <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Customer/Supplier Name
-                    </li>
-                    <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Contact Details</li>
-                    <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Line Items</li>
-                    <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Quantities & Prices</li>
-                    <li><i class="bi bi-check-circle-fill text-success me-2"></i>Total Amount</li>
-                </ul>
-            </div>
-        </div>
-
-        <div class="card shadow">
-            <div class="card-header bg-warning text-dark">
-                <h6 class="m-0"><i class="bi bi-exclamation-triangle"></i> Important Notes</h6>
-            </div>
-            <div class="card-body">
-                <p class="small mb-2"><strong>AI Accuracy:</strong> The AI will do its best to extract data accurately,
-                    but please review all extracted information before saving.</p>
-                <p class="small mb-2"><strong>API Key Required:</strong> Make sure you've configured your OpenAI API
-                    key in appsettings.json</p>
-                <p class="small mb-0"><strong>Clear Images:</strong> Better quality images/PDFs produce better results
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row mt-4">
-    <div class="col-12">
-        <div class="card shadow">
-            <div class="card-header bg-info text-white">
-                <h6 class="m-0"><i class="bi bi-question-circle"></i> How to Get OpenAI API Key</h6>
-            </div>
-            <div class="card-body">
-                <ol>
-                    <li>Go to <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform</a>
-                    </li>
-                    <li>Click "Create new secret key"</li>
-                    <li>Copy your API key</li>
-                    <li>Add it to <code>appsettings.json</code> under <code>OpenAI:ApiKey</code></li>
-                    <li>Restart the application</li>
-                </ol>
-                <p class="mb-0 text-muted small">OpenAI offers pay-as-you-go pricing for API usage.</p>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Progress Modal with Circular Progress -->
-<div class="modal fade" id="progressModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">
-                    <i class="bi bi-cpu me-2"></i>AI Processing Invoice
-                </h5>
-            </div>
-            <div class="modal-body">
-                <div class="row">
-                    <!-- Circular Progress -->
-                    <div class="col-md-5 text-center">
-                        <div class="progress-circle-container mb-3">
-                            <svg class="progress-circle" viewBox="0 0 120 120">
-                                <circle class="progress-circle-bg" cx="60" cy="60" r="54" />
-                                <circle class="progress-circle-fill" cx="60" cy="60" r="54" id="progressCircle" />
-                            </svg>
-                            <div class="progress-circle-text">
-                                <span class="progress-percent" id="progressPercent">0%</span>
-                                <span class="progress-label">Processing</span>
-                            </div>
-                        </div>
-
-                        <!-- Current Activity -->
-                        <div class="current-activity mt-3">
-                            <div class="d-flex align-items-center justify-content-center">
-                                <div class="spinner-border spinner-border-sm text-primary me-2" id="activitySpinner">
-                                </div>
-                                <span id="currentActivity" class="text-muted fw-medium">Initializing...</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Activity Log -->
-                    <div class="col-md-7">
-                        <div class="card h-100">
-                            <div class="card-header py-2 bg-light">
-                                <small class="fw-bold"><i class="bi bi-list-check me-1"></i>AI Import Activity
-                                    Log</small>
-                            </div>
-                            <div class="card-body p-0" style="max-height: 280px; overflow-y: auto;" id="activityLog">
-                                <div class="list-group list-group-flush" id="activityList">
-                                    <!-- Activities will be added here -->
+                                    </label>
                                 </div>
                             </div>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg" id="processBtn">
+                                <i class="bi bi-cpu me-2"></i>Start AI Analysis
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card shadow mb-3">
+                <div class="card-header bg-success text-white">
+                    <h6 class="m-0"><i class="bi bi-check-circle"></i> What Gets Extracted</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Invoice Number</li>
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Invoice Date</li>
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Due Date</li>
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Customer/Supplier Name
+                        </li>
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Contact Details</li>
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Line Items</li>
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Quantities & Prices</li>
+                        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Total Amount</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card shadow">
+                <div class="card-header bg-warning text-dark">
+                    <h6 class="m-0"><i class="bi bi-exclamation-triangle"></i> Important Notes</h6>
+                </div>
+                <div class="card-body">
+                    <p class="small mb-2"><strong>AI Accuracy:</strong> The AI will do its best to extract data accurately,
+                        but please review all extracted information before saving.</p>
+                        <p class="small mb-2"><strong>API Key Required:</strong> Make sure you've configured your OpenAI API
+                            key in appsettings.json</p>
+                            <p class="small mb-0"><strong>Clear Images:</strong> Better quality images/PDFs produce better results
+                            </p>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer d-none" id="progressFooter">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
 
-<!-- Error Modal -->
-<div class="modal fade" id="errorModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Processing Error</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card shadow">
+                        <div class="card-header bg-info text-white">
+                            <h6 class="m-0"><i class="bi bi-question-circle"></i> How to Get OpenAI API Key</h6>
+                        </div>
+                        <div class="card-body">
+                            <ol>
+                                <li>Go to <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform</a>
+                                </li>
+                                <li>Click "Create new secret key"</li>
+                                <li>Copy your API key</li>
+                                <li>Add it to <code>appsettings.json</code> under <code>OpenAI:ApiKey</code></li>
+                                <li>Restart the application</li>
+                            </ol>
+                            <p class="mb-0 text-muted small">OpenAI offers pay-as-you-go pricing for API usage.</p>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="modal-body">
-                <p id="errorMessage"></p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" onclick="location.reload()">Try Again</button>
-            </div>
-        </div>
-    </div>
-</div>
+
 
 @section Scripts {
     <script>
@@ -331,9 +256,6 @@
             const singleModeCard = document.getElementById('singleModeCard');
             const bulkModeCard = document.getElementById('bulkModeCard');
             const bulkModeInfo = document.getElementById('bulkModeInfo');
-
-            const progressModal = new bootstrap.Modal(document.getElementById('progressModal'));
-            const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
 
             // Track selected files
             let selectedFiles = [];
@@ -407,7 +329,6 @@
 
             function addFiles(files) {
                 for (let i = 0; i < files.length; i++) {
-                    // Check for duplicates
                     const isDuplicate = selectedFiles.some(f =>
                         f.name === files[i].name && f.size === files[i].size
                     );
@@ -440,17 +361,17 @@
                     const icon = file.name.toLowerCase().endsWith('.pdf') ? 'file-earmark-pdf' : 'file-earmark-image';
                     const iconColor = file.name.toLowerCase().endsWith('.pdf') ? 'text-danger' : 'text-primary';
                     html += `
-                                <div class="d-flex align-items-center p-2 bg-light rounded mb-2">
-                                    <i class="bi bi-${icon} ${iconColor} fs-4 me-2"></i>
-                                    <div class="flex-grow-1">
-                                        <strong>${escapeHtml(file.name)}</strong>
-                                        <small class="text-muted d-block">${formatFileSize(file.size)}</small>
-                                    </div>
-                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="window.removeFileAt(${index})">
-                                        <i class="bi bi-x"></i>
-                                    </button>
-                                </div>
-                            `;
+                        <div class="d-flex align-items-center p-2 bg-light rounded mb-2">
+                            <i class="bi bi-${icon} ${iconColor} fs-4 me-2"></i>
+                            <div class="flex-grow-1">
+                                <strong>${escapeHtml(file.name)}</strong>
+                                <small class="text-muted d-block">${formatFileSize(file.size)}</small>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="window.removeFileAt(${index})">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        </div>
+                    `;
                 });
 
                 if (selectedFiles.length > 1) {
@@ -460,7 +381,6 @@
                 fileList.innerHTML = html;
             }
 
-            // Make removeFileAt available globally for onclick
             window.removeFileAt = removeFileAt;
 
             function escapeHtml(text) {
@@ -484,18 +404,14 @@
                     return;
                 }
 
+                processBtn.disabled = true;
                 const isBulkMode = bulkMode.checked;
                 const isMultiFile = selectedFiles.length > 1 && !isBulkMode;
 
-                // Show progress modal
-                progressModal.show();
-                resetProgress();
-
                 if (isMultiFile) {
-                    // Process multiple files sequentially
                     await processMultipleFiles();
                 } else {
-                    // Process single file or bulk mode
+                    // Single file or bulk mode - use runWithProgress
                     const formData = new FormData();
                     formData.append('file', selectedFiles[0]);
                     formData.append('deepAnalysis', document.getElementById('deepAnalysis').checked);
@@ -503,27 +419,50 @@
                     formData.append('extractLineItems', document.getElementById('extractLineItems').checked);
 
                     const endpoint = isBulkMode ? '/AiImport/ProcessBulkInvoicesAjax' : '/AiImport/ProcessInvoiceAjax';
-                    await processSingleFile(formData, endpoint, isBulkMode);
+
+                    ProgressModal.runWithProgress({
+                        title: isBulkMode ? 'Bulk Invoice Extraction' : 'AI Processing Invoice',
+                        icon: isBulkMode ? 'files' : 'cpu',
+                        colorClass: isBulkMode ? 'success' : 'primary',
+                        color: isBulkMode ? '#198754' : '#0d6efd',
+                        url: endpoint,
+                        formData: formData,
+                        stages: ProgressModal.aiAnalysisStages(),
+                        stageInterval: isBulkMode ? 400 : 600,
+                        onSuccess: function (result, progress) {
+                            if (isBulkMode && result.totalExtracted) {
+                                progress.complete('Bulk extraction complete! ' + result.totalExtracted + ' invoices extracted.', result.redirectUrl);
+                            } else {
+                                progress.complete('Analysis complete! All data extracted successfully.', result.redirectUrl);
+                            }
+                        },
+                        onError: function () {
+                            processBtn.disabled = false;
+                        }
+                    });
                 }
             });
 
+            // Multi-file sequential processing using manual ProgressModal
             async function processMultipleFiles() {
                 const totalFiles = selectedFiles.length;
-                let processedCount = 0;
                 let successCount = 0;
-                let errors = [];
                 let documentIds = [];
+
+                const progress = new ProgressModal({
+                    title: 'Processing ' + totalFiles + ' Files',
+                    color: '#0d6efd',
+                    colorClass: 'primary',
+                    icon: 'files'
+                });
+                progress.show();
+                progress.updateStage(2, 'Starting batch of ' + totalFiles + ' files...', 'collection');
 
                 for (let i = 0; i < totalFiles; i++) {
                     const file = selectedFiles[i];
-                    const fileProgress = Math.round(((i) / totalFiles) * 90);
+                    const filePercent = Math.round(((i) / totalFiles) * 90);
 
-                    updateProgress(
-                        fileProgress,
-                        `Processing file ${i + 1} of ${totalFiles}: ${file.name}`,
-                        'processing',
-                        'file-earmark-text'
-                    );
+                    progress.updateStage(filePercent, 'Processing file ' + (i + 1) + '/' + totalFiles + ': ' + file.name, 'file-earmark-text');
 
                     try {
                         const formData = new FormData();
@@ -543,212 +482,47 @@
                             const result = JSON.parse(responseText);
                             if (result.success) {
                                 successCount++;
-                                if (result.documentId) {
-                                    documentIds.push(result.documentId);
-                                }
-                                addActivity(`✓ ${file.name} - extracted successfully`, 'success', 'check-circle');
+                                if (result.documentId) documentIds.push(result.documentId);
+                                progress.updateStage(
+                                    Math.round(((i + 1) / totalFiles) * 90),
+                                    '\u2713 ' + file.name + ' \u2014 extracted successfully',
+                                    'check-circle'
+                                );
                             } else {
-                                errors.push({ file: file.name, error: result.message });
-                                addActivity(`✗ ${file.name} - ${result.message}`, 'error', 'x-circle');
+                                progress.updateStage(
+                                    Math.round(((i + 1) / totalFiles) * 90),
+                                    '\u2717 ' + file.name + ' \u2014 ' + result.message,
+                                    'x-circle'
+                                );
                             }
                         } else {
-                            errors.push({ file: file.name, error: 'Server error' });
-                            addActivity(`✗ ${file.name} - server error`, 'error', 'x-circle');
+                            progress.updateStage(
+                                Math.round(((i + 1) / totalFiles) * 90),
+                                '\u2717 ' + file.name + ' \u2014 server error',
+                                'x-circle'
+                            );
                         }
                     } catch (error) {
-                        errors.push({ file: file.name, error: error.message });
-                        addActivity(`✗ ${file.name} - ${error.message}`, 'error', 'x-circle');
+                        progress.updateStage(
+                            Math.round(((i + 1) / totalFiles) * 90),
+                            '\u2717 ' + file.name + ' \u2014 ' + error.message,
+                            'x-circle'
+                        );
                     }
-
-                    processedCount++;
                 }
-
-                // Complete
-                updateProgress(100, `Completed: ${successCount} of ${totalFiles} files processed successfully`, 'complete', 'trophy');
 
                 if (successCount > 0) {
-                    setTimeout(() => {
-                        progressModal.hide();
-                        if (documentIds.length === 1) {
-                            // Single successful file - redirect to edit
-                            window.location.href = `/AiImport/EditInvoice?documentId=${documentIds[0]}`;
-                        } else {
-                            // Multiple files - redirect to document library
-                            window.location.href = '/AiImport/Documents?status=Extracted';
-                        }
-                    }, 2000);
+                    const redirectUrl = documentIds.length === 1
+                        ? '/AiImport/EditInvoice?documentId=' + documentIds[0]
+                        : '/AiImport/Documents?status=Extracted';
+                    progress.complete(
+                        'Completed: ' + successCount + ' of ' + totalFiles + ' files processed successfully',
+                        redirectUrl
+                    );
                 } else {
-                    // All failed
-                    document.getElementById('progressFooter').classList.remove('d-none');
+                    progress.error('All ' + totalFiles + ' files failed to process. Please try again.');
+                    processBtn.disabled = false;
                 }
-            }
-
-            async function processSingleFile(formData, endpoint, isBulkMode) {
-                // Different progress stages for bulk vs single mode
-                const singleStages = [
-                    { percent: 5, activity: 'Uploading document...', status: 'upload', icon: 'cloud-arrow-up' },
-                    { percent: 10, activity: 'Document uploaded successfully', status: 'success', icon: 'check-circle' },
-                    { percent: 15, activity: 'Initializing AI analysis engine...', status: 'processing', icon: 'cpu' },
-                    { percent: 20, activity: 'Analyzing document structure...', status: 'processing', icon: 'file-earmark-text' },
-                    { percent: 30, activity: 'Performing OCR text extraction...', status: 'processing', icon: 'body-text' },
-                    { percent: 40, activity: 'Identifying invoice number...', status: 'processing', icon: 'hash' },
-                    { percent: 48, activity: 'Extracting invoice dates...', status: 'processing', icon: 'calendar-date' },
-                    { percent: 55, activity: 'Detecting customer/supplier information...', status: 'processing', icon: 'person-badge' },
-                    { percent: 65, activity: 'Extracting line items and descriptions...', status: 'processing', icon: 'list-ul' },
-                    { percent: 72, activity: 'Parsing quantities and unit prices...', status: 'processing', icon: 'calculator' },
-                    { percent: 80, activity: 'Calculating totals and tax amounts...', status: 'processing', icon: 'currency-dollar' },
-                    { percent: 85, activity: 'Matching with existing customers/suppliers...', status: 'matching', icon: 'diagram-3' },
-                    { percent: 92, activity: 'Validating extracted data...', status: 'validating', icon: 'shield-check' },
-                    { percent: 97, activity: 'Preparing review page...', status: 'finalizing', icon: 'check2-all' }
-                ];
-
-                const bulkStages = [
-                    { percent: 2, activity: 'Uploading document...', status: 'upload', icon: 'cloud-arrow-up' },
-                    { percent: 5, activity: 'Document uploaded successfully', status: 'success', icon: 'check-circle' },
-                    { percent: 8, activity: 'Initializing bulk extraction engine...', status: 'processing', icon: 'cpu' },
-                    { percent: 12, activity: 'Analyzing document structure...', status: 'processing', icon: 'file-earmark-text' }
-                ];
-
-                const stages = isBulkMode ? bulkStages : singleStages;
-                let stageIndex = 0;
-
-                // Progress simulation for initial stages
-                const progressInterval = setInterval(() => {
-                    if (stageIndex < stages.length) {
-                        updateProgress(
-                            stages[stageIndex].percent,
-                            stages[stageIndex].activity,
-                            stages[stageIndex].status,
-                            stages[stageIndex].icon
-                        );
-                        stageIndex++;
-                    }
-                }, isBulkMode ? 400 : 600);
-
-                try {
-                    const response = await fetch(endpoint, {
-                        method: 'POST',
-                        body: formData
-                    });
-
-                    clearInterval(progressInterval);
-
-                    const responseText = await response.text();
-
-                    if (response.ok) {
-                        let result;
-                        try {
-                            result = JSON.parse(responseText);
-                        } catch (parseError) {
-                            throw new Error('Invalid response from server. Please try again.');
-                        }
-
-                        if (result.success) {
-                            if (isBulkMode && result.totalExtracted) {
-                                updateProgress(100, `Bulk extraction complete! ${result.totalExtracted} invoices extracted.`, 'complete', 'trophy');
-                                addActivity(`Successfully extracted ${result.totalExtracted} invoices`, 'success', 'clipboard-check');
-                                if (result.warnings && result.warnings.length > 0) {
-                                    result.warnings.forEach(w => addActivity(w, 'warning', 'exclamation-triangle'));
-                                }
-                            } else {
-                                updateProgress(100, 'Analysis complete! All data extracted successfully.', 'complete', 'trophy');
-                                addActivity('Invoice data ready for review', 'success', 'clipboard-check');
-                            }
-
-                            setTimeout(() => {
-                                progressModal.hide();
-                                window.location.href = result.redirectUrl;
-                            }, isBulkMode ? 2000 : 1200);
-                        } else {
-                            progressModal.hide();
-                            document.getElementById('errorMessage').textContent = result.message || 'Failed to process document.';
-                            errorModal.show();
-                        }
-                    } else {
-                        let errorMessage = 'Server error: ' + response.status;
-                        try {
-                            const errorResult = JSON.parse(responseText);
-                            if (errorResult.message) {
-                                errorMessage = errorResult.message;
-                            }
-                        } catch (e) {
-                            if (responseText.includes('DOCTYPE') || responseText.includes('<html')) {
-                                errorMessage = 'Server returned an error page. Please try again or contact support.';
-                            }
-                        }
-                        throw new Error(errorMessage);
-                    }
-                } catch (error) {
-                    clearInterval(progressInterval);
-                    progressModal.hide();
-                    document.getElementById('errorMessage').textContent = error.message || 'An error occurred while processing the document.';
-                    errorModal.show();
-                }
-            }
-
-            function resetProgress() {
-                setCircleProgress(0);
-                document.getElementById('progressPercent').textContent = '0%';
-                document.getElementById('currentActivity').textContent = 'Initializing...';
-                document.getElementById('activityList').innerHTML = '';
-                document.getElementById('progressFooter').classList.add('d-none');
-                document.getElementById('activitySpinner').classList.remove('d-none');
-            }
-
-            function setCircleProgress(percent) {
-                const circle = document.getElementById('progressCircle');
-                const circumference = 2 * Math.PI * 54; // r = 54
-                const offset = circumference - (percent / 100) * circumference;
-                circle.style.strokeDasharray = circumference;
-                circle.style.strokeDashoffset = offset;
-            }
-
-            function updateProgress(percent, activity, status, icon = 'arrow-right') {
-                setCircleProgress(percent);
-                document.getElementById('progressPercent').textContent = percent + '%';
-                document.getElementById('currentActivity').textContent = activity;
-                addActivity(activity, status, icon);
-
-                if (percent >= 100) {
-                    document.getElementById('activitySpinner').classList.add('d-none');
-                }
-            }
-
-            function addActivity(text, status = 'processing', icon = 'arrow-right') {
-                const list = document.getElementById('activityList');
-                const item = document.createElement('div');
-
-                let statusClass = 'text-primary';
-                let bgClass = '';
-
-                if (status === 'success' || status === 'complete') {
-                    statusClass = 'text-success';
-                    bgClass = 'list-group-item-success';
-                } else if (status === 'error') {
-                    statusClass = 'text-danger';
-                    bgClass = 'list-group-item-danger';
-                } else if (status === 'matching') {
-                    statusClass = 'text-info';
-                } else if (status === 'validating') {
-                    statusClass = 'text-warning';
-                }
-
-                const timestamp = new Date().toLocaleTimeString();
-
-                item.className = `list-group-item py-2 ${bgClass}`;
-                item.innerHTML = `
-                                            <div class="d-flex align-items-start">
-                                                <i class="bi bi-${icon} ${statusClass} me-2 mt-1"></i>
-                                                <div class="flex-grow-1">
-                                                    <div class="small">${text}</div>
-                                                    <small class="text-muted">${timestamp}</small>
-                                                </div>
-                                                ${status === 'success' || status === 'complete' ? '<i class="bi bi-check-circle-fill text-success"></i>' : ''}
-                                            </div>
-                                        `;
-
-                list.appendChild(item);
-                document.getElementById('activityLog').scrollTop = document.getElementById('activityLog').scrollHeight;
             }
         });
     </script>
@@ -765,76 +539,5 @@
 
     .border-dashed {
         border-style: dashed !important;
-    }
-
-    /* Circular Progress Styles */
-    .progress-circle-container {
-        position: relative;
-        width: 160px;
-        height: 160px;
-        margin: 0 auto;
-    }
-
-    .progress-circle {
-        transform: rotate(-90deg);
-        width: 100%;
-        height: 100%;
-    }
-
-    .progress-circle-bg {
-        fill: none;
-        stroke: #e9ecef;
-        stroke-width: 8;
-    }
-
-    .progress-circle-fill {
-        fill: none;
-        stroke: #0d6efd;
-        stroke-width: 8;
-        stroke-linecap: round;
-        stroke-dasharray: 339.292;
-        stroke-dashoffset: 339.292;
-        transition: stroke-dashoffset 0.5s ease;
-    }
-
-    .progress-circle-text {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        text-align: center;
-    }
-
-    .progress-percent {
-        display: block;
-        font-size: 2rem;
-        font-weight: bold;
-        color: #0d6efd;
-    }
-
-    .progress-label {
-        display: block;
-        font-size: 0.75rem;
-        color: #6c757d;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
-
-    .current-activity {
-        min-height: 40px;
-    }
-
-    #activityList .list-group-item {
-        border-left: 3px solid transparent;
-        transition: all 0.2s ease;
-    }
-
-    #activityList .list-group-item:last-child {
-        border-left-color: #0d6efd;
-        background-color: #f8f9fa;
-    }
-
-    #activityList .list-group-item-success:last-child {
-        border-left-color: #198754;
     }
 </style>

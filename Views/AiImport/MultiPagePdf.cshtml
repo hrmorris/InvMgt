@@ -1,7 +1,9 @@
 @{
     ViewData["Title"] = "AI Import - Multi-Page PDF";
-    var suppliers = ViewBag.Suppliers as List<InvoiceManagement.Models.Supplier> ?? new List<InvoiceManagement.Models.Supplier>();
-    var customers = ViewBag.Customers as List<InvoiceManagement.Models.Customer> ?? new List<InvoiceManagement.Models.Customer>();
+    var suppliers = ViewBag.Suppliers as List<InvoiceManagement.Models.Supplier> ?? new
+List<InvoiceManagement.Models.Supplier>();
+    var customers = ViewBag.Customers as List<InvoiceManagement.Models.Customer> ?? new
+List<InvoiceManagement.Models.Customer>();
 }
 
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
@@ -38,463 +40,300 @@
                 <form id="multiPageForm" enctype="multipart/form-data">
 
                     <div class="alert alert-warning border-0">
-                        <h6 class="mb-2"><i class="bi bi-lightning-charge me-2"></i>Advanced Multi-Invoice Extraction</h6>
-                        <p class="mb-0">Upload a single PDF containing <strong>multiple invoices across up to 100 pages</strong>.
-                        The AI will automatically detect invoice boundaries, extract each invoice separately, and store them as individual records.</p>
-                    </div>
-
-                    <!-- File Upload Area -->
-                    <div class="mb-4">
-                        <label class="form-label fw-bold">
-                            <i class="bi bi-file-earmark-pdf text-danger me-1"></i>Select PDF File
-                        </label>
-                        <div id="uploadArea" class="border border-2 border-dashed rounded-3 p-5 text-center" 
-                             style="cursor: pointer; border-color: #ffc107 !important; background: #fff8e1;">
-                            <i class="bi bi-file-earmark-pdf text-danger" style="font-size: 4rem;"></i>
-                            <p class="mt-3 mb-1 fw-bold">Drop your multi-page PDF here</p>
-                            <p class="text-muted small">or click to browse (PDF files only, up to 50MB)</p>
+                        <h6 class="mb-2"><i class="bi bi-lightning-charge me-2"></i>Advanced Multi-Invoice Extraction
+                        </h6>
+                        <p class="mb-0">Upload a single PDF containing <strong>multiple invoices across up to 100
+                            pages</strong>.
+                            The AI will automatically detect invoice boundaries, extract each invoice separately, and
+                            store them as individual records.</p>
                         </div>
-                        <input type="file" id="file" name="file" class="d-none" accept=".pdf">
 
-                        <!-- File Info (shown after selection) -->
-                        <div id="fileInfo" class="d-none mt-3">
-                            <div class="d-flex align-items-center p-3 bg-light rounded border">
-                                <i class="bi bi-file-earmark-pdf text-danger fs-2 me-3"></i>
-                                <div class="flex-grow-1">
-                                    <strong id="fileName"></strong>
-                                    <small class="text-muted d-block" id="fileSize"></small>
+                        <!-- File Upload Area -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">
+                                <i class="bi bi-file-earmark-pdf text-danger me-1"></i>Select PDF File
+                            </label>
+                            <div id="uploadArea" class="border border-2 border-dashed rounded-3 p-5 text-center"
+                                 style="cursor: pointer; border-color: #ffc107 !important; background: #fff8e1;">
+                                <i class="bi bi-file-earmark-pdf text-danger" style="font-size: 4rem;"></i>
+                                <p class="mt-3 mb-1 fw-bold">Drop your multi-page PDF here</p>
+                                <p class="text-muted small">or click to browse (PDF files only, up to 50MB)</p>
+                            </div>
+                            <input type="file" id="file" name="file" class="d-none" accept=".pdf">
+
+                            <!-- File Info (shown after selection) -->
+                            <div id="fileInfo" class="d-none mt-3">
+                                <div class="d-flex align-items-center p-3 bg-light rounded border">
+                                    <i class="bi bi-file-earmark-pdf text-danger fs-2 me-3"></i>
+                                    <div class="flex-grow-1">
+                                        <strong id="fileName"></strong>
+                                        <small class="text-muted d-block" id="fileSize"></small>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" id="clearFile">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
                                 </div>
-                                <button type="button" class="btn btn-sm btn-outline-danger" id="clearFile">
-                                    <i class="bi bi-x-lg"></i>
-                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div class="d-grid">
+                            <button type="submit" id="processBtn" class="btn btn-warning btn-lg" disabled>
+                                <i class="bi bi-cpu me-2"></i>Start Multi-Page Analysis
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Panel -->
+        <div class="col-lg-4">
+            <!-- Reprocess Existing Document -->
+            <div class="card shadow-sm mb-3">
+                <div class="card-header bg-info text-white">
+                    <h6 class="m-0"><i class="bi bi-arrow-repeat me-2"></i>Reprocess Existing Document</h6>
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted mb-2">Select a previously uploaded PDF to run multi-page invoice extraction.
+                    </p>
+                    @{
+                        var existingDocs = ViewBag.ExistingPdfDocuments as IEnumerable<dynamic>;
+                    }
+                    @if (existingDocs != null && existingDocs.Any())
+                    {
+                        <select class="form-select form-select-sm mb-2" id="existingDocSelect">
+                            <option value="">-- Select a document --</option>
+                            @foreach (var doc in existingDocs)
+                            {
+                                <option value="@doc.Id">
+                                    @doc.OriginalFileName (@(((long)doc.FileSize / 1024.0).ToString("N1")) KB) —
+                                    @(((DateTime)doc.UploadDate).ToString("dd/MM/yyyy"))
+                                </option>
+                            }
+                        </select>
+                        <button type="button" class="btn btn-info btn-sm w-100" id="reprocessBtn" disabled>
+                            <i class="bi bi-files me-1"></i>Run Multi-Page Analysis
+                        </button>
+                    }
+                    else
+                    {
+                        <p class="text-muted small mb-0"><i class="bi bi-info-circle me-1"></i>No PDF documents uploaded yet.
+                        </p>
+                    }
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-3">
+                <div class="card-header bg-light">
+                    <h6 class="m-0"><i class="bi bi-info-circle me-2"></i>How It Works</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex mb-3">
+                        <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center me-3 flex-shrink-0"
+                             style="width: 32px; height: 32px;">
+                            <strong>1</strong>
+                        </div>
+                        <div>
+                            <strong>Boundary Detection</strong>
+                            <p class="mb-0 small text-muted">AI scans all pages to identify where each invoice starts and
+                                ends</p>
+                            </div>
+                        </div>
+                        <div class="d-flex mb-3">
+                            <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center me-3 flex-shrink-0"
+                                 style="width: 32px; height: 32px;">
+                                <strong>2</strong>
+                            </div>
+                            <div>
+                                <strong>Chunked Extraction</strong>
+                                <p class="mb-0 small text-muted">Invoices are extracted in batches for maximum accuracy</p>
+                            </div>
+                        </div>
+                        <div class="d-flex mb-3">
+                            <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center me-3 flex-shrink-0"
+                                 style="width: 32px; height: 32px;">
+                                <strong>3</strong>
+                            </div>
+                            <div>
+                                <strong>Review & Save</strong>
+                                <p class="mb-0 small text-muted">Review each extracted invoice with page-range tracking</p>
+                            </div>
+                        </div>
+                        <div class="d-flex">
+                            <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center me-3 flex-shrink-0"
+                                 style="width: 32px; height: 32px;">
+                                <strong>4</strong>
+                            </div>
+                            <div>
+                                <strong>Individual Storage</strong>
+                                <p class="mb-0 small text-muted">Each invoice is stored as a separate document record</p>
                             </div>
                         </div>
                     </div>
-
-                    <!-- Submit Button -->
-                    <div class="d-grid">
-                        <button type="submit" id="processBtn" class="btn btn-warning btn-lg" disabled>
-                            <i class="bi bi-cpu me-2"></i>Start Multi-Page Analysis
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Info Panel -->
-    <div class="col-lg-4">
-        <!-- Reprocess Existing Document -->
-        <div class="card shadow-sm mb-3">
-            <div class="card-header bg-info text-white">
-                <h6 class="m-0"><i class="bi bi-arrow-repeat me-2"></i>Reprocess Existing Document</h6>
-            </div>
-            <div class="card-body">
-                <p class="small text-muted mb-2">Select a previously uploaded PDF to run multi-page invoice extraction.</p>
-                @{
-                    var existingDocs = ViewBag.ExistingPdfDocuments as IEnumerable<dynamic>;
-                }
-                @if (existingDocs != null && existingDocs.Any())
-                {
-                    <select class="form-select form-select-sm mb-2" id="existingDocSelect">
-                        <option value="">-- Select a document --</option>
-                        @foreach (var doc in existingDocs)
-                        {
-                            <option value="@doc.Id">
-                                @doc.OriginalFileName (@(((long)doc.FileSize / 1024.0).ToString("N1")) KB) — @(((DateTime)doc.UploadDate).ToString("dd/MM/yyyy"))
-                            </option>
-                        }
-                    </select>
-                    <button type="button" class="btn btn-info btn-sm w-100" id="reprocessBtn" disabled>
-                        <i class="bi bi-files me-1"></i>Run Multi-Page Analysis
-                    </button>
-                }
-                else
-                {
-                    <p class="text-muted small mb-0"><i class="bi bi-info-circle me-1"></i>No PDF documents uploaded yet.</p>
-                }
-            </div>
-        </div>
-
-        <div class="card shadow-sm mb-3">
-            <div class="card-header bg-light">
-                <h6 class="m-0"><i class="bi bi-info-circle me-2"></i>How It Works</h6>
-            </div>
-            <div class="card-body">
-                <div class="d-flex mb-3">
-                    <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center me-3 flex-shrink-0"
-                         style="width: 32px; height: 32px;">
-                        <strong>1</strong>
-                    </div>
-                    <div>
-                        <strong>Boundary Detection</strong>
-                        <p class="mb-0 small text-muted">AI scans all pages to identify where each invoice starts and ends</p>
-                    </div>
                 </div>
-                <div class="d-flex mb-3">
-                    <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center me-3 flex-shrink-0"
-                         style="width: 32px; height: 32px;">
-                        <strong>2</strong>
+
+                <div class="card shadow-sm">
+                    <div class="card-header bg-light">
+                        <h6 class="m-0"><i class="bi bi-stars me-2"></i>Key Features</h6>
                     </div>
-                    <div>
-                        <strong>Chunked Extraction</strong>
-                        <p class="mb-0 small text-muted">Invoices are extracted in batches for maximum accuracy</p>
-                    </div>
-                </div>
-                <div class="d-flex mb-3">
-                    <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center me-3 flex-shrink-0"
-                         style="width: 32px; height: 32px;">
-                        <strong>3</strong>
-                    </div>
-                    <div>
-                        <strong>Review & Save</strong>
-                        <p class="mb-0 small text-muted">Review each extracted invoice with page-range tracking</p>
-                    </div>
-                </div>
-                <div class="d-flex">
-                    <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center me-3 flex-shrink-0"
-                         style="width: 32px; height: 32px;">
-                        <strong>4</strong>
-                    </div>
-                    <div>
-                        <strong>Individual Storage</strong>
-                        <p class="mb-0 small text-muted">Each invoice is stored as a separate document record</p>
+                    <div class="card-body">
+                        <ul class="list-unstyled mb-0">
+                            <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Up to <strong>100
+                                pages</strong> per PDF</li>
+                                <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Auto page-boundary detection
+                                </li>
+                                <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Multi-page invoice support</li>
+                                <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Individual document storage
+                                </li>
+                                <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Supplier/Customer auto-matching
+                                </li>
+                                <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Duplicate detection</li>
+                                <li><i class="bi bi-check-circle text-success me-2"></i>Page-range tracking per invoice</li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div class="card shadow-sm">
-            <div class="card-header bg-light">
-                <h6 class="m-0"><i class="bi bi-stars me-2"></i>Key Features</h6>
-            </div>
-            <div class="card-body">
-                <ul class="list-unstyled mb-0">
-                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Up to <strong>100 pages</strong> per PDF</li>
-                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Auto page-boundary detection</li>
-                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Multi-page invoice support</li>
-                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Individual document storage</li>
-                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Supplier/Customer auto-matching</li>
-                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Duplicate detection</li>
-                    <li><i class="bi bi-check-circle text-success me-2"></i>Page-range tracking per invoice</li>
-                </ul>
-            </div>
-        </div>
-    </div>
-</div>
+            @section Scripts {
+                <script>
+                        document.addEventListener('DOMContentLoaded', function () {
+                            const form = document.getElementById('multiPageForm');
+                            const fileInput = document.getElementById('file');
+                            const uploadArea = document.getElementById('uploadArea');
+                            const fileInfo = document.getElementById('fileInfo');
+                            const processBtn = document.getElementById('processBtn');
+                            const clearFile = document.getElementById('clearFile');
 
-<!-- Processing Progress Modal -->
-<div class="modal fade" id="progressModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-warning text-dark">
-                <h5 class="modal-title"><i class="bi bi-cpu me-2"></i>Processing Multi-Page PDF</h5>
-            </div>
-            <div class="modal-body text-center py-4">
-                <!-- Circular Progress -->
-                <div class="position-relative d-inline-block mb-4">
-                    <svg width="160" height="160" viewBox="0 0 160 160" class="circular-progress">
-                        <circle cx="80" cy="80" r="70" fill="none" stroke="#e9ecef" stroke-width="10"></circle>
-                        <circle id="progressCircle" cx="80" cy="80" r="70" fill="none" stroke="#ffc107" stroke-width="10"
-                                stroke-dasharray="439.82" stroke-dashoffset="439.82" stroke-linecap="round"
-                                transform="rotate(-90, 80, 80)" style="transition: stroke-dashoffset 0.5s ease;"></circle>
-                    </svg>
-                    <div class="position-absolute top-50 start-50 translate-middle text-center">
-                        <span id="progressPercent" class="display-6 fw-bold">0%</span>
-                    </div>
-                </div>
+                            let selectedFile = null;
 
-                <div id="progressStatus" class="mb-3">
-                    <h6 class="text-muted">Preparing...</h6>
-                </div>
+                            // Upload area click
+                            uploadArea.addEventListener('click', () => fileInput.click());
 
-                <!-- Activity Log -->
-                <div class="text-start border rounded p-3 bg-light" style="max-height: 200px; overflow-y: auto;" id="activityLog">
-                    <div class="small text-muted" id="activityEntries">
-                        <div><i class="bi bi-hourglass-split text-warning me-1"></i> Waiting to start...</div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer d-none" id="progressFooter">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-warning" onclick="location.reload()">Try Again</button>
-            </div>
-        </div>
-    </div>
-</div>
+                            // Drag and drop
+                            uploadArea.addEventListener('dragover', (e) => {
+                                e.preventDefault();
+                                uploadArea.style.backgroundColor = '#fff3cd';
+                            });
+                            uploadArea.addEventListener('dragleave', () => {
+                                uploadArea.style.backgroundColor = '#fff8e1';
+                            });
+                            uploadArea.addEventListener('drop', (e) => {
+                                e.preventDefault();
+                                uploadArea.style.backgroundColor = '#fff8e1';
+                                if (e.dataTransfer.files.length) {
+                                    selectFile(e.dataTransfer.files[0]);
+                                }
+                            });
 
-<!-- Error Modal -->
-<div class="modal fade" id="errorModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Processing Error</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p id="errorMessage"></p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" onclick="location.reload()">Try Again</button>
-            </div>
-        </div>
-    </div>
-</div>
+                            // File input change
+                            fileInput.addEventListener('change', function () {
+                                if (this.files.length) selectFile(this.files[0]);
+                            });
 
-@section Scripts {
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const form = document.getElementById('multiPageForm');
-            const fileInput = document.getElementById('file');
-            const uploadArea = document.getElementById('uploadArea');
-            const fileInfo = document.getElementById('fileInfo');
-            const processBtn = document.getElementById('processBtn');
-            const clearFile = document.getElementById('clearFile');
-            const progressModal = new bootstrap.Modal(document.getElementById('progressModal'));
-            const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+                            // Clear file
+                            clearFile.addEventListener('click', () => {
+                                selectedFile = null;
+                                fileInput.value = '';
+                                fileInfo.classList.add('d-none');
+                                uploadArea.classList.remove('d-none');
+                                processBtn.disabled = true;
+                            });
 
-            let selectedFile = null;
+                            function selectFile(file) {
+                                if (!file.name.toLowerCase().endsWith('.pdf')) {
+                                    alert('Only PDF files are supported for Multi-Page PDF Import.');
+                                    return;
+                                }
+                                if (file.size > 50 * 1024 * 1024) {
+                                    alert('File is too large. Maximum size is 50MB.');
+                                    return;
+                                }
+                                selectedFile = file;
+                                document.getElementById('fileName').textContent = file.name;
+                                document.getElementById('fileSize').textContent = formatFileSize(file.size);
+                                fileInfo.classList.remove('d-none');
+                                uploadArea.classList.add('d-none');
+                                processBtn.disabled = false;
+                            }
 
-            // Upload area click
-            uploadArea.addEventListener('click', () => fileInput.click());
+                            function formatFileSize(bytes) {
+                                if (bytes < 1024) return bytes + ' bytes';
+                                if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+                                return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+                            }
 
-            // Drag and drop
-            uploadArea.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                uploadArea.style.backgroundColor = '#fff3cd';
-            });
-            uploadArea.addEventListener('dragleave', () => {
-                uploadArea.style.backgroundColor = '#fff8e1';
-            });
-            uploadArea.addEventListener('drop', (e) => {
-                e.preventDefault();
-                uploadArea.style.backgroundColor = '#fff8e1';
-                if (e.dataTransfer.files.length) {
-                    selectFile(e.dataTransfer.files[0]);
-                }
-            });
+                            // Form submission — upload new PDF
+                            form.addEventListener('submit', function (e) {
+                                e.preventDefault();
+                                if (!selectedFile) { alert('Please select a PDF file.'); return; }
 
-            // File input change
-            fileInput.addEventListener('change', function () {
-                if (this.files.length) selectFile(this.files[0]);
-            });
+                                processBtn.disabled = true;
+                                const formData = new FormData();
+                                formData.append('file', selectedFile);
 
-            // Clear file
-            clearFile.addEventListener('click', () => {
-                selectedFile = null;
-                fileInput.value = '';
-                fileInfo.classList.add('d-none');
-                uploadArea.classList.remove('d-none');
-                processBtn.disabled = true;
-            });
+                                ProgressModal.runWithProgress({
+                                    title: 'Processing Multi-Page PDF',
+                                    icon: 'file-earmark-pdf',
+                                    colorClass: 'warning',
+                                    color: '#ffc107',
+                                    url: '/AiImport/ProcessMultiPagePdfAjax',
+                                    formData: formData,
+                                    stages: ProgressModal.multiPageStages(),
+                                    stageInterval: 3000,
+                                    onSuccess: function (result, progress) {
+                                        progress.complete(
+                                            `✓ Extracted ${result.totalInvoices || '?'} invoices from ${result.totalPages || '?'} pages`,
+                                            result.redirectUrl
+                                        );
+                                    },
+                                    onError: function () {
+                                        processBtn.disabled = false;
+                                    }
+                                });
+                            });
 
-            function selectFile(file) {
-                if (!file.name.toLowerCase().endsWith('.pdf')) {
-                    alert('Only PDF files are supported for Multi-Page PDF Import.');
-                    return;
-                }
-                if (file.size > 50 * 1024 * 1024) {
-                    alert('File is too large. Maximum size is 50MB.');
-                    return;
-                }
-                selectedFile = file;
-                document.getElementById('fileName').textContent = file.name;
-                document.getElementById('fileSize').textContent = formatFileSize(file.size);
-                fileInfo.classList.remove('d-none');
-                uploadArea.classList.add('d-none');
-                processBtn.disabled = false;
-            }
+                            // Reprocess existing document
+                            const existingDocSelect = document.getElementById('existingDocSelect');
+                            const reprocessBtn = document.getElementById('reprocessBtn');
 
-            function formatFileSize(bytes) {
-                if (bytes < 1024) return bytes + ' bytes';
-                if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-                return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-            }
+                            if (existingDocSelect && reprocessBtn) {
+                                existingDocSelect.addEventListener('change', function () {
+                                    reprocessBtn.disabled = !this.value;
+                                });
 
-            // Form submission
-            form.addEventListener('submit', async function (e) {
-                e.preventDefault();
-                if (!selectedFile) {
-                    alert('Please select a PDF file.');
-                    return;
-                }
+                                reprocessBtn.addEventListener('click', function () {
+                                    const docId = existingDocSelect.value;
+                                    if (!docId) return;
 
-                progressModal.show();
-                processBtn.disabled = true;
+                                    reprocessBtn.disabled = true;
+                                    const formData = new FormData();
+                                    formData.append('id', docId);
 
-                // Simulate progress stages
-                const stages = [
-                    { percent: 3, msg: 'Uploading PDF document...', icon: 'cloud-arrow-up' },
-                    { percent: 8, msg: 'Document uploaded successfully', icon: 'check-circle' },
-                    { percent: 12, msg: 'Analyzing document structure...', icon: 'file-earmark-text' },
-                    { percent: 18, msg: 'Detecting invoice page boundaries...', icon: 'scissors' },
-                    { percent: 28, msg: 'Identifying individual invoices...', icon: 'search' },
-                    { percent: 40, msg: 'Extracting invoice data (batch 1)...', icon: 'cpu' },
-                    { percent: 55, msg: 'Extracting invoice data (batch 2)...', icon: 'cpu' },
-                    { percent: 68, msg: 'Parsing line items and amounts...', icon: 'calculator' },
-                    { percent: 78, msg: 'Matching suppliers and customers...', icon: 'diagram-3' },
-                    { percent: 85, msg: 'Validating and deduplicating...', icon: 'shield-check' },
-                    { percent: 92, msg: 'Finalizing extraction results...', icon: 'check2-all' }
-                ];
-
-                let stageIndex = 0;
-                const stageInterval = setInterval(() => {
-                    if (stageIndex < stages.length) {
-                        updateProgress(stages[stageIndex].percent, stages[stageIndex].msg, stages[stageIndex].icon);
-                        stageIndex++;
-                    }
-                }, 3000);
-
-                try {
-                    const formData = new FormData();
-                    formData.append('file', selectedFile);
-
-                    const response = await fetch('/AiImport/ProcessMultiPagePdfAjax', {
-                        method: 'POST',
-                        body: formData
-                    });
-
-                    clearInterval(stageInterval);
-
-                    const responseText = await response.text();
-                    let result;
-                    try {
-                        result = JSON.parse(responseText);
-                    } catch (parseErr) {
-                        throw new Error('Invalid response from server');
-                    }
-
-                    if (result.success) {
-                        updateProgress(100,
-                            `✓ Extracted ${result.totalInvoices || '?'} invoices from ${result.totalPages || '?'} pages`,
-                            'trophy');
-
-                        addActivity(`Complete: ${result.message}`, 'check-circle-fill', 'text-success');
-
-                        setTimeout(() => {
-                            progressModal.hide();
-                            window.location.href = result.redirectUrl;
-                        }, 1500);
-                    } else {
-                        progressModal.hide();
-                        document.getElementById('errorMessage').textContent = result.message || 'An unknown error occurred.';
-                        errorModal.show();
-                        processBtn.disabled = false;
-                    }
-                } catch (error) {
-                    clearInterval(stageInterval);
-                    progressModal.hide();
-                    document.getElementById('errorMessage').textContent = error.message || 'A network error occurred.';
-                    errorModal.show();
-                    processBtn.disabled = false;
-                }
-            });
-
-            function updateProgress(percent, message, icon) {
-                const circle = document.getElementById('progressCircle');
-                const circumference = 2 * Math.PI * 70; // 439.82
-                const offset = circumference - (percent / 100) * circumference;
-                circle.style.strokeDashoffset = offset;
-
-                document.getElementById('progressPercent').textContent = percent + '%';
-                document.getElementById('progressStatus').innerHTML =
-                    `<h6 class="text-muted"><i class="bi bi-${icon} me-2"></i>${message}</h6>`;
-
-                addActivity(message, icon, percent >= 100 ? 'text-success' : 'text-primary');
-            }
-
-            function addActivity(message, icon, colorClass) {
-                const entries = document.getElementById('activityEntries');
-                const entry = document.createElement('div');
-                entry.className = 'mb-1';
-                entry.innerHTML = `<i class="bi bi-${icon} ${colorClass || 'text-primary'} me-1"></i> ${message}`;
-                entries.appendChild(entry);
-                entries.parentElement.scrollTop = entries.parentElement.scrollHeight;
-            }
-
-            // Reprocess existing document
-            const existingDocSelect = document.getElementById('existingDocSelect');
-            const reprocessBtn = document.getElementById('reprocessBtn');
-
-            if (existingDocSelect && reprocessBtn) {
-                existingDocSelect.addEventListener('change', function () {
-                    reprocessBtn.disabled = !this.value;
-                });
-
-                reprocessBtn.addEventListener('click', async function () {
-                    const docId = existingDocSelect.value;
-                    if (!docId) return;
-
-                    if (!confirm('Run Multi-Page PDF Analysis on this document?\n\nThis may take 30-90 seconds.')) return;
-
-                    progressModal.show();
-                    reprocessBtn.disabled = true;
-
-                    const stages = [
-                        { percent: 5, msg: 'Loading stored document...', icon: 'file-earmark-arrow-down' },
-                        { percent: 12, msg: 'Analyzing document structure...', icon: 'file-earmark-text' },
-                        { percent: 20, msg: 'Detecting invoice page boundaries...', icon: 'scissors' },
-                        { percent: 35, msg: 'Identifying individual invoices...', icon: 'search' },
-                        { percent: 50, msg: 'Extracting invoice data (batch 1)...', icon: 'cpu' },
-                        { percent: 65, msg: 'Extracting invoice data (batch 2)...', icon: 'cpu' },
-                        { percent: 78, msg: 'Parsing line items and amounts...', icon: 'calculator' },
-                        { percent: 88, msg: 'Matching suppliers and customers...', icon: 'diagram-3' },
-                        { percent: 94, msg: 'Finalizing extraction results...', icon: 'check2-all' }
-                    ];
-
-                    let stageIndex = 0;
-                    const stageInterval = setInterval(() => {
-                        if (stageIndex < stages.length) {
-                            updateProgress(stages[stageIndex].percent, stages[stageIndex].msg, stages[stageIndex].icon);
-                            stageIndex++;
-                        }
-                    }, 3500);
-
-                    try {
-                        const formData = new FormData();
-                        formData.append('id', docId);
-
-                        const response = await fetch('/AiImport/ReprocessAsMultiPagePdfAjax', {
-                            method: 'POST',
-                            body: formData
+                                    ProgressModal.runWithProgress({
+                                        title: 'Reprocessing Document as Multi-Page PDF',
+                                        icon: 'arrow-repeat',
+                                        colorClass: 'info',
+                                        color: '#0dcaf0',
+                                        url: '/AiImport/ReprocessAsMultiPagePdfAjax',
+                                        formData: formData,
+                                        stages: ProgressModal.reprocessStages(),
+                                        stageInterval: 4000,
+                                        confirm: true,
+                                        confirmMessage: 'Run Multi-Page PDF Analysis on this document?\n\nThis may take 30-90 seconds.',
+                                        onSuccess: function (result, progress) {
+                                            progress.complete(
+                                                `✓ Extracted ${result.totalInvoices || '?'} invoices from ${result.totalPages || '?'} pages`,
+                                                result.redirectUrl
+                                            );
+                                        },
+                                        onError: function () {
+                                            reprocessBtn.disabled = false;
+                                        }
+                                    });
+                                });
+                            }
                         });
-
-                        clearInterval(stageInterval);
-
-                        const responseText = await response.text();
-                        let result;
-                        try {
-                            result = JSON.parse(responseText);
-                        } catch (parseErr) {
-                            throw new Error('Invalid response from server');
-                        }
-
-                        if (result.success) {
-                            updateProgress(100,
-                                `✓ Extracted ${result.totalInvoices || '?'} invoices from ${result.totalPages || '?'} pages`,
-                                'trophy');
-                            addActivity(`Complete: ${result.message}`, 'check-circle-fill', 'text-success');
-
-                            setTimeout(() => {
-                                progressModal.hide();
-                                window.location.href = result.redirectUrl;
-                            }, 1500);
-                        } else {
-                            progressModal.hide();
-                            document.getElementById('errorMessage').textContent = result.message || 'An unknown error occurred.';
-                            errorModal.show();
-                            reprocessBtn.disabled = false;
-                        }
-                    } catch (error) {
-                        clearInterval(stageInterval);
-                        progressModal.hide();
-                        document.getElementById('errorMessage').textContent = error.message || 'A network error occurred.';
-                        errorModal.show();
-                        reprocessBtn.disabled = false;
-                    }
-                });
+                </script>
             }
-        });
-    </script>
-}
