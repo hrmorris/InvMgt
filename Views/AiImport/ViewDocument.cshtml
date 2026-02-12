@@ -10,10 +10,10 @@
         <div>
             <h2 class="mb-1" id="documentTitle">
                 <i
-                    class="bi @(isPdf ? "bi-file-pdf text-danger" : isImage ? "bi-file-image text-primary" : "bi-file-earmark") me-2"></i>
+                class="bi @(isPdf ? "bi-file-pdf text-danger" : isImage ? "bi-file-image text-primary" : "bi-file-earmark") me-2"></i>
                 <span id="fileNameDisplay">@Model.OriginalFileName</span>
                 <button type="button" class="btn btn-sm btn-outline-secondary ms-2" id="editNameBtn"
-                    title="Edit file name">
+                        title="Edit file name">
                     <i class="bi bi-pencil"></i>
                 </button>
             </h2>
@@ -42,14 +42,14 @@
             @if (Model.InvoiceId.HasValue)
             {
                 <a asp-controller="Invoices" asp-action="Details" asp-route-id="@Model.InvoiceId"
-                    class="btn btn-outline-secondary">
+                       class="btn btn-outline-secondary">
                     <i class="bi bi-receipt me-1"></i>View Invoice
                 </a>
             }
             @if (Model.PaymentId.HasValue)
             {
                 <a asp-controller="Payments" asp-action="Details" asp-route-id="@Model.PaymentId"
-                    class="btn btn-outline-secondary">
+                       class="btn btn-outline-secondary">
                     <i class="bi bi-credit-card me-1"></i>View Payment
                 </a>
             }
@@ -70,7 +70,7 @@
                     {
                         <div class="ratio" style="--bs-aspect-ratio: 141.4%;">
                             <iframe src="@Url.Action("PreviewDocument", new { id = Model.Id })" class="border-0"
-                                style="width: 100%; min-height: 800px;">
+                                    style="width: 100%; min-height: 800px;">
                             </iframe>
                         </div>
                     }
@@ -78,7 +78,7 @@
                     {
                         <div class="text-center p-4 bg-secondary bg-opacity-10">
                             <img src="@Url.Action("PreviewDocument", new { id = Model.Id })" alt="@Model.OriginalFileName"
-                                class="img-fluid shadow-lg" style="max-height: 800px; object-fit: contain;">
+                                 class="img-fluid shadow-lg" style="max-height: 800px; object-fit: contain;">
                         </div>
                     }
                     else
@@ -104,346 +104,429 @@
                 <div class="card-body">
                     <dl class="mb-0">
                         <dt>File Name <button type="button" class="btn btn-sm btn-link p-0 ms-1" id="editNameBtn2"
-                                title="Edit file name"><i class="bi bi-pencil"></i></button></dt>
-                        <dd class="text-break" id="fileNameDisplaySidebar">@Model.OriginalFileName</dd>
+                                                  title="Edit file name"><i class="bi bi-pencil"></i></button></dt>
+                            <dd class="text-break" id="fileNameDisplaySidebar">@Model.OriginalFileName</dd>
 
-                        <dt>Content Type</dt>
-                        <dd>@(Model.ContentType ?? "Unknown")</dd>
+                            <dt>Content Type</dt>
+                            <dd>@(Model.ContentType ?? "Unknown")</dd>
 
-                        <dt>File Size</dt>
-                        <dd>@(Model.FileSize > 0 ? $"{Model.FileSize / 1024.0:N1} KB" : "-")</dd>
+                            <dt>File Size</dt>
+                            <dd>@(Model.FileSize > 0 ? $"{Model.FileSize / 1024.0:N1} KB" : "-")</dd>
 
-                        <dt>Document Type</dt>
-                        <dd><span class="badge bg-info">@Model.DocumentType</span></dd>
+                            <dt>Document Type</dt>
+                            <dd><span class="badge bg-info">@Model.DocumentType</span></dd>
 
-                        <dt>Status</dt>
-                        <dd>
-                            <span
-                                class="badge @(Model.ProcessingStatus == "Processed" ? "bg-success" : Model.ProcessingStatus == "Error" ? "bg-danger" : "bg-warning")">
-                                @Model.ProcessingStatus
-                            </span>
-                        </dd>
+                            <dt>Status</dt>
+                            <dd>
+                                <span
+                                    class="badge @(Model.ProcessingStatus == "Processed" ? "bg-success" : Model.ProcessingStatus == "Error" ? "bg-danger" : "bg-warning")">
+                                    @Model.ProcessingStatus
+                                </span>
+                            </dd>
 
-                        <dt>Upload Date</dt>
-                        <dd>@Model.UploadDate.ToString("dd/MM/yyyy HH:mm")</dd>
+                            <dt>Upload Date</dt>
+                            <dd>@Model.UploadDate.ToString("dd/MM/yyyy HH:mm")</dd>
 
-                        @if (Model.ProcessedDate.HasValue)
-                        {
-                            <dt>Processed Date</dt>
-                            <dd>@Model.ProcessedDate.Value.ToString("dd/MM/yyyy HH:mm")</dd>
-                        }
-
-                        @if (!string.IsNullOrEmpty(Model.UploadedBy))
-                        {
-                            <dt>Uploaded By</dt>
-                            <dd>@Model.UploadedBy</dd>
-                        }
-                    </dl>
-                </div>
-            </div>
-
-            @if (!string.IsNullOrEmpty(Model.ExtractedSupplierName) ||
-                        !string.IsNullOrEmpty(Model.ExtractedCustomerName) || !string.IsNullOrEmpty(Model.ExtractedBankName))
-            {
-                <div class="card shadow mb-3">
-                    <div class="card-header bg-success text-white">
-                        <h6 class="mb-0"><i class="bi bi-cpu me-2"></i>Extracted Data</h6>
-                    </div>
-                    <div class="card-body">
-                        <dl class="mb-0">
-                            @if (!string.IsNullOrEmpty(Model.ExtractedSupplierName))
+                            @if (Model.ProcessedDate.HasValue)
                             {
-                                <dt>Supplier Name</dt>
-                                <dd>@Model.ExtractedSupplierName</dd>
+                                <dt>Processed Date</dt>
+                                <dd>@Model.ProcessedDate.Value.ToString("dd/MM/yyyy HH:mm")</dd>
                             }
 
-                            @if (!string.IsNullOrEmpty(Model.ExtractedCustomerName))
+                            @if (!string.IsNullOrEmpty(Model.UploadedBy))
                             {
-                                <dt>Customer Name</dt>
-                                <dd>@Model.ExtractedCustomerName</dd>
-                            }
-
-                            @if (!string.IsNullOrEmpty(Model.ExtractedBankName))
-                            {
-                                <dt>Bank Name</dt>
-                                <dd>@Model.ExtractedBankName</dd>
-                            }
-
-                            @if (!string.IsNullOrEmpty(Model.ExtractedAccountNumber))
-                            {
-                                <dt>Account Number</dt>
-                                <dd>@Model.ExtractedAccountNumber</dd>
+                                <dt>Uploaded By</dt>
+                                <dd>@Model.UploadedBy</dd>
                             }
                         </dl>
                     </div>
                 </div>
-            }
 
-            @if (!string.IsNullOrEmpty(Model.ProcessingNotes))
-            {
-                <div class="card shadow">
-                    <div class="card-header bg-warning">
-                        <h6 class="mb-0"><i class="bi bi-sticky me-2"></i>Processing Notes</h6>
+                @if (!string.IsNullOrEmpty(Model.ExtractedSupplierName) ||
+                                        !string.IsNullOrEmpty(Model.ExtractedCustomerName) || !string.IsNullOrEmpty(Model.ExtractedBankName))
+                {
+                    <div class="card shadow mb-3">
+                        <div class="card-header bg-success text-white">
+                            <h6 class="mb-0"><i class="bi bi-cpu me-2"></i>Extracted Data</h6>
+                        </div>
+                        <div class="card-body">
+                            <dl class="mb-0">
+                                @if (!string.IsNullOrEmpty(Model.ExtractedSupplierName))
+                                {
+                                    <dt>Supplier Name</dt>
+                                    <dd>@Model.ExtractedSupplierName</dd>
+                                }
+
+                                @if (!string.IsNullOrEmpty(Model.ExtractedCustomerName))
+                                {
+                                    <dt>Customer Name</dt>
+                                    <dd>@Model.ExtractedCustomerName</dd>
+                                }
+
+                                @if (!string.IsNullOrEmpty(Model.ExtractedBankName))
+                                {
+                                    <dt>Bank Name</dt>
+                                    <dd>@Model.ExtractedBankName</dd>
+                                }
+
+                                @if (!string.IsNullOrEmpty(Model.ExtractedAccountNumber))
+                                {
+                                    <dt>Account Number</dt>
+                                    <dd>@Model.ExtractedAccountNumber</dd>
+                                }
+                            </dl>
+                        </div>
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(Model.ProcessingNotes))
+                {
+                    <div class="card shadow">
+                        <div class="card-header bg-warning">
+                            <h6 class="mb-0"><i class="bi bi-sticky me-2"></i>Processing Notes</h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-0 small">@Model.ProcessingNotes</p>
+                        </div>
+                    </div>
+                }
+
+                <div class="card shadow mt-3">
+                    <div class="card-header bg-primary text-white">
+                        <h6 class="mb-0"><i class="bi bi-link-45deg me-2"></i>Linked Records</h6>
                     </div>
                     <div class="card-body">
-                        <p class="mb-0 small">@Model.ProcessingNotes</p>
+                        @if (Model.InvoiceId.HasValue)
+                        {
+                            <a asp-controller="Invoices" asp-action="Details" asp-route-id="@Model.InvoiceId"
+                                   class="btn btn-outline-primary w-100 mb-2">
+                                <i class="bi bi-receipt me-2"></i>View Linked Invoice
+                            </a>
+                        }
+                        @if (Model.PaymentId.HasValue)
+                        {
+                            <a asp-controller="Payments" asp-action="Details" asp-route-id="@Model.PaymentId"
+                                   class="btn btn-outline-success w-100 mb-2">
+                                <i class="bi bi-credit-card me-2"></i>View Linked Payment
+                            </a>
+                        }
+                        @if (!Model.InvoiceId.HasValue && !Model.PaymentId.HasValue)
+                        {
+                            <p class="text-muted mb-0 text-center">
+                                <i class="bi bi-unlink me-1"></i>Not linked to any record
+                            </p>
+                        }
                     </div>
                 </div>
-            }
 
-            <div class="card shadow mt-3">
-                <div class="card-header bg-primary text-white">
-                    <h6 class="mb-0"><i class="bi bi-link-45deg me-2"></i>Linked Records</h6>
-                </div>
-                <div class="card-body">
-                    @if (Model.InvoiceId.HasValue)
-                    {
-                        <a asp-controller="Invoices" asp-action="Details" asp-route-id="@Model.InvoiceId"
-                            class="btn btn-outline-primary w-100 mb-2">
-                            <i class="bi bi-receipt me-2"></i>View Linked Invoice
-                        </a>
-                    }
-                    @if (Model.PaymentId.HasValue)
-                    {
-                        <a asp-controller="Payments" asp-action="Details" asp-route-id="@Model.PaymentId"
-                            class="btn btn-outline-success w-100 mb-2">
-                            <i class="bi bi-credit-card me-2"></i>View Linked Payment
-                        </a>
-                    }
-                    @if (!Model.InvoiceId.HasValue && !Model.PaymentId.HasValue)
-                    {
-                        <p class="text-muted mb-0 text-center">
-                            <i class="bi bi-unlink me-1"></i>Not linked to any record
+                <!-- AI Analysis Section -->
+                <div class="card shadow mt-3">
+                    <div class="card-header bg-warning text-dark">
+                        <h6 class="mb-0"><i class="bi bi-robot me-2"></i>AI Analysis</h6>
+                    </div>
+                    <div class="card-body">
+                        <button type="button" class="btn btn-warning w-100 mb-2" id="analyzeBtn">
+                            <i class="bi bi-cpu me-1"></i>Run AI Analysis
+                        </button>
+                        <p class="small text-muted mb-2">
+                            AI will extract invoice details and rename the file to InvNo_[number] format.
                         </p>
-                    }
-                </div>
-            </div>
 
-            <!-- AI Analysis Section -->
-            <div class="card shadow mt-3">
-                <div class="card-header bg-warning text-dark">
-                    <h6 class="mb-0"><i class="bi bi-robot me-2"></i>AI Analysis</h6>
-                </div>
-                <div class="card-body">
-                    <button type="button" class="btn btn-warning w-100 mb-2" id="analyzeBtn">
-                        <i class="bi bi-cpu me-1"></i>Run AI Analysis
-                    </button>
-                    <p class="small text-muted mb-0">
-                        AI will extract invoice details and rename the file to InvNo_[number] format.
-                    </p>
+                        @if (isPdf)
+                        {
+                            <hr class="my-2" />
+                            <button type="button" class="btn btn-outline-warning w-100 mb-2" id="multiPageBtn">
+                                <i class="bi bi-files me-1"></i>Run Multi-Page PDF Analysis
+                            </button>
+                            <p class="small text-muted mb-0">
+                                Detect and extract <strong>multiple invoices</strong> from this PDF using AI page-boundary
+                                detection.
+                            </p>
 
-                    <!-- AI Analysis Results (hidden by default) -->
-                    <div id="analysisResults" class="mt-3 d-none">
-                        <hr />
-                        <h6 class="text-success"><i class="bi bi-check-circle me-1"></i>Extracted Data</h6>
-                        <dl class="small mb-0">
-                            <dt>Invoice Number</dt>
-                            <dd id="resultInvoiceNumber">-</dd>
-                            <dt>Invoice Date</dt>
-                            <dd id="resultInvoiceDate">-</dd>
-                            <dt>Supplier/Customer</dt>
-                            <dd id="resultEntity">-</dd>
-                            <dt>Total Amount</dt>
-                            <dd id="resultAmount">-</dd>
-                        </dl>
+                            <!-- Multi-Page Progress (hidden by default) -->
+                            <div id="multiPageProgress" class="d-none mt-3">
+                                <hr />
+                                <div class="text-center">
+                                    <div class="spinner-border text-warning mb-2" role="status"></div>
+                                    <p class="mb-1 fw-bold" id="multiPageStatusText">Analyzing pages...</p>
+                                    <p class="small text-muted mb-0">This may take 30-90 seconds for large documents.</p>
+                                </div>
+                            </div>
+                        }
+
+                        <!-- AI Analysis Results (hidden by default) -->
+                        <div id="analysisResults" class="mt-3 d-none">
+                            <hr />
+                            <h6 class="text-success"><i class="bi bi-check-circle me-1"></i>Extracted Data</h6>
+                            <dl class="small mb-0">
+                                <dt>Invoice Number</dt>
+                                <dd id="resultInvoiceNumber">-</dd>
+                                <dt>Invoice Date</dt>
+                                <dd id="resultInvoiceDate">-</dd>
+                                <dt>Supplier/Customer</dt>
+                                <dd id="resultEntity">-</dd>
+                                <dt>Total Amount</dt>
+                                <dd id="resultAmount">-</dd>
+                            </dl>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-@section Scripts {
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const documentId = @Model.Id;
-            const editNameBtn = document.getElementById('editNameBtn');
-            const editNameBtn2 = document.getElementById('editNameBtn2');
-            const editNameForm = document.getElementById('editNameForm');
-            const fileNameDisplay = document.getElementById('fileNameDisplay');
-            const fileNameDisplaySidebar = document.getElementById('fileNameDisplaySidebar');
-            const fileNameInput = document.getElementById('fileNameInput');
-            const saveNameBtn = document.getElementById('saveNameBtn');
-            const cancelNameBtn = document.getElementById('cancelNameBtn');
-            const documentTitle = document.getElementById('documentTitle');
+    @section Scripts {
+        <script>
+                document.addEventListener('DOMContentLoaded', function () {
+                    const documentId = @Model.Id;
+                    const editNameBtn = document.getElementById('editNameBtn');
+                    const editNameBtn2 = document.getElementById('editNameBtn2');
+                    const editNameForm = document.getElementById('editNameForm');
+                    const fileNameDisplay = document.getElementById('fileNameDisplay');
+                    const fileNameDisplaySidebar = document.getElementById('fileNameDisplaySidebar');
+                    const fileNameInput = document.getElementById('fileNameInput');
+                    const saveNameBtn = document.getElementById('saveNameBtn');
+                    const cancelNameBtn = document.getElementById('cancelNameBtn');
+                    const documentTitle = document.getElementById('documentTitle');
 
-            function showEditForm() {
-                documentTitle.classList.add('d-none');
-                editNameForm.classList.remove('d-none');
-                fileNameInput.focus();
-                fileNameInput.select();
-            }
-
-            function hideEditForm() {
-                documentTitle.classList.remove('d-none');
-                editNameForm.classList.add('d-none');
-                fileNameInput.value = fileNameDisplay.textContent;
-            }
-
-            async function saveFileName() {
-                const newName = fileNameInput.value.trim();
-                if (!newName) {
-                    alert('File name cannot be empty.');
-                    return;
-                }
-
-                saveNameBtn.disabled = true;
-                saveNameBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-
-                try {
-                    const formData = new FormData();
-                    formData.append('id', documentId);
-                    formData.append('fileName', newName);
-
-                    const response = await fetch('@Url.Action("UpdateDocumentName", "AiImport")', {
-                        method: 'POST',
-                        body: formData
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
+                    function showEditForm() {
+                        documentTitle.classList.add('d-none');
+                        editNameForm.classList.remove('d-none');
+                        fileNameInput.focus();
+                        fileNameInput.select();
                     }
 
-                    const result = await response.json();
-
-                    if (result.success) {
-                        fileNameDisplay.textContent = result.newName;
-                        fileNameDisplaySidebar.textContent = result.newName;
-                        fileNameInput.value = result.newName;
-                        hideEditForm();
-
-                        // Show success toast
-                        const toast = document.createElement('div');
-                        toast.className = 'position-fixed bottom-0 end-0 p-3';
-                        toast.style.zIndex = '11';
-                        toast.innerHTML = `
-                                                <div class="toast show bg-success text-white" role="alert">
-                                                    <div class="toast-body">
-                                                        <i class="bi bi-check-circle me-2"></i>${result.message}
-                                                    </div>
-                                                </div>
-                                            `;
-                        document.body.appendChild(toast);
-                        setTimeout(() => toast.remove(), 3000);
-                    } else {
-                        alert(result.message);
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    alert('Error updating file name. Please try again.');
-                } finally {
-                    saveNameBtn.disabled = false;
-                    saveNameBtn.innerHTML = '<i class="bi bi-check-lg"></i>';
-                }
-            }
-
-            // Event listeners
-            editNameBtn.addEventListener('click', showEditForm);
-            editNameBtn2.addEventListener('click', showEditForm);
-            cancelNameBtn.addEventListener('click', hideEditForm);
-            saveNameBtn.addEventListener('click', saveFileName);
-
-            // Save on Enter key
-            fileNameInput.addEventListener('keydown', function (e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    saveFileName();
-                } else if (e.key === 'Escape') {
-                    hideEditForm();
-                }
-            });
-
-            // AI Analysis functionality
-            const analyzeBtn = document.getElementById('analyzeBtn');
-            const analysisResults = document.getElementById('analysisResults');
-
-            analyzeBtn.addEventListener('click', async function () {
-                analyzeBtn.disabled = true;
-                analyzeBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Analyzing...';
-
-                try {
-                    const formData = new FormData();
-                    formData.append('id', documentId);
-
-                    const response = await fetch('@Url.Action("AnalyzeDocument", "AiImport")', {
-                        method: 'POST',
-                        body: formData,
-                        credentials: 'same-origin'
-                    });
-
-                    // Check if we got redirected (session expired)
-                    if (response.redirected || response.url.includes('/Account/Login')) {
-                        showToast('Session expired. Please refresh the page and try again.', 'error');
-                        analyzeBtn.disabled = false;
-                        analyzeBtn.innerHTML = '<i class="bi bi-robot me-1"></i>Run AI Analysis';
-                        return;
+                    function hideEditForm() {
+                        documentTitle.classList.remove('d-none');
+                        editNameForm.classList.add('d-none');
+                        fileNameInput.value = fileNameDisplay.textContent;
                     }
 
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-
-                    // Check content type before parsing JSON
-                    const contentType = response.headers.get('content-type');
-                    if (!contentType || !contentType.includes('application/json')) {
-                        throw new Error('Server returned non-JSON response. You may need to log in again.');
-                    }
-
-                    const result = await response.json();
-
-                    if (result.success) {
-                        // Update UI with extracted data
-                        analysisResults.classList.remove('d-none');
-
-                        document.getElementById('resultInvoiceNumber').textContent = result.data.invoiceNumber || '-';
-                        document.getElementById('resultInvoiceDate').textContent = result.data.invoiceDate ? new Date(result.data.invoiceDate).toLocaleDateString('en-GB') : '-';
-                        document.getElementById('resultEntity').textContent = result.data.supplierName || result.data.customerName || '-';
-                        document.getElementById('resultAmount').textContent = result.data.totalAmount ? 'K ' + parseFloat(result.data.totalAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-';
-
-                        // Update file name display if it was renamed
-                        if (result.data.newFileName) {
-                            fileNameDisplay.textContent = result.data.newFileName;
-                            fileNameDisplaySidebar.textContent = result.data.newFileName;
-                            fileNameInput.value = result.data.newFileName;
+                    async function saveFileName() {
+                        const newName = fileNameInput.value.trim();
+                        if (!newName) {
+                            alert('File name cannot be empty.');
+                            return;
                         }
 
-                        // Show success toast
-                        showToast(result.message + ' Redirecting to review...', 'success');
+                        saveNameBtn.disabled = true;
+                        saveNameBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
 
-                        // Redirect to ReviewInvoice page after a short delay
-                        setTimeout(() => {
-                            window.location.href = '@Url.Action("ReviewInvoice", "AiImport")?documentId=' + documentId;
-                        }, 1500);
-                    } else {
-                        showToast(result.message, 'danger');
-                        analyzeBtn.innerHTML = '<i class="bi bi-cpu me-1"></i>Run AI Analysis';
+                        try {
+                            const formData = new FormData();
+                            formData.append('id', documentId);
+                            formData.append('fileName', newName);
+
+                            const response = await fetch('@Url.Action("UpdateDocumentName", "AiImport")', {
+                                method: 'POST',
+                                body: formData
+                            });
+
+                            if (!response.ok) {
+                                throw new Error(`HTTP error! status: ${response.status}`);
+                            }
+
+                            const result = await response.json();
+
+                            if (result.success) {
+                                fileNameDisplay.textContent = result.newName;
+                                fileNameDisplaySidebar.textContent = result.newName;
+                                fileNameInput.value = result.newName;
+                                hideEditForm();
+
+                                // Show success toast
+                                const toast = document.createElement('div');
+                                toast.className = 'position-fixed bottom-0 end-0 p-3';
+                                toast.style.zIndex = '11';
+                                toast.innerHTML = `
+                                                        <div class="toast show bg-success text-white" role="alert">
+                                                            <div class="toast-body">
+                                                                <i class="bi bi-check-circle me-2"></i>${result.message}
+                                                            </div>
+                                                        </div>
+                                                    `;
+                                document.body.appendChild(toast);
+                                setTimeout(() => toast.remove(), 3000);
+                            } else {
+                                alert(result.message);
+                            }
+                        } catch (error) {
+                            console.error('Error:', error);
+                            alert('Error updating file name. Please try again.');
+                        } finally {
+                            saveNameBtn.disabled = false;
+                            saveNameBtn.innerHTML = '<i class="bi bi-check-lg"></i>';
+                        }
                     }
-                } catch (error) {
-                    console.error('Error:', error);
-                    showToast('Error analyzing document. Please try again.', 'danger');
-                    analyzeBtn.innerHTML = '<i class="bi bi-cpu me-1"></i>Run AI Analysis';
-                } finally {
-                    analyzeBtn.disabled = false;
-                }
-            });
 
-            function showToast(message, type) {
-                const existingToast = document.querySelector('.auto-toast');
-                if (existingToast) existingToast.remove();
+                    // Event listeners
+                    editNameBtn.addEventListener('click', showEditForm);
+                    editNameBtn2.addEventListener('click', showEditForm);
+                    cancelNameBtn.addEventListener('click', hideEditForm);
+                    saveNameBtn.addEventListener('click', saveFileName);
 
-                const toast = document.createElement('div');
-                toast.className = 'auto-toast position-fixed bottom-0 end-0 p-3';
-                toast.style.zIndex = '11';
-                toast.innerHTML = `
-                                <div class="toast show bg-${type} text-white" role="alert">
-                                    <div class="toast-body">
-                                        <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>${message}
-                                    </div>
-                                </div>
-                            `;
-                document.body.appendChild(toast);
-                setTimeout(() => toast.remove(), 4000);
-            }
-        });
-    </script>
-}
+                    // Save on Enter key
+                    fileNameInput.addEventListener('keydown', function (e) {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            saveFileName();
+                        } else if (e.key === 'Escape') {
+                            hideEditForm();
+                        }
+                    });
+
+                    // AI Analysis functionality
+                    const analyzeBtn = document.getElementById('analyzeBtn');
+                    const analysisResults = document.getElementById('analysisResults');
+
+                    analyzeBtn.addEventListener('click', async function () {
+                        analyzeBtn.disabled = true;
+                        analyzeBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Analyzing...';
+
+                        try {
+                            const formData = new FormData();
+                            formData.append('id', documentId);
+
+                            const response = await fetch('@Url.Action("AnalyzeDocument", "AiImport")', {
+                                method: 'POST',
+                                body: formData,
+                                credentials: 'same-origin'
+                            });
+
+                            // Check if we got redirected (session expired)
+                            if (response.redirected || response.url.includes('/Account/Login')) {
+                                showToast('Session expired. Please refresh the page and try again.', 'error');
+                                analyzeBtn.disabled = false;
+                                analyzeBtn.innerHTML = '<i class="bi bi-robot me-1"></i>Run AI Analysis';
+                                return;
+                            }
+
+                            if (!response.ok) {
+                                throw new Error(`HTTP error! status: ${response.status}`);
+                            }
+
+                            // Check content type before parsing JSON
+                            const contentType = response.headers.get('content-type');
+                            if (!contentType || !contentType.includes('application/json')) {
+                                throw new Error('Server returned non-JSON response. You may need to log in again.');
+                            }
+
+                            const result = await response.json();
+
+                            if (result.success) {
+                                // Update UI with extracted data
+                                analysisResults.classList.remove('d-none');
+
+                                document.getElementById('resultInvoiceNumber').textContent = result.data.invoiceNumber || '-';
+                                document.getElementById('resultInvoiceDate').textContent = result.data.invoiceDate ? new Date(result.data.invoiceDate).toLocaleDateString('en-GB') : '-';
+                                document.getElementById('resultEntity').textContent = result.data.supplierName || result.data.customerName || '-';
+                                document.getElementById('resultAmount').textContent = result.data.totalAmount ? 'K ' + parseFloat(result.data.totalAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-';
+
+                                // Update file name display if it was renamed
+                                if (result.data.newFileName) {
+                                    fileNameDisplay.textContent = result.data.newFileName;
+                                    fileNameDisplaySidebar.textContent = result.data.newFileName;
+                                    fileNameInput.value = result.data.newFileName;
+                                }
+
+                                // Show success toast
+                                showToast(result.message + ' Redirecting to review...', 'success');
+
+                                // Redirect to ReviewInvoice page after a short delay
+                                setTimeout(() => {
+                                    window.location.href = '@Url.Action("ReviewInvoice", "AiImport")?documentId=' + documentId;
+                                }, 1500);
+                            } else {
+                                showToast(result.message, 'danger');
+                                analyzeBtn.innerHTML = '<i class="bi bi-cpu me-1"></i>Run AI Analysis';
+                            }
+                        } catch (error) {
+                            console.error('Error:', error);
+                            showToast('Error analyzing document. Please try again.', 'danger');
+                            analyzeBtn.innerHTML = '<i class="bi bi-cpu me-1"></i>Run AI Analysis';
+                        } finally {
+                            analyzeBtn.disabled = false;
+                        }
+                    });
+
+                    function showToast(message, type) {
+                        const existingToast = document.querySelector('.auto-toast');
+                        if (existingToast) existingToast.remove();
+
+                        const toast = document.createElement('div');
+                        toast.className = 'auto-toast position-fixed bottom-0 end-0 p-3';
+                        toast.style.zIndex = '11';
+                        toast.innerHTML = `
+                                        <div class="toast show bg-${type} text-white" role="alert">
+                                            <div class="toast-body">
+                                                <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>${message}
+                                            </div>
+                                        </div>
+                                    `;
+                        document.body.appendChild(toast);
+                        setTimeout(() => toast.remove(), 4000);
+                    }
+
+                    // Multi-Page PDF Analysis functionality
+                    const multiPageBtn = document.getElementById('multiPageBtn');
+                    if (multiPageBtn) {
+                        const multiPageProgress = document.getElementById('multiPageProgress');
+                        const multiPageStatusText = document.getElementById('multiPageStatusText');
+
+                        multiPageBtn.addEventListener('click', async function () {
+                            if (!confirm('Run Multi-Page PDF Analysis?\n\nThis will detect and extract all invoices from this PDF. This may take 30-90 seconds.')) {
+                                return;
+                            }
+
+                            multiPageBtn.disabled = true;
+                            multiPageBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
+                            multiPageProgress.classList.remove('d-none');
+                            multiPageStatusText.textContent = 'Detecting invoice boundaries...';
+
+                            try {
+                                const formData = new FormData();
+                                formData.append('id', documentId);
+
+                                const response = await fetch('@Url.Action("ReprocessAsMultiPagePdfAjax", "AiImport")', {
+                                    method: 'POST',
+                                    body: formData,
+                                    credentials: 'same-origin'
+                                });
+
+                                if (response.redirected || response.url.includes('/Account/Login')) {
+                                    showToast('Session expired. Please refresh and try again.', 'danger');
+                                    return;
+                                }
+
+                                const contentType = response.headers.get('content-type');
+                                if (!contentType || !contentType.includes('application/json')) {
+                                    throw new Error('Server returned non-JSON response.');
+                                }
+
+                                const result = await response.json();
+
+                                if (result.success) {
+                                    multiPageStatusText.textContent = `Found ${result.totalInvoices} invoices! Redirecting...`;
+                                    showToast(`${result.message}`, 'success');
+
+                                    setTimeout(() => {
+                                        window.location.href = result.redirectUrl;
+                                    }, 1500);
+                                } else {
+                                    multiPageProgress.classList.add('d-none');
+                                    showToast(result.message, 'danger');
+                                    multiPageBtn.disabled = false;
+                                    multiPageBtn.innerHTML = '<i class="bi bi-files me-1"></i>Run Multi-Page PDF Analysis';
+                                }
+                            } catch (error) {
+                                console.error('Error:', error);
+                                multiPageProgress.classList.add('d-none');
+                                showToast('Error processing document. Please try again.', 'danger');
+                                multiPageBtn.disabled = false;
+                                multiPageBtn.innerHTML = '<i class="bi bi-files me-1"></i>Run Multi-Page PDF Analysis';
+                            }
+                        });
+                    }
+                });
+        </script>
+    }

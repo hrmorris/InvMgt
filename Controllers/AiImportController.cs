@@ -3002,6 +3002,14 @@ namespace InvoiceManagement.Controllers
                 .OrderBy(c => c.CustomerName)
                 .ToListAsync();
 
+            // Get existing PDF documents that can be reprocessed
+            ViewBag.ExistingPdfDocuments = await _context.ImportedDocuments
+                .Where(d => d.ContentType != null && d.ContentType.Contains("pdf"))
+                .OrderByDescending(d => d.UploadDate)
+                .Select(d => new { d.Id, d.OriginalFileName, d.FileSize, d.UploadDate, d.ProcessingStatus, d.DocumentType })
+                .Take(50)
+                .ToListAsync();
+
             return View();
         }
 
@@ -3126,6 +3134,131 @@ namespace InvoiceManagement.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in ProcessMultiPagePdfAjax");
+                return Json(new { success = false, message = $"Processing error: {ex.Message}" });
+            }
+        }
+
+        // POST: AiImport/ReprocessAsMultiPagePdfAjax — Reprocess an existing stored document as multi-page PDF
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> ReprocessAsMultiPagePdfAjax(int id)
+        {
+            try
+            {
+                // Load the document (without FileContent first to check it exists)
+                var document = await _context.ImportedDocuments.FindAsync(id);
+                if (document == null)
+                {
+                    return Json(new { success = false, message = "Document not found." });
+                }
+
+                if (document.ContentType?.Contains("pdf") != true)
+                {
+                    return Json(new { success = false, message = "Only PDF documents can be processed as multi-page PDFs." });
+                }
+
+                if (document.FileContent == null || document.FileContent.Length == 0)
+                {
+                    return Json(new { success = false, message = "Document has no file content stored." });
+                }
+
+                _logger.LogInformation("ReprocessAsMultiPagePdfAjax: Reprocessing document {Id} ({FileName}, {Size} bytes)",
+                    id, document.OriginalFileName, document.FileSize);
+
+                // Read PDF bytes and detach entity before long AI processing
+                var pdfBytes = document.FileContent;
+                var fileName = document.OriginalFileName ?? "document.pdf";
+                var documentId = document.Id;
+
+                // Update document type to indicate multi-page processing
+                document.DocumentType = "Invoice-Bulk";
+                document.ProcessingStatus = "Processing";
+                await _context.SaveChangesAsync();
+
+                // Detach to avoid stale connection during long AI processing
+                _context.Entry(document).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+                document = null;
+
+                // Process with advanced page-boundary detection (LONG operation)
+                using var stream = new MemoryStream(pdfBytes);
+                var result = await _aiService.ExtractInvoicesWithPageDetectionAsync(stream, fileName);
+
+                // Re-fetch with fresh connection
+                var freshDocument = await _context.ImportedDocuments.FindAsync(documentId);
+                if (freshDocument == null)
+                {
+                    return Json(new { success = false, message = "Document was removed during processing." });
+                }
+
+                if (result.Errors.Any() && result.SuccessfullyExtracted == 0)
+                {
+                    freshDocument.ProcessingStatus = "Error";
+                    freshDocument.ProcessingNotes = string.Join("; ", result.Errors);
+                    await _context.SaveChangesAsync();
+                    return Json(new { success = false, message = $"Processing failed: {string.Join("; ", result.Errors)}" });
+                }
+
+                // Serialize extraction result
+                var extractionData = new
+                {
+                    MultiPagePdf = true,
+                    TotalPages = result.TotalPages,
+                    TotalInvoicesDetected = result.TotalInvoicesDetected,
+                    SuccessfullyExtracted = result.SuccessfullyExtracted,
+                    FailedExtractions = result.FailedExtractions,
+                    ProcessingTimeSeconds = result.ProcessingTime.TotalSeconds,
+                    ProcessingSummary = result.ProcessingSummary,
+                    Warnings = result.Warnings,
+                    Errors = result.Errors,
+                    Invoices = result.Invoices.Select(inv => new
+                    {
+                        StartPage = inv.StartPage,
+                        EndPage = inv.EndPage,
+                        PageRange = inv.PageRange,
+                        Confidence = inv.Confidence,
+                        InvoiceNumber = inv.Invoice.InvoiceNumber ?? "",
+                        InvoiceDate = inv.Invoice.InvoiceDate,
+                        DueDate = inv.Invoice.DueDate,
+                        CustomerName = inv.Invoice.CustomerName ?? "",
+                        CustomerAddress = inv.Invoice.CustomerAddress ?? "",
+                        CustomerEmail = inv.Invoice.CustomerEmail ?? "",
+                        CustomerPhone = inv.Invoice.CustomerPhone ?? "",
+                        SubTotal = inv.Invoice.SubTotal,
+                        GSTAmount = inv.Invoice.GSTAmount,
+                        TotalAmount = inv.Invoice.TotalAmount,
+                        Notes = inv.Invoice.Notes ?? "",
+                        InvoiceType = inv.Invoice.InvoiceType ?? "Payable",
+                        SupplierName = inv.Invoice.Supplier?.SupplierName ?? "",
+                        SupplierAddress = inv.Invoice.Supplier?.Address ?? "",
+                        SupplierPhone = inv.Invoice.Supplier?.Phone ?? "",
+                        SupplierEmail = inv.Invoice.Supplier?.Email ?? "",
+                        Items = inv.Invoice.InvoiceItems?.Select(i => new
+                        {
+                            Description = i.Description ?? "",
+                            Quantity = i.Quantity,
+                            UnitPrice = i.UnitPrice
+                        }).ToList()
+                    }).ToList()
+                };
+
+                freshDocument.ProcessingStatus = "Extracted";
+                freshDocument.ProcessedDate = DateTime.Now;
+                freshDocument.ProcessingNotes = System.Text.Json.JsonSerializer.Serialize(extractionData);
+                await _context.SaveChangesAsync();
+
+                return Json(new
+                {
+                    success = true,
+                    message = result.ProcessingSummary,
+                    documentId = freshDocument.Id,
+                    redirectUrl = Url.Action("ReviewSplitInvoices", new { id = freshDocument.Id }),
+                    totalPages = result.TotalPages,
+                    totalInvoices = result.SuccessfullyExtracted
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in ReprocessAsMultiPagePdfAjax for document {Id}", id);
                 return Json(new { success = false, message = $"Processing error: {ex.Message}" });
             }
         }

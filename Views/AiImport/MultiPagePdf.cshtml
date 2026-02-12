@@ -84,6 +84,38 @@
 
     <!-- Info Panel -->
     <div class="col-lg-4">
+        <!-- Reprocess Existing Document -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-info text-white">
+                <h6 class="m-0"><i class="bi bi-arrow-repeat me-2"></i>Reprocess Existing Document</h6>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted mb-2">Select a previously uploaded PDF to run multi-page invoice extraction.</p>
+                @{
+                    var existingDocs = ViewBag.ExistingPdfDocuments as IEnumerable<dynamic>;
+                }
+                @if (existingDocs != null && existingDocs.Any())
+                {
+                    <select class="form-select form-select-sm mb-2" id="existingDocSelect">
+                        <option value="">-- Select a document --</option>
+                        @foreach (var doc in existingDocs)
+                        {
+                            <option value="@doc.Id">
+                                @doc.OriginalFileName (@(((long)doc.FileSize / 1024.0).ToString("N1")) KB) — @(((DateTime)doc.UploadDate).ToString("dd/MM/yyyy"))
+                            </option>
+                        }
+                    </select>
+                    <button type="button" class="btn btn-info btn-sm w-100" id="reprocessBtn" disabled>
+                        <i class="bi bi-files me-1"></i>Run Multi-Page Analysis
+                    </button>
+                }
+                else
+                {
+                    <p class="text-muted small mb-0"><i class="bi bi-info-circle me-1"></i>No PDF documents uploaded yet.</p>
+                }
+            </div>
+        </div>
+
         <div class="card shadow-sm mb-3">
             <div class="card-header bg-light">
                 <h6 class="m-0"><i class="bi bi-info-circle me-2"></i>How It Works</h6>
@@ -379,6 +411,89 @@
                 entry.innerHTML = `<i class="bi bi-${icon} ${colorClass || 'text-primary'} me-1"></i> ${message}`;
                 entries.appendChild(entry);
                 entries.parentElement.scrollTop = entries.parentElement.scrollHeight;
+            }
+
+            // Reprocess existing document
+            const existingDocSelect = document.getElementById('existingDocSelect');
+            const reprocessBtn = document.getElementById('reprocessBtn');
+
+            if (existingDocSelect && reprocessBtn) {
+                existingDocSelect.addEventListener('change', function () {
+                    reprocessBtn.disabled = !this.value;
+                });
+
+                reprocessBtn.addEventListener('click', async function () {
+                    const docId = existingDocSelect.value;
+                    if (!docId) return;
+
+                    if (!confirm('Run Multi-Page PDF Analysis on this document?\n\nThis may take 30-90 seconds.')) return;
+
+                    progressModal.show();
+                    reprocessBtn.disabled = true;
+
+                    const stages = [
+                        { percent: 5, msg: 'Loading stored document...', icon: 'file-earmark-arrow-down' },
+                        { percent: 12, msg: 'Analyzing document structure...', icon: 'file-earmark-text' },
+                        { percent: 20, msg: 'Detecting invoice page boundaries...', icon: 'scissors' },
+                        { percent: 35, msg: 'Identifying individual invoices...', icon: 'search' },
+                        { percent: 50, msg: 'Extracting invoice data (batch 1)...', icon: 'cpu' },
+                        { percent: 65, msg: 'Extracting invoice data (batch 2)...', icon: 'cpu' },
+                        { percent: 78, msg: 'Parsing line items and amounts...', icon: 'calculator' },
+                        { percent: 88, msg: 'Matching suppliers and customers...', icon: 'diagram-3' },
+                        { percent: 94, msg: 'Finalizing extraction results...', icon: 'check2-all' }
+                    ];
+
+                    let stageIndex = 0;
+                    const stageInterval = setInterval(() => {
+                        if (stageIndex < stages.length) {
+                            updateProgress(stages[stageIndex].percent, stages[stageIndex].msg, stages[stageIndex].icon);
+                            stageIndex++;
+                        }
+                    }, 3500);
+
+                    try {
+                        const formData = new FormData();
+                        formData.append('id', docId);
+
+                        const response = await fetch('/AiImport/ReprocessAsMultiPagePdfAjax', {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        clearInterval(stageInterval);
+
+                        const responseText = await response.text();
+                        let result;
+                        try {
+                            result = JSON.parse(responseText);
+                        } catch (parseErr) {
+                            throw new Error('Invalid response from server');
+                        }
+
+                        if (result.success) {
+                            updateProgress(100,
+                                `✓ Extracted ${result.totalInvoices || '?'} invoices from ${result.totalPages || '?'} pages`,
+                                'trophy');
+                            addActivity(`Complete: ${result.message}`, 'check-circle-fill', 'text-success');
+
+                            setTimeout(() => {
+                                progressModal.hide();
+                                window.location.href = result.redirectUrl;
+                            }, 1500);
+                        } else {
+                            progressModal.hide();
+                            document.getElementById('errorMessage').textContent = result.message || 'An unknown error occurred.';
+                            errorModal.show();
+                            reprocessBtn.disabled = false;
+                        }
+                    } catch (error) {
+                        clearInterval(stageInterval);
+                        progressModal.hide();
+                        document.getElementById('errorMessage').textContent = error.message || 'A network error occurred.';
+                        errorModal.show();
+                        reprocessBtn.disabled = false;
+                    }
+                });
             }
         });
     </script>
