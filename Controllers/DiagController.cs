@@ -23,10 +23,14 @@ namespace InvoiceManagement.Controllers
             if (key != "check2026") return NotFound();
 
             var totalDocs = await _context.ImportedDocuments.CountAsync();
-            var withContent = await _context.ImportedDocuments.CountAsync(d => d.FileContent != null && d.FileContent.Length > 0);
+
+            // Use raw SQL for byte array length check (EF Core can't translate .Length on byte[])
+            var withContent = await _context.Database
+                .SqlQueryRaw<int>("SELECT COUNT(*)::int AS \"Value\" FROM \"ImportedDocuments\" WHERE \"FileContent\" IS NOT NULL AND LENGTH(\"FileContent\") > 0")
+                .SingleAsync();
             var emptyContent = totalDocs - withContent;
 
-            // Get sample of last 10 docs
+            // Get sample of last 10 docs metadata
             var sampleDocs = await _context.ImportedDocuments
                 .OrderByDescending(d => d.Id)
                 .Take(10)
@@ -35,8 +39,6 @@ namespace InvoiceManagement.Controllers
                     d.Id,
                     d.OriginalFileName,
                     d.FileSize,
-                    ContentLength = d.FileContent != null ? d.FileContent.Length : 0,
-                    HasContent = d.FileContent != null && d.FileContent.Length > 0,
                     d.ProcessingStatus,
                     d.DocumentType,
                     d.InvoiceId,
@@ -44,12 +46,33 @@ namespace InvoiceManagement.Controllers
                 })
                 .ToListAsync();
 
+            // Check content size for each sample doc via raw SQL
+            var sampleWithContent = new List<object>();
+            foreach (var doc in sampleDocs)
+            {
+                var contentLen = await _context.Database
+                    .SqlQueryRaw<int>($"SELECT COALESCE(LENGTH(\"FileContent\"), 0)::int AS \"Value\" FROM \"ImportedDocuments\" WHERE \"Id\" = {doc.Id}")
+                    .SingleOrDefaultAsync();
+                sampleWithContent.Add(new
+                {
+                    doc.Id,
+                    doc.OriginalFileName,
+                    doc.FileSize,
+                    ContentLength = contentLen,
+                    HasContent = contentLen > 0,
+                    doc.ProcessingStatus,
+                    doc.DocumentType,
+                    doc.InvoiceId,
+                    doc.UploadDate
+                });
+            }
+
             return Json(new
             {
                 totalDocuments = totalDocs,
                 withContent,
                 emptyContent,
-                sampleDocuments = sampleDocs
+                sampleDocuments = sampleWithContent
             });
         }
     }
