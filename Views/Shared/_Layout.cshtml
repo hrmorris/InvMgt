@@ -325,6 +325,10 @@
                     {
                         <span><i class="bi bi-geo-alt-fill me-1"></i> @companyAddress</span>
                     }
+                    @if (!string.IsNullOrEmpty(companyWebsite))
+                    {
+                        <span><i class="bi bi-globe me-1"></i> <a href="@companyWebsite" target="_blank" style="color: inherit; text-decoration: none;">@companyWebsite</a></span>
+                    }
                 </div>
                 <div class="d-flex align-items-center gap-2">
                     @if (!string.IsNullOrEmpty(socialFacebook))

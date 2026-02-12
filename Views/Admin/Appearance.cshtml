@@ -459,48 +459,48 @@
                             <div class="mb-3">
                                 <div class="section-label">Navbar</div>
                                 <select name="NavbarStyle" class="form-select form-select-sm">
-                                    <option value="bg-primary" selected="@(Model.NavbarStyle == "bg-primary")">Blue
-                                        (Default)</option>
-                                        <option value="bg-dark" selected="@(Model.NavbarStyle == "bg-dark")">Dark</option>
-                                        <option value="bg-success" selected="@(Model.NavbarStyle == "bg-success")">Green
-                                        </option>
-                                        <option value="bg-purple" selected="@(Model.NavbarStyle == "bg-purple")">Purple
-                                        </option>
-                                        <option value="bg-danger" selected="@(Model.NavbarStyle == "bg-danger")">Red
-                                        </option>
-                                        <option value="bg-gradient-primary"
-                                                selected="@(Model.NavbarStyle == "bg-gradient-primary")">Gradient</option>
+                                    <!option value="bg-primary" @(Model.NavbarStyle == "bg-primary" ? "selected" : "")>Blue
+                                        (Default)</!option>
+                                        <!option value="bg-dark" @(Model.NavbarStyle == "bg-dark" ? "selected" : "")>Dark</!option>
+                                        <!option value="bg-success" @(Model.NavbarStyle == "bg-success" ? "selected" : "")>Green
+                                        </!option>
+                                        <!option value="bg-purple" @(Model.NavbarStyle == "bg-purple" ? "selected" : "")>Purple
+                                        </!option>
+                                        <!option value="bg-danger" @(Model.NavbarStyle == "bg-danger" ? "selected" : "")>Red
+                                        </!option>
+                                        <!option value="bg-gradient-primary"
+                                                @(Model.NavbarStyle == "bg-gradient-primary" ? "selected" : "")>Gradient</!option>
                                     </select>
                                 </div>
                                 <div class="mb-3">
                                     <div class="section-label">Sidebar</div>
                                     <select name="SidebarStyle" class="form-select form-select-sm">
-                                        <option value="light" selected="@(Model.SidebarStyle == "light")">Light</option>
-                                        <option value="dark" selected="@(Model.SidebarStyle == "dark")">Dark</option>
+                                        <!option value="light" @(Model.SidebarStyle == "light" ? "selected" : "")>Light</!option>
+                                        <!option value="dark" @(Model.SidebarStyle == "dark" ? "selected" : "")>Dark</!option>
                                     </select>
                                 </div>
                                 <div class="mb-3">
                                     <div class="section-label">Card Style</div>
                                     <select name="CardStyle" class="form-select form-select-sm">
-                                        <option value="shadow" selected="@(Model.CardStyle == "shadow")">Shadow (Default)
-                                        </option>
-                                        <option value="bordered" selected="@(Model.CardStyle == "bordered")">Bordered
-                                        </option>
-                                        <option value="flat" selected="@(Model.CardStyle == "flat")">Flat</option>
+                                        <!option value="shadow" @(Model.CardStyle == "shadow" ? "selected" : "")>Shadow (Default)
+                                        </!option>
+                                        <!option value="bordered" @(Model.CardStyle == "bordered" ? "selected" : "")>Bordered
+                                        </!option>
+                                        <!option value="flat" @(Model.CardStyle == "flat" ? "selected" : "")>Flat</!option>
                                     </select>
                                 </div>
                                 <div>
                                     <div class="section-label">Font Family</div>
                                     <select name="FontFamily" class="form-select form-select-sm">
-                                        <option value="Segoe UI" selected="@(Model.FontFamily == "Segoe UI")">Segoe UI
-                                        </option>
-                                        <option value="Inter" selected="@(Model.FontFamily == "Inter")">Inter</option>
-                                        <option value="Roboto" selected="@(Model.FontFamily == "Roboto")">Roboto</option>
-                                        <option value="Poppins" selected="@(Model.FontFamily == "Poppins")">Poppins</option>
-                                        <option value="Open Sans" selected="@(Model.FontFamily == "Open Sans")">Open Sans
-                                        </option>
-                                        <option value="system-ui" selected="@(Model.FontFamily == "system-ui")">System
-                                            Default</option>
+                                        <!option value="Segoe UI" @(Model.FontFamily == "Segoe UI" ? "selected" : "")>Segoe UI
+                                        </!option>
+                                        <!option value="Inter" @(Model.FontFamily == "Inter" ? "selected" : "")>Inter</!option>
+                                        <!option value="Roboto" @(Model.FontFamily == "Roboto" ? "selected" : "")>Roboto</!option>
+                                        <!option value="Poppins" @(Model.FontFamily == "Poppins" ? "selected" : "")>Poppins</!option>
+                                        <!option value="Open Sans" @(Model.FontFamily == "Open Sans" ? "selected" : "")>Open Sans
+                                        </!option>
+                                        <!option value="system-ui" @(Model.FontFamily == "system-ui" ? "selected" : "")>System
+                                            Default</!option>
                                         </select>
                                     </div>
                                 </div>
@@ -803,7 +803,7 @@
                                                                         </div>
                                                                         <label class="toggle-switch">
                                                                             <input type="checkbox" name="ShowHeaderSearch" value="true"
-                                                                                   checked="@Model.ShowHeaderSearch" />
+                                                                                   @(Model.ShowHeaderSearch ? "checked" : "") />
                                                                             <span class="toggle-slider"></span>
                                                                         </label>
                                                                     </div>
@@ -815,7 +815,7 @@
                                                                         </div>
                                                                         <label class="toggle-switch">
                                                                             <input type="checkbox" name="ShowQuickAdd" value="true"
-                                                                                   checked="@Model.ShowQuickAdd" />
+                                                                                   @(Model.ShowQuickAdd ? "checked" : "") />
                                                                             <span class="toggle-slider"></span>
                                                                         </label>
                                                                     </div>
@@ -827,7 +827,7 @@
                                                                         </div>
                                                                         <label class="toggle-switch">
                                                                             <input type="checkbox" name="ShowHeaderNotifications" value="true"
-                                                                                   checked="@Model.ShowHeaderNotifications" />
+                                                                                   @(Model.ShowHeaderNotifications ? "checked" : "") />
                                                                             <span class="toggle-slider"></span>
                                                                         </label>
                                                                     </div>
@@ -839,7 +839,7 @@
                                                                         </div>
                                                                         <label class="toggle-switch">
                                                                             <input type="checkbox" name="ShowHeaderCompanyInfo" value="true"
-                                                                                   checked="@Model.ShowHeaderCompanyInfo" />
+                                                                                   @(Model.ShowHeaderCompanyInfo ? "checked" : "") />
                                                                             <span class="toggle-slider"></span>
                                                                         </label>
                                                                     </div>
@@ -854,14 +854,14 @@
                                                                     <div>
                                                                         <label class="form-label fw-semibold">Banner Type</label>
                                                                         <select name="HeaderAnnouncementType" class="form-select form-select-sm">
-                                                                            <option value="info" selected="@(Model.HeaderAnnouncementType == "info")">ℹ️ Info
-                                                                                (Blue)</option>
-                                                                                <option value="warning" selected="@(Model.HeaderAnnouncementType == "warning")">⚠️
-                                                                                    Warning (Yellow)</option>
-                                                                                    <option value="success" selected="@(Model.HeaderAnnouncementType == "success")">✅
-                                                                                        Success (Green)</option>
-                                                                                        <option value="danger" selected="@(Model.HeaderAnnouncementType == "danger")">🚨
-                                                                                            Danger (Red)</option>
+                                                                            <!option value="info" @(Model.HeaderAnnouncementType == "info" ? "selected" : "")>ℹ️ Info
+                                                                                (Blue)</!option>
+                                                                                <!option value="warning" @(Model.HeaderAnnouncementType == "warning" ? "selected" : "")>⚠️
+                                                                                    Warning (Yellow)</!option>
+                                                                                    <!option value="success" @(Model.HeaderAnnouncementType == "success" ? "selected" : "")>✅
+                                                                                        Success (Green)</!option>
+                                                                                        <!option value="danger" @(Model.HeaderAnnouncementType == "danger" ? "selected" : "")>🚨
+                                                                                            Danger (Red)</!option>
                                                                                         </select>
                                                                                     </div>
                                                                                 </div>
@@ -880,7 +880,7 @@
                                                                                                 <small class="text-muted">Display a footer bar at the bottom of every page</small>
                                                                                             </div>
                                                                                             <label class="toggle-switch">
-                                                                                                <input type="checkbox" name="ShowFooter" value="true" checked="@Model.ShowFooter" />
+                                                                                                <input type="checkbox" name="ShowFooter" value="true" @(Model.ShowFooter ? "checked" : "") />
                                                                                                 <span class="toggle-slider"></span>
                                                                                             </label>
                                                                                         </div>
@@ -892,7 +892,7 @@
                                                                                             </div>
                                                                                             <label class="toggle-switch">
                                                                                                 <input type="checkbox" name="ShowFooterCompanyInfo" value="true"
-                                                                                                       checked="@Model.ShowFooterCompanyInfo" />
+                                                                                                       @(Model.ShowFooterCompanyInfo ? "checked" : "") />
                                                                                                 <span class="toggle-slider"></span>
                                                                                             </label>
                                                                                         </div>
@@ -904,7 +904,7 @@
                                                                                             </div>
                                                                                             <label class="toggle-switch">
                                                                                                 <input type="checkbox" name="ShowFooterSocialLinks" value="true"
-                                                                                                       checked="@Model.ShowFooterSocialLinks" />
+                                                                                                       @(Model.ShowFooterSocialLinks ? "checked" : "") />
                                                                                                 <span class="toggle-slider"></span>
                                                                                             </label>
                                                                                         </div>
@@ -923,7 +923,7 @@
                                                                                             </div>
                                                                                             <label class="toggle-switch">
                                                                                                 <input type="checkbox" name="ShowFooterVersion" value="true"
-                                                                                                       checked="@Model.ShowFooterVersion" />
+                                                                                                       @(Model.ShowFooterVersion ? "checked" : "") />
                                                                                                 <span class="toggle-slider"></span>
                                                                                             </label>
                                                                                         </div>
@@ -1065,12 +1065,12 @@
                                                                                                         <div class="mb-3">
                                                                                                             <label class="form-label fw-semibold">Background Type</label>
                                                                                                             <select name="LoginBackgroundType" class="form-select form-select-sm">
-                                                                                                                <option value="gradient" selected="@(Model.LoginBackgroundType == "gradient")">🎨
-                                                                                                                    Theme Gradient (Default)</option>
-                                                                                                                    <option value="image" selected="@(Model.LoginBackgroundType == "image")">🖼️ Custom
-                                                                                                                        Image</option>
-                                                                                                                        <option value="video" selected="@(Model.LoginBackgroundType == "video")">🎬 Custom
-                                                                                                                            Video</option>
+                                                                                                                <!option value="gradient" @(Model.LoginBackgroundType == "gradient" ? "selected" : "")>🎨
+                                                                                                                    Theme Gradient (Default)</!option>
+                                                                                                                    <!option value="image" @(Model.LoginBackgroundType == "image" ? "selected" : "")>🖼️ Custom
+                                                                                                                        Image</!option>
+                                                                                                                        <!option value="video" @(Model.LoginBackgroundType == "video" ? "selected" : "")>🎬 Custom
+                                                                                                                            Video</!option>
                                                                                                                         </select>
                                                                                                                         <div class="form-text">This is auto-set when you upload a file, but you can override it.
                                                                                                                         </div>
@@ -1085,7 +1085,7 @@
                                                                                                                         </div>
                                                                                                                         <label class="toggle-switch">
                                                                                                                             <input type="checkbox" name="LoginShowFeatureBoxes" value="true"
-                                                                                                                                   checked="@Model.LoginShowFeatureBoxes" />
+                                                                                                                                   @(Model.LoginShowFeatureBoxes ? "checked" : "") />
                                                                                                                             <span class="toggle-slider"></span>
                                                                                                                         </label>
                                                                                                                     </div>
@@ -1166,7 +1166,7 @@
                                                                                                                         <div class="col-sm-6 col-md-4 col-lg-3">
                                                                                                                             <label class="widget-card d-block @(enabled ? "active" : "")" id="wc-@name">
                                                                                                                                 <div class="d-flex align-items-start gap-3">
-                                                                                                                                    <input type="checkbox" name="@name" value="true" checked="@enabled" class="d-none"
+                                                                                                                                    <input type="checkbox" name="@name" value="true" @(enabled ? "checked" : "") class="d-none"
                                                                                                                                            onchange="this.closest('.widget-card').classList.toggle('active', this.checked)" />
                                                                                                                                     <div class="widget-icon"
                                                                                                                                          style="color: @(enabled ? Model.PrimaryColor : "#adb5bd");">
@@ -1193,7 +1193,7 @@
                                                                                                                         <label
                                                                                                                             class="widget-card d-block text-center @(Model.DashboardLayout == "default" ? "active" : "")">
                                                                                                                             <input type="radio" name="DashboardLayout" value="default"
-                                                                                                                                   checked="@(Model.DashboardLayout == "default")" class="d-none"
+                                                                                                                                   @(Model.DashboardLayout == "default" ? "checked" : "") class="d-none"
                                                                                                                                    onclick="document.querySelectorAll('[name=DashboardLayout]').forEach(r=>{r.closest('.widget-card').classList.toggle('active',r.checked)})" />
                                                                                                                             <i class="bi bi-grid-3x2-gap text-primary" style="font-size: 2rem;"></i>
                                                                                                                             <div class="fw-bold mt-2">Default</div>
@@ -1204,7 +1204,7 @@
                                                                                                                         <label
                                                                                                                             class="widget-card d-block text-center @(Model.DashboardLayout == "compact" ? "active" : "")">
                                                                                                                             <input type="radio" name="DashboardLayout" value="compact"
-                                                                                                                                   checked="@(Model.DashboardLayout == "compact")" class="d-none"
+                                                                                                                                   @(Model.DashboardLayout == "compact" ? "checked" : "") class="d-none"
                                                                                                                                    onclick="document.querySelectorAll('[name=DashboardLayout]').forEach(r=>{r.closest('.widget-card').classList.toggle('active',r.checked)})" />
                                                                                                                             <i class="bi bi-grid text-primary" style="font-size: 2rem;"></i>
                                                                                                                             <div class="fw-bold mt-2">Compact</div>
@@ -1215,7 +1215,7 @@
                                                                                                                         <label
                                                                                                                             class="widget-card d-block text-center @(Model.DashboardLayout == "expanded" ? "active" : "")">
                                                                                                                             <input type="radio" name="DashboardLayout" value="expanded"
-                                                                                                                                   checked="@(Model.DashboardLayout == "expanded")" class="d-none"
+                                                                                                                                   @(Model.DashboardLayout == "expanded" ? "checked" : "") class="d-none"
                                                                                                                                    onclick="document.querySelectorAll('[name=DashboardLayout]').forEach(r=>{r.closest('.widget-card').classList.toggle('active',r.checked)})" />
                                                                                                                             <i class="bi bi-grid-1x2 text-primary" style="font-size: 2rem;"></i>
                                                                                                                             <div class="fw-bold mt-2">Expanded</div>
