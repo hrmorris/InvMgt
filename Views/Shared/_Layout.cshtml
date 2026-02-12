@@ -287,6 +287,19 @@
         </div>
     </nav>
 
+    @if (isAdmin && ViewData["MaintenanceModeActive"] is true)
+    {
+        <div class="alert alert-warning alert-dismissible mb-0 rounded-0 d-flex align-items-center justify-content-between py-2 px-3 border-0" style="background: linear-gradient(90deg, #ff9a56 0%, #ff6a00 100%); color: #fff; font-weight: 500; z-index: 1040;">
+            <div>
+                <i class="bi bi-cone-striped me-2"></i>
+                <strong>MAINTENANCE MODE ACTIVE</strong> — Non-admin users are being redirected to the maintenance page.
+            </div>
+            <a asp-controller="Admin" asp-action="Settings" class="btn btn-sm btn-light fw-semibold">
+                <i class="bi bi-gear-fill"></i> Manage Settings
+            </a>
+        </div>
+    }
+
     @if (isLoggedIn)
     {
         <!-- Mobile sidebar toggle -->

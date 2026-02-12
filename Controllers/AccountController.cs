@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using InvoiceManagement.Services;
 using InvoiceManagement.Models;
+using InvoiceManagement.Data;
 
 namespace InvoiceManagement.Controllers
 {
@@ -8,11 +10,13 @@ namespace InvoiceManagement.Controllers
     {
         private readonly IAuthService _authService;
         private readonly IAdminService _adminService;
+        private readonly ApplicationDbContext _context;
 
-        public AccountController(IAuthService authService, IAdminService adminService)
+        public AccountController(IAuthService authService, IAdminService adminService, ApplicationDbContext context)
         {
             _authService = authService;
             _adminService = adminService;
+            _context = context;
         }
 
         // GET: Account/Login
@@ -156,6 +160,34 @@ namespace InvoiceManagement.Controllers
             {
                 return Content($"❌ Error creating admin: {ex.Message}");
             }
+        }
+        // GET: Account/Maintenance
+        public async Task<IActionResult> Maintenance()
+        {
+            // If the user is an admin, they shouldn't see this page — redirect to dashboard
+            var userRole = HttpContext.Session.GetString("Role") ?? "";
+            if (userRole == "Admin" || userRole == "SystemAdmin")
+            {
+                return RedirectToAction("Index", "Home");
+            }
+
+            // Load maintenance settings from DB
+            var settings = await _context.SystemSettings
+                .Where(s => s.SettingKey.StartsWith("MaintenanceMode_") || s.SettingKey == "ApplicationName")
+                .ToListAsync();
+
+            ViewBag.MaintenanceMessage = settings
+                .FirstOrDefault(s => s.SettingKey == "MaintenanceMode_Message")?.SettingValue
+                ?? "The system is currently undergoing scheduled maintenance. We'll be back shortly.";
+
+            ViewBag.MaintenanceEndTime = settings
+                .FirstOrDefault(s => s.SettingKey == "MaintenanceMode_EndTime")?.SettingValue ?? "";
+
+            ViewBag.CompanyName = settings
+                .FirstOrDefault(s => s.SettingKey == "ApplicationName")?.SettingValue
+                ?? "Invoice Management System";
+
+            return View();
         }
     }
 }

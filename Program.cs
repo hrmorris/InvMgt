@@ -43,6 +43,9 @@ builder.Services.AddControllersWithViews(options =>
 
     // Add currency view data filter to make currency settings available in all views
     options.Filters.Add<InvoiceManagement.Filters.CurrencyViewDataFilter>();
+
+    // Add maintenance mode filter to redirect non-admin users when maintenance is active
+    options.Filters.Add<InvoiceManagement.Filters.MaintenanceModeFilter>();
 })
 .AddSessionStateTempDataProvider(); // Use session-based TempData to avoid HTTP 431 cookie size errors
 

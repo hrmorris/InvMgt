@@ -583,6 +583,32 @@ namespace InvoiceManagement.Services
                     SettingValue = "",
                     Description = "OpenAI API key for AI-powered invoice/payment import. Get from https://platform.openai.com/api-keys",
                     ModifiedBy = "System"
+                },
+
+                // Maintenance Settings
+                new SystemSetting
+                {
+                    Category = "Maintenance",
+                    SettingKey = "MaintenanceMode_Enabled",
+                    SettingValue = "false",
+                    Description = "Enable maintenance mode to block non-admin users from accessing the system",
+                    ModifiedBy = "System"
+                },
+                new SystemSetting
+                {
+                    Category = "Maintenance",
+                    SettingKey = "MaintenanceMode_Message",
+                    SettingValue = "The system is currently undergoing scheduled maintenance. We'll be back shortly.",
+                    Description = "Message displayed to users during maintenance",
+                    ModifiedBy = "System"
+                },
+                new SystemSetting
+                {
+                    Category = "Maintenance",
+                    SettingKey = "MaintenanceMode_EndTime",
+                    SettingValue = "",
+                    Description = "Estimated end time for maintenance (e.g., 2025-01-15T14:00). Leave empty if unknown.",
+                    ModifiedBy = "System"
                 }
             };
 
