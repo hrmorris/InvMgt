@@ -1378,6 +1378,17 @@ namespace InvoiceManagement.Controllers
             };
 
             await SaveSettingsBatchAsync(settings, "Appearance", username);
+
+            // Also sync company info to the legacy Company category keys used by PDF reports
+            var companySync = new Dictionary<string, string>
+            {
+                ["CompanyAddress"] = model.CompanyAddress ?? "",
+                ["CompanyPhone"] = model.CompanyPhone ?? "",
+                ["CompanyEmail"] = model.CompanyEmail ?? "",
+                ["CompanyWebsite"] = model.CompanyWebsite ?? ""
+            };
+            await SaveSettingsBatchAsync(companySync, "Company", username);
+
             TempData["SuccessMessage"] = "Header & footer settings saved!";
             return RedirectToAction(nameof(Appearance));
         }

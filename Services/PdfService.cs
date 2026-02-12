@@ -1,5 +1,7 @@
 using InvoiceManagement.Models;
+using InvoiceManagement.Data;
 using InvoiceManagement.Helpers;
+using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -10,24 +12,53 @@ namespace InvoiceManagement.Services
     {
         private readonly IAdminService _adminService;
         private readonly ICurrencyService _currencyService;
+        private readonly ApplicationDbContext _context;
 
-        public PdfService(IAdminService adminService, ICurrencyService currencyService)
+        public PdfService(IAdminService adminService, ICurrencyService currencyService, ApplicationDbContext context)
         {
             QuestPDF.Settings.License = LicenseType.Community;
             _adminService = adminService;
             _currencyService = currencyService;
+            _context = context;
         }
 
         private async Task<CompanyInfo> GetCompanyInfoAsync()
         {
-            return new CompanyInfo
+            // Load all relevant settings in one query for efficiency
+            var settings = await _context.SystemSettings
+                .Where(s => s.Category == "Company" || s.Category == "Appearance" || s.SettingKey == "ApplicationName")
+                .AsNoTracking()
+                .ToListAsync();
+
+            string Get(string key, string fallback = "") =>
+                settings.FirstOrDefault(s => s.SettingKey == key)?.SettingValue ?? fallback;
+
+            // Appearance settings (Company_Address etc.) override legacy Company settings (CompanyAddress etc.)
+            var companyInfo = new CompanyInfo
             {
-                Name = await _adminService.GetSettingValueAsync("CompanyName") ?? "Your Company Name",
-                Address = await _adminService.GetSettingValueAsync("CompanyAddress") ?? "Address Line 1",
-                Phone = await _adminService.GetSettingValueAsync("CompanyPhone") ?? "(123) 456-7890",
-                Email = await _adminService.GetSettingValueAsync("CompanyEmail") ?? "info@company.com",
-                Website = await _adminService.GetSettingValueAsync("CompanyWebsite") ?? "www.company.com"
+                ApplicationName = Get("ApplicationName", "Invoice Management System"),
+                Name = !string.IsNullOrEmpty(Get("CompanyName")) ? Get("CompanyName") : "Your Company Name",
+                Address = !string.IsNullOrEmpty(Get("Company_Address")) ? Get("Company_Address") : Get("CompanyAddress", ""),
+                Phone = !string.IsNullOrEmpty(Get("Company_Phone")) ? Get("Company_Phone") : Get("CompanyPhone", ""),
+                Email = !string.IsNullOrEmpty(Get("Company_Email")) ? Get("Company_Email") : Get("CompanyEmail", ""),
+                Website = !string.IsNullOrEmpty(Get("Company_Website")) ? Get("Company_Website") : Get("CompanyWebsite", "")
             };
+
+            // Load logo from UploadedAssets table (persisted in DB for Cloud Run)
+            try
+            {
+                var logoAsset = await _context.UploadedAssets
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(a => a.AssetKey == "logo");
+                if (logoAsset != null && logoAsset.FileContent != null && logoAsset.FileContent.Length > 0)
+                {
+                    companyInfo.LogoData = logoAsset.FileContent;
+                    companyInfo.LogoContentType = logoAsset.ContentType;
+                }
+            }
+            catch { /* Logo loading is optional — don't break PDFs */ }
+
+            return companyInfo;
         }
 
         public async Task<byte[]> GenerateInvoicePdfAsync(Invoice invoice)
@@ -181,17 +212,33 @@ namespace InvoiceManagement.Services
             {
                 row.RelativeItem().Column(column =>
                 {
-                    column.Item().Text("Invoice Management System").FontSize(20).Bold().FontColor(Colors.Blue.Medium);
+                    column.Item().Text(companyInfo.ApplicationName).FontSize(20).Bold().FontColor(Colors.Blue.Medium);
                     column.Item().Text(companyInfo.Name).FontSize(12);
-                    column.Item().Text(companyInfo.Address).FontSize(9);
-                    column.Item().Text($"Phone: {companyInfo.Phone} | Email: {companyInfo.Email}").FontSize(9);
+                    if (!string.IsNullOrEmpty(companyInfo.Address))
+                    {
+                        column.Item().Text(companyInfo.Address).FontSize(9);
+                    }
+                    var contactParts = new List<string>();
+                    if (!string.IsNullOrEmpty(companyInfo.Phone)) contactParts.Add($"Phone: {companyInfo.Phone}");
+                    if (!string.IsNullOrEmpty(companyInfo.Email)) contactParts.Add($"Email: {companyInfo.Email}");
+                    if (contactParts.Count > 0)
+                    {
+                        column.Item().Text(string.Join(" | ", contactParts)).FontSize(9);
+                    }
                     if (!string.IsNullOrEmpty(companyInfo.Website))
                     {
                         column.Item().Text($"Website: {companyInfo.Website}").FontSize(9);
                     }
                 });
 
-                row.ConstantItem(100).Height(50).Placeholder();
+                if (companyInfo.LogoData != null && companyInfo.LogoData.Length > 0)
+                {
+                    row.ConstantItem(100).Height(50).Image(companyInfo.LogoData).FitArea();
+                }
+                else
+                {
+                    row.ConstantItem(100).Height(50).Placeholder();
+                }
             });
         }
 
@@ -543,15 +590,15 @@ namespace InvoiceManagement.Services
                     foreach (var payment in payments)
                     {
                         // Determine payee name: use TransferTo > PayeeName > Supplier from allocations
-                        var payeeName = !string.IsNullOrEmpty(payment.TransferTo) 
-                            ? payment.TransferTo 
-                            : !string.IsNullOrEmpty(payment.PayeeName) 
-                                ? payment.PayeeName 
+                        var payeeName = !string.IsNullOrEmpty(payment.TransferTo)
+                            ? payment.TransferTo
+                            : !string.IsNullOrEmpty(payment.PayeeName)
+                                ? payment.PayeeName
                                 : payment.PaymentAllocations?.FirstOrDefault()?.Invoice?.Supplier?.SupplierName ?? "-";
-                        
+
                         // Display bank account (prefer parsed payee account number)
-                        var bankAccount = !string.IsNullOrEmpty(payment.BankAccountNumber) 
-                            ? payment.BankAccountNumber 
+                        var bankAccount = !string.IsNullOrEmpty(payment.BankAccountNumber)
+                            ? payment.BankAccountNumber
                             : !string.IsNullOrEmpty(payment.PayeeAccountNumber)
                                 ? $"{payment.PayeeBranchNumber}-{payment.PayeeAccountNumber}"
                                 : "-";
@@ -1151,11 +1198,14 @@ namespace InvoiceManagement.Services
 
     public class CompanyInfo
     {
+        public string ApplicationName { get; set; } = "Invoice Management System";
         public string Name { get; set; } = string.Empty;
         public string Address { get; set; } = string.Empty;
         public string Phone { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string Website { get; set; } = string.Empty;
+        public byte[]? LogoData { get; set; }
+        public string? LogoContentType { get; set; }
     }
 }
 
