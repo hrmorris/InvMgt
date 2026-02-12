@@ -4,7 +4,14 @@
     Layout = null;
     var message = ViewBag.MaintenanceMessage as string ?? "The system is currently undergoing scheduled maintenance. We'll be back shortly.";
     var endTime = ViewBag.MaintenanceEndTime as string ?? "";
-    var companyName = ViewBag.CompanyName as string ?? "Invoice Management System";
+    var companyName = ViewBag.CompanyName as string ?? ViewData["AppName"] as string ?? "Invoice Management System";
+
+    // Pull appearance/branding from the global AppearanceViewDataFilter
+    var faviconUrl = ViewData["Branding_FaviconUrl"] as string ?? "";
+    var logoUrl = ViewData["Branding_LogoUrl"] as string ?? "";
+    var primaryColor = ViewData["Theme_PrimaryColor"] as string ?? "#0d6efd";
+    var accentColor = ViewData["Theme_AccentColor"] as string ?? "#198754";
+    var fontFamily = ViewData["Theme_FontFamily"] as string ?? "Segoe UI";
 }
 
 <!DOCTYPE html>
@@ -13,21 +20,34 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>System Maintenance | @companyName</title>
+    @if (!string.IsNullOrEmpty(faviconUrl))
+    {
+        <link rel="icon" href="@faviconUrl" />
+    }
+    else
+    {
+        <link rel="icon" type="image/svg+xml"
+              href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📄</text></svg>">
+    }
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+    @if (fontFamily != "Segoe UI" && fontFamily != "system-ui")
+    {
+        <link href="https://fonts.googleapis.com/css2?family=@(fontFamily.Replace(" ", "+"))&display=swap" rel="stylesheet">
+    }
     <style>
             :root {
-                --primary: #0d6efd;
-                --primary-dark: #0a58ca;
+                --primary: @primaryColor;
+                --primary-dark: @accentColor;
             }
 
             body {
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                background: linear-gradient(135deg, @primaryColor 0%, @accentColor 100%);
                 min-height: 100vh;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                font-family: '@fontFamily', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                 overflow: hidden;
             }
 
@@ -124,7 +144,7 @@
 
             .progress-bar-animated .bar {
                 height: 100%;
-                background: linear-gradient(90deg, #667eea, #764ba2, #667eea);
+                background: linear-gradient(90deg, var(--primary), var(--primary-dark), var(--primary));
                 background-size: 200% 100%;
                 animation: shimmer 2s linear infinite;
                 width: 100%;
@@ -204,6 +224,10 @@
     <i class="bi bi-gear-fill gear-bg bottom-right"></i>
 
     <div class="maintenance-card">
+        @if (!string.IsNullOrEmpty(logoUrl))
+        {
+            <img src="@logoUrl" alt="@companyName" style="height: 50px; max-width: 180px; object-fit: contain; margin-bottom: 1rem;" />
+        }
         <div class="maintenance-icon">
             <i class="bi bi-wrench-adjustable-circle"></i>
         </div>
