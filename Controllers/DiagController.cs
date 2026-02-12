@@ -30,10 +30,26 @@ namespace InvoiceManagement.Controllers
                 .SingleAsync();
             var emptyContent = totalDocs - withContent;
 
-            // Get sample of last 10 docs metadata
-            var sampleDocs = await _context.ImportedDocuments
+            // Stats by document type
+            var byType = await _context.ImportedDocuments
+                .GroupBy(d => d.DocumentType)
+                .Select(g => new { Type = g.Key, Count = g.Count() })
+                .ToListAsync();
+
+            // Stats by processing status
+            var byStatus = await _context.ImportedDocuments
+                .GroupBy(d => d.ProcessingStatus)
+                .Select(g => new { Status = g.Key, Count = g.Count() })
+                .ToListAsync();
+
+            // Count linked vs unlinked
+            var linkedToInvoice = await _context.ImportedDocuments.CountAsync(d => d.InvoiceId != null);
+            var linkedToPayment = await _context.ImportedDocuments.CountAsync(d => d.PaymentId != null);
+            var unlinked = await _context.ImportedDocuments.CountAsync(d => d.InvoiceId == null && d.PaymentId == null);
+
+            // Get ALL document IDs with their original filename and type (without loading content)
+            var allDocs = await _context.ImportedDocuments
                 .OrderByDescending(d => d.Id)
-                .Take(10)
                 .Select(d => new
                 {
                     d.Id,
@@ -42,37 +58,23 @@ namespace InvoiceManagement.Controllers
                     d.ProcessingStatus,
                     d.DocumentType,
                     d.InvoiceId,
-                    d.UploadDate
+                    d.PaymentId,
+                    d.UploadDate,
+                    d.ContentType
                 })
                 .ToListAsync();
-
-            // Check content size for each sample doc via raw SQL
-            var sampleWithContent = new List<object>();
-            foreach (var doc in sampleDocs)
-            {
-                var contentLen = await _context.Database
-                    .SqlQueryRaw<int>($"SELECT COALESCE(LENGTH(\"FileContent\"), 0)::int AS \"Value\" FROM \"ImportedDocuments\" WHERE \"Id\" = {doc.Id}")
-                    .SingleOrDefaultAsync();
-                sampleWithContent.Add(new
-                {
-                    doc.Id,
-                    doc.OriginalFileName,
-                    doc.FileSize,
-                    ContentLength = contentLen,
-                    HasContent = contentLen > 0,
-                    doc.ProcessingStatus,
-                    doc.DocumentType,
-                    doc.InvoiceId,
-                    doc.UploadDate
-                });
-            }
 
             return Json(new
             {
                 totalDocuments = totalDocs,
                 withContent,
                 emptyContent,
-                sampleDocuments = sampleWithContent
+                byType,
+                byStatus,
+                linkedToInvoice,
+                linkedToPayment,
+                unlinked,
+                allDocuments = allDocs
             });
         }
     }

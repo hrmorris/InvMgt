@@ -2326,10 +2326,7 @@ namespace InvoiceManagement.Controllers
                 // Project all fields EXCEPT FileContent to avoid OutOfMemoryException
                 // FileContent contains the actual binary file data and is not needed for the listing page
                 var documents = await _context.ImportedDocuments
-                    .Include(d => d.Invoice)
-                    .Include(d => d.Payment)
                     .OrderByDescending(d => d.UploadDate)
-                    .Take(100)
                     .Select(d => new ImportedDocument
                     {
                         Id = d.Id,
