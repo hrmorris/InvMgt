@@ -1391,13 +1391,13 @@ namespace InvoiceManagement.Controllers
                         {
                             // Document already linked to this invoice
                             TempData["Info"] = $"Invoice {model.InvoiceNumber} was already saved.";
-                            return RedirectToAction(nameof(Documents));
+                            return RedirectToAction("Details", "Invoices", new { id = existingInvoice.Id });
                         }
 
                         // Link document to existing invoice
                         await _documentService.LinkDocumentToInvoiceAsync(model.DocumentId, existingInvoice.Id);
                         TempData["Success"] = $"Document linked to existing Invoice {model.InvoiceNumber}.";
-                        return RedirectToAction(nameof(Documents));
+                        return RedirectToAction("Details", "Invoices", new { id = existingInvoice.Id });
                     }
 
                     TempData["Error"] = $"Invoice number {model.InvoiceNumber} already exists. Please use a different invoice number.";
@@ -1501,8 +1501,8 @@ namespace InvoiceManagement.Controllers
 
                 TempData["Success"] = $"Invoice {invoice.InvoiceNumber} saved successfully!";
 
-                // Redirect back to the Document Library
-                return RedirectToAction(nameof(Documents));
+                // Redirect to the Invoice Details page
+                return RedirectToAction("Details", "Invoices", new { id = invoice.Id });
             }
             catch (Exception ex)
             {
