@@ -23,10 +23,24 @@ namespace InvoiceManagement.Models.ViewModels
         public string FaviconUrl { get; set; } = "";
         public string TagLine { get; set; } = "";
 
+        // === Company Info (Header & Footer) ===
+        public string CompanyAddress { get; set; } = "";
+        public string CompanyPhone { get; set; } = "";
+        public string CompanyEmail { get; set; } = "";
+        public string CompanyWebsite { get; set; } = "";
+
+        // === Social Media ===
+        public string SocialFacebook { get; set; } = "";
+        public string SocialTwitter { get; set; } = "";
+        public string SocialLinkedIn { get; set; } = "";
+        public string SocialInstagram { get; set; } = "";
+        public string SocialYouTube { get; set; } = "";
+
         // === Header ===
         public bool ShowHeaderSearch { get; set; } = true;
         public bool ShowQuickAdd { get; set; } = true;
         public bool ShowHeaderNotifications { get; set; } = false;
+        public bool ShowHeaderCompanyInfo { get; set; } = false;
         public string HeaderAnnouncementText { get; set; } = "";
         public string HeaderAnnouncementType { get; set; } = "info"; // info, warning, success, danger
 
@@ -36,6 +50,14 @@ namespace InvoiceManagement.Models.ViewModels
         public string FooterLeftLinks { get; set; } = "";   // JSON array of {text,url}
         public string FooterRightLinks { get; set; } = "";  // JSON array of {text,url}
         public bool ShowFooterVersion { get; set; } = true;
+        public bool ShowFooterCompanyInfo { get; set; } = true;
+        public bool ShowFooterSocialLinks { get; set; } = true;
+
+        // === Login Screen ===
+        public string LoginBackgroundType { get; set; } = "gradient";  // gradient, image, video
+        public string LoginBackgroundUrl { get; set; } = "";
+        public int LoginCardOpacity { get; set; } = 95;  // 0-100, percentage for card transparency
+        public bool LoginShowFeatureBoxes { get; set; } = true;
 
         // === Dashboard Widgets ===
         public bool WidgetTotalInvoices { get; set; } = true;

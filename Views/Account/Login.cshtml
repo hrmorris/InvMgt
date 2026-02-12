@@ -10,6 +10,21 @@
     var primaryColor = ViewData["Theme_PrimaryColor"] as string ?? "#667eea";
     var accentColor = ViewData["Theme_AccentColor"] as string ?? "#764ba2";
     var fontFamily = ViewData["Theme_FontFamily"] as string ?? "Inter";
+
+    // Login screen settings
+    var loginBgType = ViewData["Login_BackgroundType"] as string ?? "gradient";
+    var loginBgUrl = ViewData["Login_BackgroundUrl"] as string ?? "";
+    var loginCardOpacity = ViewData["Login_CardOpacity"] is int op ? op : 95;
+    var showFeatureBoxes = ViewData["Login_ShowFeatureBoxes"] is bool sfb ? sfb : true;
+
+    // Company info for footer
+    var companyPhone = ViewData["Company_Phone"] as string ?? "";
+    var companyEmail = ViewData["Company_Email"] as string ?? "";
+
+    var cardAlpha = loginCardOpacity / 100.0;
+    var hasCustomBg = !string.IsNullOrEmpty(loginBgUrl) && loginBgType != "gradient";
+    var isVideo = loginBgType == "video" && hasCustomBg;
+    var isImage = loginBgType == "image" && hasCustomBg;
 }
 
 <!DOCTYPE html>
@@ -34,68 +49,123 @@
         <link href="https://fonts.googleapis.com/css2?family=@(fontFamily.Replace(" ", "+"))&display=swap" rel="stylesheet">
     }
     <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+
             body {
-                background: linear-gradient(135deg, @primaryColor 0%, @accentColor 100%);
                 min-height: 100vh;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 font-family: '@fontFamily', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                position: relative;
+                overflow: hidden;
             }
+
+            /* Gradient fallback background */
+            .login-bg-gradient {
+                position: fixed;
+                inset: 0;
+                background: linear-gradient(135deg, @primaryColor 0%, @accentColor 100%);
+                z-index: 0;
+            }
+
+            /* Custom image background */
+            .login-bg-image {
+                position: fixed;
+                inset: 0;
+                z-index: 0;
+                background-size: cover;
+                background-position: center;
+                background-repeat: no-repeat;
+            }
+
+            /* Video background */
+            .login-bg-video {
+                position: fixed;
+                inset: 0;
+                z-index: 0;
+                overflow: hidden;
+            }
+            .login-bg-video video {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+
+            /* Dark overlay for readability */
+            .login-bg-overlay {
+                position: fixed;
+                inset: 0;
+                z-index: 1;
+                background: rgba(0, 0, 0, 0.35);
+            }
+
             .login-container {
                 max-width: 450px;
                 width: 100%;
                 padding: 15px;
+                position: relative;
+                z-index: 10;
             }
+
             .login-card {
-                background: white;
-                border-radius: 15px;
-                box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+                background: rgba(255, 255, 255, @cardAlpha);
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+                border-radius: 20px;
+                box-shadow: 0 15px 50px rgba(0, 0, 0, 0.25);
                 overflow: hidden;
+                border: 1px solid rgba(255, 255, 255, 0.3);
             }
 
             .login-header {
-                background: linear-gradient(135deg, @primaryColor 0%, @accentColor 100%);
+                background: linear-gradient(135deg, @(primaryColor)cc, @(accentColor)cc);
+                backdrop-filter: blur(10px);
                 color: white;
-                padding: 40px 30px;
+                padding: 35px 30px;
                 text-align: center;
             }
 
             .login-header h1 {
                 font-size: 1.8rem;
                 font-weight: bold;
-                margin-bottom: 10px;
+                margin-bottom: 8px;
             }
             .login-header p {
                 margin: 0;
                 opacity: 0.9;
+                font-size: 0.95rem;
             }
             .login-body {
-                padding: 40px 30px;
+                padding: 35px 30px;
             }
             .form-control {
-                border-radius: 8px;
+                border-radius: 10px;
                 padding: 12px 15px;
-                border: 1px solid #e0e0e0;
+                border: 1px solid rgba(0, 0, 0, 0.1);
+                background: rgba(255, 255, 255, 0.8);
+                transition: all 0.3s;
             }
             .form-control:focus {
                 border-color: @primaryColor;
-                box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+                box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+                background: white;
             }
 
             .btn-login {
                 background: linear-gradient(135deg, @primaryColor 0%, @accentColor 100%);
                 border: none;
-                border-radius: 8px;
+                border-radius: 10px;
                 padding: 12px;
                 font-weight: bold;
                 color: white;
                 width: 100%;
-                transition: transform 0.2s;
+                transition: all 0.3s;
+                font-size: 1rem;
             }
             .btn-login:hover {
                 transform: translateY(-2px);
-                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+                box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
                 color: white;
             }
             .icon-input {
@@ -123,38 +193,72 @@
                 top: 50%;
                 width: 100%;
                 height: 1px;
-                background: #e0e0e0;
+                background: rgba(0, 0, 0, 0.1);
             }
             .divider span {
-                background: white;
+                background: rgba(255, 255, 255, @cardAlpha);
                 padding: 0 15px;
                 position: relative;
                 color: #999;
-                font-size: 0.9rem;
+                font-size: 0.85rem;
             }
             .alert {
-                border-radius: 8px;
+                border-radius: 10px;
             }
             .feature-box {
                 text-align: center;
-                padding: 20px;
+                padding: 18px;
                 margin-top: 20px;
-                background: rgba(255, 255, 255, 0.15);
-                backdrop-filter: blur(10px);
-                border-radius: 10px;
+                background: rgba(255, 255, 255, 0.12);
+                backdrop-filter: blur(15px);
+                -webkit-backdrop-filter: blur(15px);
+                border-radius: 14px;
+                border: 1px solid rgba(255, 255, 255, 0.15);
             }
             .feature-box i {
-                font-size: 2rem;
+                font-size: 1.8rem;
                 color: white;
-                margin-bottom: 10px;
+                margin-bottom: 8px;
             }
             .feature-box small {
                 color: rgba(255, 255, 255, 0.9);
+            }
+            .login-footer-info {
+                text-align: center;
+                margin-top: 12px;
+            }
+            .login-footer-info a {
+                color: rgba(255, 255, 255, 0.85);
+                text-decoration: none;
+                transition: color 0.2s;
+            }
+            .login-footer-info a:hover {
+                color: white;
             }
     </style>
 </head>
 
 <body>
+    <!-- Background Layer -->
+    @if (isVideo)
+    {
+        <div class="login-bg-video">
+            <video autoplay muted loop playsinline>
+                <source src="@loginBgUrl" type="video/mp4" />
+            </video>
+        </div>
+        <div class="login-bg-overlay"></div>
+    }
+    else if (isImage)
+    {
+        <div class="login-bg-image" style="background-image: url('@loginBgUrl');"></div>
+        <div class="login-bg-overlay"></div>
+    }
+    else
+    {
+        <div class="login-bg-gradient"></div>
+    }
+
     <div class="login-container">
         <div class="login-card">
             <div class="login-header">
@@ -245,29 +349,50 @@
             </div>
         </div>
 
-        <!-- Features -->
-        <div class="feature-box">
-            <div class="row text-center">
-                <div class="col-4">
-                    <i class="bi bi-robot"></i>
-                    <p class="mb-0"><small>AI-Powered</small></p>
-                </div>
-                <div class="col-4">
-                    <i class="bi bi-shield-check"></i>
-                    <p class="mb-0"><small>Secure</small></p>
-                </div>
-                <div class="col-4">
-                    <i class="bi bi-lightning"></i>
-                    <p class="mb-0"><small>Fast</small></p>
+        @if (showFeatureBoxes)
+        {
+            <!-- Features -->
+            <div class="feature-box">
+                <div class="row text-center">
+                    <div class="col-4">
+                        <i class="bi bi-robot"></i>
+                        <p class="mb-0"><small>AI-Powered</small></p>
+                    </div>
+                    <div class="col-4">
+                        <i class="bi bi-shield-check"></i>
+                        <p class="mb-0"><small>Secure</small></p>
+                    </div>
+                    <div class="col-4">
+                        <i class="bi bi-lightning"></i>
+                        <p class="mb-0"><small>Fast</small></p>
+                    </div>
                 </div>
             </div>
-        </div>
+        }
 
         <div class="text-center mt-3">
-            <small class="text-white">
+            <small class="text-white" style="text-shadow: 0 1px 3px rgba(0,0,0,0.3);">
                 &copy; @DateTime.Now.Year @appName. All rights reserved.
             </small>
         </div>
+
+        @if (!string.IsNullOrEmpty(companyPhone) || !string.IsNullOrEmpty(companyEmail))
+        {
+            <div class="login-footer-info mt-2">
+                @if (!string.IsNullOrEmpty(companyPhone))
+                {
+                    <small><a href="tel:@companyPhone"><i class="bi bi-telephone me-1"></i>@companyPhone</a></small>
+                }
+                @if (!string.IsNullOrEmpty(companyPhone) && !string.IsNullOrEmpty(companyEmail))
+                {
+                    <small class="text-white-50 mx-2">|</small>
+                }
+                @if (!string.IsNullOrEmpty(companyEmail))
+                {
+                    <small><a href="mailto:@companyEmail"><i class="bi bi-envelope me-1"></i>@companyEmail</a></small>
+                }
+            </div>
+        }
     </div>
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>

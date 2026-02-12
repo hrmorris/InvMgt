@@ -1382,17 +1382,136 @@ namespace InvoiceManagement.Controllers
                 ["Header_ShowSearch"] = model.ShowHeaderSearch.ToString().ToLower(),
                 ["Header_ShowQuickAdd"] = model.ShowQuickAdd.ToString().ToLower(),
                 ["Header_ShowNotifications"] = model.ShowHeaderNotifications.ToString().ToLower(),
+                ["Header_ShowCompanyInfo"] = model.ShowHeaderCompanyInfo.ToString().ToLower(),
                 ["Header_AnnouncementText"] = model.HeaderAnnouncementText ?? "",
                 ["Header_AnnouncementType"] = model.HeaderAnnouncementType ?? "info",
                 ["Footer_Show"] = model.ShowFooter.ToString().ToLower(),
                 ["Footer_Text"] = model.FooterText ?? "",
                 ["Footer_LeftLinks"] = model.FooterLeftLinks ?? "",
                 ["Footer_RightLinks"] = model.FooterRightLinks ?? "",
-                ["Footer_ShowVersion"] = model.ShowFooterVersion.ToString().ToLower()
+                ["Footer_ShowVersion"] = model.ShowFooterVersion.ToString().ToLower(),
+                ["Footer_ShowCompanyInfo"] = model.ShowFooterCompanyInfo.ToString().ToLower(),
+                ["Footer_ShowSocialLinks"] = model.ShowFooterSocialLinks.ToString().ToLower(),
+                ["Company_Address"] = model.CompanyAddress ?? "",
+                ["Company_Phone"] = model.CompanyPhone ?? "",
+                ["Company_Email"] = model.CompanyEmail ?? "",
+                ["Company_Website"] = model.CompanyWebsite ?? "",
+                ["Social_Facebook"] = model.SocialFacebook ?? "",
+                ["Social_Twitter"] = model.SocialTwitter ?? "",
+                ["Social_LinkedIn"] = model.SocialLinkedIn ?? "",
+                ["Social_Instagram"] = model.SocialInstagram ?? "",
+                ["Social_YouTube"] = model.SocialYouTube ?? ""
             };
 
             await SaveSettingsBatchAsync(settings, "Appearance", username);
             TempData["SuccessMessage"] = "Header & footer settings saved!";
+            return RedirectToAction(nameof(Appearance));
+        }
+
+        // POST: Admin/SaveLoginScreen
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveLoginScreen(AppearanceViewModel model)
+        {
+            var username = HttpContext.Session.GetString("Username") ?? "Admin";
+            var settings = new Dictionary<string, string>
+            {
+                ["Login_BackgroundType"] = model.LoginBackgroundType ?? "gradient",
+                ["Login_CardOpacity"] = Math.Clamp(model.LoginCardOpacity, 10, 100).ToString(),
+                ["Login_ShowFeatureBoxes"] = model.LoginShowFeatureBoxes.ToString().ToLower()
+            };
+
+            await SaveSettingsBatchAsync(settings, "Appearance", username);
+            TempData["SuccessMessage"] = "Login screen settings saved!";
+            return RedirectToAction(nameof(Appearance));
+        }
+
+        // POST: Admin/UploadLoginBackground
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [RequestSizeLimit(200_000_000)] // 200 MB for video uploads
+        public async Task<IActionResult> UploadLoginBackground(IFormFile loginBgFile)
+        {
+            if (loginBgFile == null || loginBgFile.Length == 0)
+            {
+                TempData["ErrorMessage"] = "Please select a background file to upload.";
+                return RedirectToAction(nameof(Appearance));
+            }
+
+            var imageExts = new[] { ".png", ".jpg", ".jpeg", ".svg", ".webp", ".gif", ".bmp", ".tiff" };
+            var videoExts = new[] { ".mp4", ".webm", ".ogg", ".mov" };
+            var ext = Path.GetExtension(loginBgFile.FileName).ToLowerInvariant();
+            var allAllowed = imageExts.Concat(videoExts).ToArray();
+
+            if (!allAllowed.Contains(ext))
+            {
+                TempData["ErrorMessage"] = "Invalid file type. Allowed: PNG, JPG, SVG, WebP, GIF, BMP, TIFF (images) or MP4, WebM, OGG, MOV (videos).";
+                return RedirectToAction(nameof(Appearance));
+            }
+
+            bool isVideo = videoExts.Contains(ext);
+
+            // Image max 10 MB, Video max 200 MB (5 min clips)
+            long maxSize = isVideo ? 200L * 1024 * 1024 : 10L * 1024 * 1024;
+            if (loginBgFile.Length > maxSize)
+            {
+                TempData["ErrorMessage"] = isVideo
+                    ? "Video file must be under 200 MB (approximately 5 minutes)."
+                    : "Image file must be under 10 MB.";
+                return RedirectToAction(nameof(Appearance));
+            }
+
+            try
+            {
+                var uploadsDir = Path.Combine(_environment.WebRootPath, "uploads", "branding");
+                Directory.CreateDirectory(uploadsDir);
+
+                var fileName = $"login-bg{ext}";
+                var filePath = Path.Combine(uploadsDir, fileName);
+
+                // Delete old login backgrounds
+                foreach (var oldFile in Directory.GetFiles(uploadsDir, "login-bg.*"))
+                    System.IO.File.Delete(oldFile);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                    await loginBgFile.CopyToAsync(stream);
+
+                var relativePath = $"/uploads/branding/{fileName}";
+                var bgType = isVideo ? "video" : "image";
+                var username = HttpContext.Session.GetString("Username") ?? "Admin";
+                await SaveSettingsBatchAsync(new Dictionary<string, string>
+                {
+                    ["Login_BackgroundUrl"] = relativePath,
+                    ["Login_BackgroundType"] = bgType
+                }, "Appearance", username);
+
+                TempData["SuccessMessage"] = $"Login background {(isVideo ? "video" : "image")} uploaded successfully!";
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"Error uploading login background: {ex.Message}";
+            }
+
+            return RedirectToAction(nameof(Appearance));
+        }
+
+        // POST: Admin/RemoveLoginBackground
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RemoveLoginBackground()
+        {
+            var username = HttpContext.Session.GetString("Username") ?? "Admin";
+            await SaveSettingsBatchAsync(new Dictionary<string, string>
+            {
+                ["Login_BackgroundUrl"] = "",
+                ["Login_BackgroundType"] = "gradient"
+            }, "Appearance", username);
+
+            var uploadsDir = Path.Combine(_environment.WebRootPath, "uploads", "branding");
+            foreach (var file in Directory.GetFiles(uploadsDir, "login-bg.*"))
+                System.IO.File.Delete(file);
+
+            TempData["SuccessMessage"] = "Login background removed.";
             return RedirectToAction(nameof(Appearance));
         }
 
@@ -1498,9 +1617,21 @@ namespace InvoiceManagement.Controllers
                 FaviconUrl = Get("Branding_FaviconUrl"),
                 TagLine = Get("Branding_TagLine"),
 
+                CompanyAddress = Get("Company_Address"),
+                CompanyPhone = Get("Company_Phone"),
+                CompanyEmail = Get("Company_Email"),
+                CompanyWebsite = Get("Company_Website"),
+
+                SocialFacebook = Get("Social_Facebook"),
+                SocialTwitter = Get("Social_Twitter"),
+                SocialLinkedIn = Get("Social_LinkedIn"),
+                SocialInstagram = Get("Social_Instagram"),
+                SocialYouTube = Get("Social_YouTube"),
+
                 ShowHeaderSearch = GetBool("Header_ShowSearch"),
                 ShowQuickAdd = GetBool("Header_ShowQuickAdd"),
                 ShowHeaderNotifications = GetBool("Header_ShowNotifications", false),
+                ShowHeaderCompanyInfo = GetBool("Header_ShowCompanyInfo", false),
                 HeaderAnnouncementText = Get("Header_AnnouncementText"),
                 HeaderAnnouncementType = Get("Header_AnnouncementType", "info"),
 
@@ -1509,6 +1640,13 @@ namespace InvoiceManagement.Controllers
                 FooterLeftLinks = Get("Footer_LeftLinks"),
                 FooterRightLinks = Get("Footer_RightLinks"),
                 ShowFooterVersion = GetBool("Footer_ShowVersion"),
+                ShowFooterCompanyInfo = GetBool("Footer_ShowCompanyInfo"),
+                ShowFooterSocialLinks = GetBool("Footer_ShowSocialLinks"),
+
+                LoginBackgroundType = Get("Login_BackgroundType", "gradient"),
+                LoginBackgroundUrl = Get("Login_BackgroundUrl"),
+                LoginCardOpacity = int.TryParse(Get("Login_CardOpacity", "95"), out var op) ? op : 95,
+                LoginShowFeatureBoxes = GetBool("Login_ShowFeatureBoxes"),
 
                 WidgetTotalInvoices = GetBool("Widget_TotalInvoices"),
                 WidgetUnpaidAmount = GetBool("Widget_UnpaidAmount"),

@@ -64,6 +64,27 @@ namespace InvoiceManagement.Filters
                     controller.ViewData["Footer_LeftLinks"] = Get("Footer_LeftLinks");
                     controller.ViewData["Footer_RightLinks"] = Get("Footer_RightLinks");
                     controller.ViewData["Footer_ShowVersion"] = GetBool("Footer_ShowVersion");
+                    controller.ViewData["Footer_ShowCompanyInfo"] = GetBool("Footer_ShowCompanyInfo");
+                    controller.ViewData["Footer_ShowSocialLinks"] = GetBool("Footer_ShowSocialLinks");
+
+                    // Company Info
+                    controller.ViewData["Company_Address"] = Get("Company_Address");
+                    controller.ViewData["Company_Phone"] = Get("Company_Phone");
+                    controller.ViewData["Company_Email"] = Get("Company_Email");
+                    controller.ViewData["Company_Website"] = Get("Company_Website");
+
+                    // Social Media
+                    controller.ViewData["Social_Facebook"] = Get("Social_Facebook");
+                    controller.ViewData["Social_Twitter"] = Get("Social_Twitter");
+                    controller.ViewData["Social_LinkedIn"] = Get("Social_LinkedIn");
+                    controller.ViewData["Social_Instagram"] = Get("Social_Instagram");
+                    controller.ViewData["Social_YouTube"] = Get("Social_YouTube");
+
+                    // Login Screen
+                    controller.ViewData["Login_BackgroundType"] = Get("Login_BackgroundType", "gradient");
+                    controller.ViewData["Login_BackgroundUrl"] = Get("Login_BackgroundUrl");
+                    controller.ViewData["Login_CardOpacity"] = int.TryParse(Get("Login_CardOpacity", "95"), out var opacity) ? opacity : 95;
+                    controller.ViewData["Login_ShowFeatureBoxes"] = GetBool("Login_ShowFeatureBoxes");
                 }
                 catch
                 {

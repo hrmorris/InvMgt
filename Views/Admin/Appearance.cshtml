@@ -325,6 +325,11 @@
         </button>
     </li>
     <li class="nav-item me-2">
+        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#loginScreenTab" type="button">
+            <i class="bi bi-box-arrow-in-right me-1"></i> Login Screen
+        </button>
+    </li>
+    <li class="nav-item me-2">
         <button class="nav-link" data-bs-toggle="pill" data-bs-target="#widgetsTab" type="button">
             <i class="bi bi-grid-1x2 me-1"></i> Widgets
         </button>
@@ -713,147 +718,438 @@
                 <form asp-action="SaveHeaderFooter" method="post">
                     @Html.AntiForgeryToken()
                     <div class="row g-4">
-                        <!-- Header Settings -->
+                        <!-- Company Information -->
                         <div class="col-lg-6">
                             <div class="settings-card card">
-                                <div class="card-header"><i class="bi bi-layout-text-window me-2 text-primary"></i> Header
-                                    Configuration</div>
-                                    <div class="card-body">
-                                        <div class="mb-3 d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <div class="fw-semibold">Search Bar</div>
-                                                <small class="text-muted">Show the invoice search bar in the navbar</small>
-                                            </div>
-                                            <label class="toggle-switch">
-                                                <input type="checkbox" name="ShowHeaderSearch" value="true"
-                                                       checked="@Model.ShowHeaderSearch" />
-                                                <span class="toggle-slider"></span>
-                                            </label>
-                                        </div>
-                                        <hr />
-                                        <div class="mb-3 d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <div class="fw-semibold">Quick Add Menu</div>
-                                                <small class="text-muted">Show the "+ Quick Add" dropdown in the navbar</small>
-                                            </div>
-                                            <label class="toggle-switch">
-                                                <input type="checkbox" name="ShowQuickAdd" value="true"
-                                                       checked="@Model.ShowQuickAdd" />
-                                                <span class="toggle-slider"></span>
-                                            </label>
-                                        </div>
-                                        <hr />
-                                        <div class="mb-3 d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <div class="fw-semibold">Notification Bell</div>
-                                                <small class="text-muted">Show notification indicator (future feature)</small>
-                                            </div>
-                                            <label class="toggle-switch">
-                                                <input type="checkbox" name="ShowHeaderNotifications" value="true"
-                                                       checked="@Model.ShowHeaderNotifications" />
-                                                <span class="toggle-slider"></span>
-                                            </label>
-                                        </div>
-                                        <hr />
-                                        <div class="mb-3">
-                                            <label class="form-label fw-semibold">Announcement Banner</label>
-                                            <input type="text" name="HeaderAnnouncementText" class="form-control"
-                                                   value="@Model.HeaderAnnouncementText"
-                                                   placeholder="e.g., System update scheduled for tonight at 10 PM" />
-                                            <div class="form-text">Leave empty to hide the announcement bar.</div>
-                                        </div>
-                                        <div>
-                                            <label class="form-label fw-semibold">Banner Type</label>
-                                            <select name="HeaderAnnouncementType" class="form-select form-select-sm">
-                                                <option value="info" selected="@(Model.HeaderAnnouncementType == "info")">ℹ️ Info
-                                                    (Blue)</option>
-                                                    <option value="warning" selected="@(Model.HeaderAnnouncementType == "warning")">⚠️
-                                                        Warning (Yellow)</option>
-                                                        <option value="success" selected="@(Model.HeaderAnnouncementType == "success")">✅
-                                                            Success (Green)</option>
-                                                            <option value="danger" selected="@(Model.HeaderAnnouncementType == "danger")">🚨
-                                                                Danger (Red)</option>
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Footer Settings -->
-                                            <div class="col-lg-6">
-                                                <div class="settings-card card">
-                                                    <div class="card-header"><i class="bi bi-layout-text-window-reverse me-2 text-primary"></i>
-                                                        Footer Configuration</div>
-                                                        <div class="card-body">
-                                                            <div class="mb-3 d-flex justify-content-between align-items-center">
-                                                                <div>
-                                                                    <div class="fw-semibold">Show Footer</div>
-                                                                    <small class="text-muted">Display a footer bar at the bottom of every page</small>
-                                                                </div>
-                                                                <label class="toggle-switch">
-                                                                    <input type="checkbox" name="ShowFooter" value="true" checked="@Model.ShowFooter" />
-                                                                    <span class="toggle-slider"></span>
-                                                                </label>
-                                                            </div>
-                                                            <hr />
-                                                            <div class="mb-3">
-                                                                <label class="form-label fw-semibold">Footer Text</label>
-                                                                <input type="text" name="FooterText" class="form-control" value="@Model.FooterText"
-                                                                       placeholder="© {year} Your Company. All rights reserved." />
-                                                                <div class="form-text">Use <code>{year}</code> for the current year.</div>
-                                                            </div>
-                                                            <hr />
-                                                            <div class="mb-3 d-flex justify-content-between align-items-center">
-                                                                <div>
-                                                                    <div class="fw-semibold">Show Version</div>
-                                                                    <small class="text-muted">Display app version in the footer</small>
-                                                                </div>
-                                                                <label class="toggle-switch">
-                                                                    <input type="checkbox" name="ShowFooterVersion" value="true"
-                                                                           checked="@Model.ShowFooterVersion" />
-                                                                    <span class="toggle-slider"></span>
-                                                                </label>
-                                                            </div>
-                                                            <hr />
-                                                            <div class="mb-3">
-                                                                <label class="form-label fw-semibold">Left Links (JSON)</label>
-                                                                <textarea name="FooterLeftLinks" class="form-control" rows="2"
-                                                                          placeholder='[{"text":"Privacy","url":"/privacy"},{"text":"Terms","url":"/terms"}]'>@Model.FooterLeftLinks</textarea>
-                                                                <div class="form-text">JSON array of <code>{"text":"...", "url":"..."}</code> objects.
-                                                                </div>
-                                                            </div>
-                                                            <div>
-                                                                <label class="form-label fw-semibold">Right Links (JSON)</label>
-                                                                <textarea name="FooterRightLinks" class="form-control" rows="2"
-                                                                          placeholder='[{"text":"Help","url":"/help"}]'>@Model.FooterRightLinks</textarea>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div class="mt-4 d-flex gap-2">
-                                                <button type="submit" class="btn btn-primary btn-lg px-4">
-                                                    <i class="bi bi-check-lg me-1"></i> Save Header & Footer
-                                                </button>
-                                            </div>
-                                        </form>
+                                <div class="card-header"><i class="bi bi-building me-2 text-primary"></i> Company Information
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold"><i class="bi bi-geo-alt me-1"></i> Address</label>
+                                        <textarea name="CompanyAddress" class="form-control" rows="2"
+                                                  placeholder="123 Business St, Suite 100, City, State 12345">@Model.CompanyAddress</textarea>
+                                        <div class="form-text">Company address displayed in header/footer.</div>
                                     </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold"><i class="bi bi-telephone me-1"></i> Phone
+                                            Number</label>
+                                            <input type="text" name="CompanyPhone" class="form-control" value="@Model.CompanyPhone"
+                                                   placeholder="+1 (555) 123-4567" />
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold"><i class="bi bi-envelope me-1"></i> Email
+                                                Address</label>
+                                                <input type="email" name="CompanyEmail" class="form-control" value="@Model.CompanyEmail"
+                                                       placeholder="info@company.com" />
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold"><i class="bi bi-globe me-1"></i> Website</label>
+                                                <input type="url" name="CompanyWebsite" class="form-control"
+                                                       value="@Model.CompanyWebsite" placeholder="https://www.company.com" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
 
-                                    <!-- ===== WIDGETS TAB ===== -->
-                                    <div class="tab-pane fade" id="widgetsTab">
-                                        <form asp-action="SaveWidgets" method="post">
-                                            @Html.AntiForgeryToken()
-
-                                            <div class="settings-card card mb-4">
-                                                <div class="card-header"><i class="bi bi-grid-1x2 me-2 text-primary"></i> Dashboard Widget Visibility
+                                <!-- Social Media Links -->
+                                <div class="col-lg-6">
+                                    <div class="settings-card card">
+                                        <div class="card-header"><i class="bi bi-share me-2 text-primary"></i> Social Media Links</div>
+                                        <div class="card-body">
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold"><i class="bi bi-facebook me-1 text-primary"></i>
+                                                    Facebook</label>
+                                                    <input type="url" name="SocialFacebook" class="form-control"
+                                                           value="@Model.SocialFacebook" placeholder="https://facebook.com/yourpage" />
                                                 </div>
-                                                <div class="card-body">
-                                                    <p class="text-muted mb-4">Toggle which widgets appear on the main dashboard. Disabled widgets are
-                                                        hidden for all users.</p>
-                                                        <div class="row g-3">
-                                                            @{
-                                                                var widgets = new[] {
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-semibold"><i class="bi bi-twitter-x me-1"></i> Twitter /
+                                                        X</label>
+                                                        <input type="url" name="SocialTwitter" class="form-control" value="@Model.SocialTwitter"
+                                                               placeholder="https://x.com/yourhandle" />
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-semibold"><i class="bi bi-linkedin me-1 text-primary"></i>
+                                                            LinkedIn</label>
+                                                            <input type="url" name="SocialLinkedIn" class="form-control"
+                                                                   value="@Model.SocialLinkedIn" placeholder="https://linkedin.com/company/yourco" />
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label fw-semibold"><i class="bi bi-instagram me-1 text-danger"></i>
+                                                                Instagram</label>
+                                                                <input type="url" name="SocialInstagram" class="form-control"
+                                                                       value="@Model.SocialInstagram" placeholder="https://instagram.com/yourhandle" />
+                                                            </div>
+                                                            <div class="mb-3">
+                                                                <label class="form-label fw-semibold"><i class="bi bi-youtube me-1 text-danger"></i>
+                                                                    YouTube</label>
+                                                                    <input type="url" name="SocialYouTube" class="form-control" value="@Model.SocialYouTube"
+                                                                           placeholder="https://youtube.com/yourchannel" />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Header Settings -->
+                                                    <div class="col-lg-6">
+                                                        <div class="settings-card card">
+                                                            <div class="card-header"><i class="bi bi-layout-text-window me-2 text-primary"></i> Header
+                                                                Configuration</div>
+                                                                <div class="card-body">
+                                                                    <div class="mb-3 d-flex justify-content-between align-items-center">
+                                                                        <div>
+                                                                            <div class="fw-semibold">Search Bar</div>
+                                                                            <small class="text-muted">Show the invoice search bar in the navbar</small>
+                                                                        </div>
+                                                                        <label class="toggle-switch">
+                                                                            <input type="checkbox" name="ShowHeaderSearch" value="true"
+                                                                                   checked="@Model.ShowHeaderSearch" />
+                                                                            <span class="toggle-slider"></span>
+                                                                        </label>
+                                                                    </div>
+                                                                    <hr />
+                                                                    <div class="mb-3 d-flex justify-content-between align-items-center">
+                                                                        <div>
+                                                                            <div class="fw-semibold">Quick Add Menu</div>
+                                                                            <small class="text-muted">Show the "+ Quick Add" dropdown in the navbar</small>
+                                                                        </div>
+                                                                        <label class="toggle-switch">
+                                                                            <input type="checkbox" name="ShowQuickAdd" value="true"
+                                                                                   checked="@Model.ShowQuickAdd" />
+                                                                            <span class="toggle-slider"></span>
+                                                                        </label>
+                                                                    </div>
+                                                                    <hr />
+                                                                    <div class="mb-3 d-flex justify-content-between align-items-center">
+                                                                        <div>
+                                                                            <div class="fw-semibold">Notification Bell</div>
+                                                                            <small class="text-muted">Show notification indicator (future feature)</small>
+                                                                        </div>
+                                                                        <label class="toggle-switch">
+                                                                            <input type="checkbox" name="ShowHeaderNotifications" value="true"
+                                                                                   checked="@Model.ShowHeaderNotifications" />
+                                                                            <span class="toggle-slider"></span>
+                                                                        </label>
+                                                                    </div>
+                                                                    <hr />
+                                                                    <div class="mb-3 d-flex justify-content-between align-items-center">
+                                                                        <div>
+                                                                            <div class="fw-semibold">Company Info Bar</div>
+                                                                            <small class="text-muted">Show phone & email above the navbar</small>
+                                                                        </div>
+                                                                        <label class="toggle-switch">
+                                                                            <input type="checkbox" name="ShowHeaderCompanyInfo" value="true"
+                                                                                   checked="@Model.ShowHeaderCompanyInfo" />
+                                                                            <span class="toggle-slider"></span>
+                                                                        </label>
+                                                                    </div>
+                                                                    <hr />
+                                                                    <div class="mb-3">
+                                                                        <label class="form-label fw-semibold">Announcement Banner</label>
+                                                                        <input type="text" name="HeaderAnnouncementText" class="form-control"
+                                                                               value="@Model.HeaderAnnouncementText"
+                                                                               placeholder="e.g., System update scheduled for tonight at 10 PM" />
+                                                                        <div class="form-text">Leave empty to hide the announcement bar.</div>
+                                                                    </div>
+                                                                    <div>
+                                                                        <label class="form-label fw-semibold">Banner Type</label>
+                                                                        <select name="HeaderAnnouncementType" class="form-select form-select-sm">
+                                                                            <option value="info" selected="@(Model.HeaderAnnouncementType == "info")">ℹ️ Info
+                                                                                (Blue)</option>
+                                                                                <option value="warning" selected="@(Model.HeaderAnnouncementType == "warning")">⚠️
+                                                                                    Warning (Yellow)</option>
+                                                                                    <option value="success" selected="@(Model.HeaderAnnouncementType == "success")">✅
+                                                                                        Success (Green)</option>
+                                                                                        <option value="danger" selected="@(Model.HeaderAnnouncementType == "danger")">🚨
+                                                                                            Danger (Red)</option>
+                                                                                        </select>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+
+                                                                        <!-- Footer Settings -->
+                                                                        <div class="col-lg-6">
+                                                                            <div class="settings-card card">
+                                                                                <div class="card-header"><i class="bi bi-layout-text-window-reverse me-2 text-primary"></i>
+                                                                                    Footer Configuration</div>
+                                                                                    <div class="card-body">
+                                                                                        <div class="mb-3 d-flex justify-content-between align-items-center">
+                                                                                            <div>
+                                                                                                <div class="fw-semibold">Show Footer</div>
+                                                                                                <small class="text-muted">Display a footer bar at the bottom of every page</small>
+                                                                                            </div>
+                                                                                            <label class="toggle-switch">
+                                                                                                <input type="checkbox" name="ShowFooter" value="true" checked="@Model.ShowFooter" />
+                                                                                                <span class="toggle-slider"></span>
+                                                                                            </label>
+                                                                                        </div>
+                                                                                        <hr />
+                                                                                        <div class="mb-3 d-flex justify-content-between align-items-center">
+                                                                                            <div>
+                                                                                                <div class="fw-semibold">Show Company Info</div>
+                                                                                                <small class="text-muted">Display address, phone & email in the footer</small>
+                                                                                            </div>
+                                                                                            <label class="toggle-switch">
+                                                                                                <input type="checkbox" name="ShowFooterCompanyInfo" value="true"
+                                                                                                       checked="@Model.ShowFooterCompanyInfo" />
+                                                                                                <span class="toggle-slider"></span>
+                                                                                            </label>
+                                                                                        </div>
+                                                                                        <hr />
+                                                                                        <div class="mb-3 d-flex justify-content-between align-items-center">
+                                                                                            <div>
+                                                                                                <div class="fw-semibold">Show Social Links</div>
+                                                                                                <small class="text-muted">Display social media icons in the footer</small>
+                                                                                            </div>
+                                                                                            <label class="toggle-switch">
+                                                                                                <input type="checkbox" name="ShowFooterSocialLinks" value="true"
+                                                                                                       checked="@Model.ShowFooterSocialLinks" />
+                                                                                                <span class="toggle-slider"></span>
+                                                                                            </label>
+                                                                                        </div>
+                                                                                        <hr />
+                                                                                        <div class="mb-3">
+                                                                                            <label class="form-label fw-semibold">Footer Text</label>
+                                                                                            <input type="text" name="FooterText" class="form-control" value="@Model.FooterText"
+                                                                                                   placeholder="© {year} Your Company. All rights reserved." />
+                                                                                            <div class="form-text">Use <code>{year}</code> for the current year.</div>
+                                                                                        </div>
+                                                                                        <hr />
+                                                                                        <div class="mb-3 d-flex justify-content-between align-items-center">
+                                                                                            <div>
+                                                                                                <div class="fw-semibold">Show Version</div>
+                                                                                                <small class="text-muted">Display app version in the footer</small>
+                                                                                            </div>
+                                                                                            <label class="toggle-switch">
+                                                                                                <input type="checkbox" name="ShowFooterVersion" value="true"
+                                                                                                       checked="@Model.ShowFooterVersion" />
+                                                                                                <span class="toggle-slider"></span>
+                                                                                            </label>
+                                                                                        </div>
+                                                                                        <hr />
+                                                                                        <div class="mb-3">
+                                                                                            <label class="form-label fw-semibold">Left Links (JSON)</label>
+                                                                                            <textarea name="FooterLeftLinks" class="form-control" rows="2"
+                                                                                                      placeholder='[{"text":"Privacy","url":"/privacy"},{"text":"Terms","url":"/terms"}]'>@Model.FooterLeftLinks</textarea>
+                                                                                            <div class="form-text">JSON array of <code>{"text":"...", "url":"..."}</code> objects.
+                                                                                            </div>
+                                                                                        </div>
+                                                                                        <div>
+                                                                                            <label class="form-label fw-semibold">Right Links (JSON)</label>
+                                                                                            <textarea name="FooterRightLinks" class="form-control" rows="2"
+                                                                                                      placeholder='[{"text":"Help","url":"/help"}]'>@Model.FooterRightLinks</textarea>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+
+                                                                        <div class="mt-4 d-flex gap-2">
+                                                                            <button type="submit" class="btn btn-primary btn-lg px-4">
+                                                                                <i class="bi bi-check-lg me-1"></i> Save Header & Footer
+                                                                            </button>
+                                                                        </div>
+                                                                    </form>
+                                                                </div>
+
+                                                                <!-- ===== LOGIN SCREEN TAB ===== -->
+                                                                <div class="tab-pane fade" id="loginScreenTab">
+                                                                    <div class="row g-4">
+                                                                        <!-- Background Settings -->
+                                                                        <div class="col-lg-6">
+                                                                            <div class="settings-card card">
+                                                                                <div class="card-header"><i class="bi bi-image-fill me-2 text-primary"></i> Login Background</div>
+                                                                                <div class="card-body">
+                                                                                    <p class="text-muted mb-3">Upload a custom background image or short video clip (max 5 minutes)
+                                                                                        for your login page.</p>
+
+                                                                                        @if (!string.IsNullOrEmpty(Model.LoginBackgroundUrl))
+                                                                                        {
+                                                                                            <div class="mb-3 p-3 rounded border bg-light text-center">
+                                                                                                @if (Model.LoginBackgroundType == "video")
+                                                                                                {
+                                                                                                    <video src="@Model.LoginBackgroundUrl"
+                                                                                                           style="max-width: 100%; max-height: 200px; border-radius: 8px;" muted loop
+                                                                                                           autoplay></video>
+                                                                                                    <div class="mt-2"><span class="badge bg-info"><i class="bi bi-camera-video me-1"></i>Video
+                                                                                                        Background</span></div>
+                                                                                                    }
+                            else
+                                                                                                    {
+                                                                                                        <img src="@Model.LoginBackgroundUrl" alt="Login Background"
+                                                                                                             style="max-width: 100%; max-height: 200px; border-radius: 8px; object-fit: cover;" />
+                                                                                                        <div class="mt-2"><span class="badge bg-success"><i class="bi bi-image me-1"></i>Image
+                                                                                                            Background</span></div>
+                                                                                                        }
+                                                                                                    </div>
+                                                                                                }
+
+                                                                                                <form asp-action="UploadLoginBackground" method="post" enctype="multipart/form-data">
+                                                                                                    @Html.AntiForgeryToken()
+                                                                                                    <div class="upload-zone" onclick="document.getElementById('loginBgFile').click()"
+                                                                                                         id="loginBgDropZone">
+                                                                                                        <i class="bi bi-cloud-arrow-up upload-icon d-block mb-2"></i>
+                                                                                                        <span class="text-muted">Click or drag & drop background file</span>
+                                                                                                        <br /><small class="text-muted"><strong>Images:</strong> PNG, JPG, SVG, WebP, GIF, BMP •
+                                                                                                        Max 10 MB</small>
+                                                                                                        <br /><small class="text-muted"><strong>Videos:</strong> MP4, WebM, OGG, MOV • Max 200
+                                                                                                        MB (≤ 5 min)</small>
+                                                                                                        <input type="file" name="loginBgFile" id="loginBgFile" class="d-none"
+                                                                                                               accept=".png,.jpg,.jpeg,.svg,.webp,.gif,.bmp,.tiff,.mp4,.webm,.ogg,.mov"
+                                                                                                               onchange="previewLoginBg(this); this.form.submit();" />
+                                                                                                    </div>
+                                                                                                </form>
+                                                                                                @if (!string.IsNullOrEmpty(Model.LoginBackgroundUrl))
+                                                                                                {
+                                                                                                    <form asp-action="RemoveLoginBackground" method="post" class="mt-2">
+                                                                                                        @Html.AntiForgeryToken()
+                                                                                                        <button type="submit" class="btn btn-outline-danger btn-sm"
+                                                                                                                onclick="return confirm('Remove the login background?')">
+                                                                                                            <i class="bi bi-trash me-1"></i> Remove Background
+                                                                                                        </button>
+                                                                                                    </form>
+                                                                                                }
+
+                                                                                                <div class="mt-3 p-2 bg-light rounded">
+                                                                                                    <small class="text-muted">
+                                                                                                        <i class="bi bi-info-circle me-1"></i>
+                                                                                                        <strong>Tip:</strong> If no background is uploaded, the login page uses your theme
+                                                                                                        gradient colors.
+                                                                                                        For best results, use a high-resolution image (1920×1080+) or a short looping video.
+                                                                                                    </small>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    </div>
+
+                                                                                    <!-- Login Card Appearance -->
+                                                                                    <div class="col-lg-6">
+                                                                                        <div class="settings-card card">
+                                                                                            <div class="card-header"><i class="bi bi-window-stack me-2 text-primary"></i> Login Card Appearance
+                                                                                            </div>
+                                                                                            <div class="card-body">
+                                                                                                <form asp-action="SaveLoginScreen" method="post">
+                                                                                                    @Html.AntiForgeryToken()
+
+                                                                                                    <div class="mb-4">
+                                                                                                        <label class="form-label fw-semibold">Card Transparency</label>
+                                                                                                        <div class="d-flex align-items-center gap-3">
+                                                                                                            <input type="range" name="LoginCardOpacity" class="form-range flex-grow-1" min="10"
+                                                                                                                   max="100" step="5" value="@Model.LoginCardOpacity" id="opacitySlider"
+                                                                                                                   oninput="updateOpacityPreview(this.value)" />
+                                                                                                            <span class="badge bg-primary" id="opacityValue"
+                                                                                                                  style="min-width: 50px;">@Model.LoginCardOpacity%</span>
+                                                                                                        </div>
+                                                                                                        <div class="form-text">Lower values make the login card more transparent (reveals
+                                                                                                            background).</div>
+                                                                                                            <!-- Opacity preview -->
+                                                                                                            <div class="mt-3 position-relative rounded overflow-hidden" style="height: 120px;">
+                                                                                                                <div
+                                                                                                                    style="position: absolute; inset: 0; background: linear-gradient(135deg, @Model.PrimaryColor, @Model.AccentColor);">
+                                                                                                                </div>
+                                                                                                                <div class="position-absolute d-flex align-items-center justify-content-center"
+                                                                                                                     style="inset: 0;">
+                                                                                                                    <div id="opacityPreviewCard" class="rounded-3 p-3 text-center"
+                                                                                                                         style="background: rgba(255,255,255,@(Model.LoginCardOpacity / 100.0)); backdrop-filter: blur(10px); width: 180px;">
+                                                                                                                        <i class="bi bi-person-circle d-block mb-1"
+                                                                                                                           style="font-size: 1.5rem; color: @Model.PrimaryColor;"></i>
+                                                                                                                        <small class="fw-semibold">Login Preview</small>
+                                                                                                                    </div>
+                                                                                                                </div>
+                                                                                                            </div>
+                                                                                                        </div>
+
+                                                                                                        <hr />
+
+                                                                                                        <div class="mb-3">
+                                                                                                            <label class="form-label fw-semibold">Background Type</label>
+                                                                                                            <select name="LoginBackgroundType" class="form-select form-select-sm">
+                                                                                                                <option value="gradient" selected="@(Model.LoginBackgroundType == "gradient")">🎨
+                                                                                                                    Theme Gradient (Default)</option>
+                                                                                                                    <option value="image" selected="@(Model.LoginBackgroundType == "image")">🖼️ Custom
+                                                                                                                        Image</option>
+                                                                                                                        <option value="video" selected="@(Model.LoginBackgroundType == "video")">🎬 Custom
+                                                                                                                            Video</option>
+                                                                                                                        </select>
+                                                                                                                        <div class="form-text">This is auto-set when you upload a file, but you can override it.
+                                                                                                                        </div>
+                                                                                                                    </div>
+
+                                                                                                                    <hr />
+
+                                                                                                                    <div class="mb-3 d-flex justify-content-between align-items-center">
+                                                                                                                        <div>
+                                                                                                                            <div class="fw-semibold">Feature Boxes</div>
+                                                                                                                            <small class="text-muted">Show AI-Powered, Secure, Fast badges below login</small>
+                                                                                                                        </div>
+                                                                                                                        <label class="toggle-switch">
+                                                                                                                            <input type="checkbox" name="LoginShowFeatureBoxes" value="true"
+                                                                                                                                   checked="@Model.LoginShowFeatureBoxes" />
+                                                                                                                            <span class="toggle-slider"></span>
+                                                                                                                        </label>
+                                                                                                                    </div>
+
+                                                                                                                    <button type="submit" class="btn btn-primary mt-2">
+                                                                                                                        <i class="bi bi-check-lg me-1"></i> Save Login Settings
+                                                                                                                    </button>
+                                                                                                                </form>
+                                                                                                            </div>
+                                                                                                        </div>
+
+                                                                                                        <!-- Current Login Summary -->
+                                                                                                        <div class="settings-card card mt-4">
+                                                                                                            <div class="card-header"><i class="bi bi-info-circle me-2 text-primary"></i> Current Login Config
+                                                                                                            </div>
+                                                                                                            <div class="card-body">
+                                                                                                                <table class="table table-sm mb-0">
+                                                                                                                    <tr>
+                                                                                                                        <td class="text-muted fw-semibold" style="width: 45%;">Background</td>
+                                                                                                                        <td>
+                                                                                                                            @if (Model.LoginBackgroundType == "video")
+                                                                                                                            {
+                                                                                                                                <span class="badge bg-info"><i class="bi bi-camera-video"></i> Video</span>
+                                                                                                                            }
+                                                                                                                            else if (Model.LoginBackgroundType == "image" &&
+                                                                                                                            !string.IsNullOrEmpty(Model.LoginBackgroundUrl))
+                                                                                                                            {
+                                                                                                                                <span class="badge bg-success"><i class="bi bi-image"></i> Custom Image</span>
+                                                                                                                            }
+                                                                                                                            else
+                                                                                                                            {
+                                                                                                                                <span class="badge bg-secondary"><i class="bi bi-palette"></i> Theme Gradient</span>
+                                                                                                                            }
+                                                                                                                        </td>
+                                                                                                                    </tr>
+                                                                                                                    <tr>
+                                                                                                                        <td class="text-muted fw-semibold">Card Opacity</td>
+                                                                                                                        <td>@Model.LoginCardOpacity%</td>
+                                                                                                                    </tr>
+                                                                                                                    <tr>
+                                                                                                                        <td class="text-muted fw-semibold">Feature Boxes</td>
+                                                                                                                        <td>@(Model.LoginShowFeatureBoxes ? "Visible" : "Hidden")</td>
+                                                                                                                    </tr>
+                                                                                                                </table>
+                                                                                                            </div>
+                                                                                                        </div>
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                            </div>
+
+                                                                                            <!-- ===== WIDGETS TAB ===== -->
+                                                                                            <div class="tab-pane fade" id="widgetsTab">
+                                                                                                <form asp-action="SaveWidgets" method="post">
+                                                                                                    @Html.AntiForgeryToken()
+
+                                                                                                    <div class="settings-card card mb-4">
+                                                                                                        <div class="card-header"><i class="bi bi-grid-1x2 me-2 text-primary"></i> Dashboard Widget Visibility
+                                                                                                        </div>
+                                                                                                        <div class="card-body">
+                                                                                                            <p class="text-muted mb-4">Toggle which widgets appear on the main dashboard. Disabled widgets are
+                                                                                                                hidden for all users.</p>
+                                                                                                                <div class="row g-3">
+                                                                                                                    @{
+                                                                                                                        var widgets = new[] {
                         ("WidgetTotalInvoices", Model.WidgetTotalInvoices, "bi-receipt", "Total Invoices", "Invoice                    count & totals card"),
                         ("WidgetUnpaidAmount", Model.WidgetUnpaidAmount, "bi-cash-stack", "Unpaid Amount", "Outstanding                 balance summary"),
                         ("WidgetRecentPayments", Model.WidgetRecentPayments, "bi-credit-card", "Recent Payments",
@@ -864,149 +1160,174 @@
                         ("WidgetQuickActions", Model.WidgetQuickActions, "bi-lightning", "Quick Actions", "Shortcut  buttons panel"),
                         ("WidgetCharts", Model.WidgetCharts, "bi-bar-chart", "Charts & Analytics", "Visual data charts")
                         };
-                                                            }
-                                                            @foreach (var (name, enabled, icon, title, desc) in widgets)
-                                                            {
-                                                                <div class="col-sm-6 col-md-4 col-lg-3">
-                                                                    <label class="widget-card d-block @(enabled ? "active" : "")" id="wc-@name">
-                                                                        <div class="d-flex align-items-start gap-3">
-                                                                            <input type="checkbox" name="@name" value="true" checked="@enabled" class="d-none"
-                                                                                   onchange="this.closest('.widget-card').classList.toggle('active', this.checked)" />
-                                                                            <div class="widget-icon"
-                                                                                 style="color: @(enabled ? Model.PrimaryColor : "#adb5bd");">
-                                                                                <i class="bi @icon"></i>
-                                                                            </div>
-                                                                            <div>
-                                                                                <div class="fw-bold" style="font-size: 0.95rem;">@title</div>
-                                                                                <small class="text-muted">@desc</small>
-                                                                            </div>
-                                                                        </div>
-                                                                    </label>
-                                                                </div>
-                                                            }
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                                                                                                    }
+                                                                                                                    @foreach (var (name, enabled, icon, title, desc) in widgets)
+                                                                                                                    {
+                                                                                                                        <div class="col-sm-6 col-md-4 col-lg-3">
+                                                                                                                            <label class="widget-card d-block @(enabled ? "active" : "")" id="wc-@name">
+                                                                                                                                <div class="d-flex align-items-start gap-3">
+                                                                                                                                    <input type="checkbox" name="@name" value="true" checked="@enabled" class="d-none"
+                                                                                                                                           onchange="this.closest('.widget-card').classList.toggle('active', this.checked)" />
+                                                                                                                                    <div class="widget-icon"
+                                                                                                                                         style="color: @(enabled ? Model.PrimaryColor : "#adb5bd");">
+                                                                                                                                        <i class="bi @icon"></i>
+                                                                                                                                    </div>
+                                                                                                                                    <div>
+                                                                                                                                        <div class="fw-bold" style="font-size: 0.95rem;">@title</div>
+                                                                                                                                        <small class="text-muted">@desc</small>
+                                                                                                                                    </div>
+                                                                                                                                </div>
+                                                                                                                            </label>
+                                                                                                                        </div>
+                                                                                                                    }
+                                                                                                                </div>
+                                                                                                            </div>
+                                                                                                        </div>
 
-                                                <div class="settings-card card mb-4">
-                                                    <div class="card-header"><i class="bi bi-layout-three-columns me-2 text-primary"></i> Dashboard Layout
-                                                    </div>
-                                                    <div class="card-body">
-                                                        <div class="row g-3">
-                                                            <div class="col-md-4">
-                                                                <label
-                                                                    class="widget-card d-block text-center @(Model.DashboardLayout == "default" ? "active" : "")">
-                                                                    <input type="radio" name="DashboardLayout" value="default"
-                                                                           checked="@(Model.DashboardLayout == "default")" class="d-none"
-                                                                           onclick="document.querySelectorAll('[name=DashboardLayout]').forEach(r=>{r.closest('.widget-card').classList.toggle('active',r.checked)})" />
-                                                                    <i class="bi bi-grid-3x2-gap text-primary" style="font-size: 2rem;"></i>
-                                                                    <div class="fw-bold mt-2">Default</div>
-                                                                    <small class="text-muted">Standard grid layout</small>
-                                                                </label>
-                                                            </div>
-                                                            <div class="col-md-4">
-                                                                <label
-                                                                    class="widget-card d-block text-center @(Model.DashboardLayout == "compact" ? "active" : "")">
-                                                                    <input type="radio" name="DashboardLayout" value="compact"
-                                                                           checked="@(Model.DashboardLayout == "compact")" class="d-none"
-                                                                           onclick="document.querySelectorAll('[name=DashboardLayout]').forEach(r=>{r.closest('.widget-card').classList.toggle('active',r.checked)})" />
-                                                                    <i class="bi bi-grid text-primary" style="font-size: 2rem;"></i>
-                                                                    <div class="fw-bold mt-2">Compact</div>
-                                                                    <small class="text-muted">Dense, minimal spacing</small>
-                                                                </label>
-                                                            </div>
-                                                            <div class="col-md-4">
-                                                                <label
-                                                                    class="widget-card d-block text-center @(Model.DashboardLayout == "expanded" ? "active" : "")">
-                                                                    <input type="radio" name="DashboardLayout" value="expanded"
-                                                                           checked="@(Model.DashboardLayout == "expanded")" class="d-none"
-                                                                           onclick="document.querySelectorAll('[name=DashboardLayout]').forEach(r=>{r.closest('.widget-card').classList.toggle('active',r.checked)})" />
-                                                                    <i class="bi bi-grid-1x2 text-primary" style="font-size: 2rem;"></i>
-                                                                    <div class="fw-bold mt-2">Expanded</div>
-                                                                    <small class="text-muted">Large cards, more detail</small>
-                                                                </label>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                                                                                        <div class="settings-card card mb-4">
+                                                                                                            <div class="card-header"><i class="bi bi-layout-three-columns me-2 text-primary"></i> Dashboard Layout
+                                                                                                            </div>
+                                                                                                            <div class="card-body">
+                                                                                                                <div class="row g-3">
+                                                                                                                    <div class="col-md-4">
+                                                                                                                        <label
+                                                                                                                            class="widget-card d-block text-center @(Model.DashboardLayout == "default" ? "active" : "")">
+                                                                                                                            <input type="radio" name="DashboardLayout" value="default"
+                                                                                                                                   checked="@(Model.DashboardLayout == "default")" class="d-none"
+                                                                                                                                   onclick="document.querySelectorAll('[name=DashboardLayout]').forEach(r=>{r.closest('.widget-card').classList.toggle('active',r.checked)})" />
+                                                                                                                            <i class="bi bi-grid-3x2-gap text-primary" style="font-size: 2rem;"></i>
+                                                                                                                            <div class="fw-bold mt-2">Default</div>
+                                                                                                                            <small class="text-muted">Standard grid layout</small>
+                                                                                                                        </label>
+                                                                                                                    </div>
+                                                                                                                    <div class="col-md-4">
+                                                                                                                        <label
+                                                                                                                            class="widget-card d-block text-center @(Model.DashboardLayout == "compact" ? "active" : "")">
+                                                                                                                            <input type="radio" name="DashboardLayout" value="compact"
+                                                                                                                                   checked="@(Model.DashboardLayout == "compact")" class="d-none"
+                                                                                                                                   onclick="document.querySelectorAll('[name=DashboardLayout]').forEach(r=>{r.closest('.widget-card').classList.toggle('active',r.checked)})" />
+                                                                                                                            <i class="bi bi-grid text-primary" style="font-size: 2rem;"></i>
+                                                                                                                            <div class="fw-bold mt-2">Compact</div>
+                                                                                                                            <small class="text-muted">Dense, minimal spacing</small>
+                                                                                                                        </label>
+                                                                                                                    </div>
+                                                                                                                    <div class="col-md-4">
+                                                                                                                        <label
+                                                                                                                            class="widget-card d-block text-center @(Model.DashboardLayout == "expanded" ? "active" : "")">
+                                                                                                                            <input type="radio" name="DashboardLayout" value="expanded"
+                                                                                                                                   checked="@(Model.DashboardLayout == "expanded")" class="d-none"
+                                                                                                                                   onclick="document.querySelectorAll('[name=DashboardLayout]').forEach(r=>{r.closest('.widget-card').classList.toggle('active',r.checked)})" />
+                                                                                                                            <i class="bi bi-grid-1x2 text-primary" style="font-size: 2rem;"></i>
+                                                                                                                            <div class="fw-bold mt-2">Expanded</div>
+                                                                                                                            <small class="text-muted">Large cards, more detail</small>
+                                                                                                                        </label>
+                                                                                                                    </div>
+                                                                                                                </div>
+                                                                                                            </div>
+                                                                                                        </div>
 
-                                                <div class="mt-4 d-flex gap-2">
-                                                    <button type="submit" class="btn btn-primary btn-lg px-4">
-                                                        <i class="bi bi-check-lg me-1"></i> Save Widget Settings
-                                                    </button>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
+                                                                                                        <div class="mt-4 d-flex gap-2">
+                                                                                                            <button type="submit" class="btn btn-primary btn-lg px-4">
+                                                                                                                <i class="bi bi-check-lg me-1"></i> Save Widget Settings
+                                                                                                            </button>
+                                                                                                        </div>
+                                                                                                    </form>
+                                                                                                </div>
+                                                                                            </div>
 
-                                    @section Scripts {
-                                        <script>
-                                            // File preview
-                                            function previewFile(input, previewId, placeholderId) {
-                                                const file = input.files[0];
-                                                if (!file) return;
-                                                const reader = new FileReader();
-                                                reader.onload = (e) => {
-                                                    const preview = document.getElementById(previewId);
-                                                    const placeholder = document.getElementById(placeholderId);
-                                                    if (preview) { preview.src = e.target.result; preview.classList.remove('d-none'); }
-                                                    if (placeholder) placeholder.classList.add('d-none');
-                                                };
-                                                reader.readAsDataURL(file);
-                                            }
+                                                                                            @section Scripts {
+                                                                                                <script>
+                                                                                                    // File preview
+                                                                                                    function previewFile(input, previewId, placeholderId) {
+                                                                                                        const file = input.files[0];
+                                                                                                        if (!file) return;
+                                                                                                        const reader = new FileReader();
+                                                                                                        reader.onload = (e) => {
+                                                                                                            const preview = document.getElementById(previewId);
+                                                                                                            const placeholder = document.getElementById(placeholderId);
+                                                                                                            if (preview) { preview.src = e.target.result; preview.classList.remove('d-none'); }
+                                                                                                            if (placeholder) placeholder.classList.add('d-none');
+                                                                                                        };
+                                                                                                        reader.readAsDataURL(file);
+                                                                                                    }
 
-                                            // Drag & drop for upload zones
-                                            document.querySelectorAll('.upload-zone').forEach(zone => {
-                                                zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
-                                                zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
-                                                zone.addEventListener('drop', (e) => {
-                                                    e.preventDefault();
-                                                    zone.classList.remove('dragover');
-                                                    const input = zone.querySelector('input[type="file"]');
-                                                    if (input && e.dataTransfer.files.length) {
-                                                        input.files = e.dataTransfer.files;
-                                                        input.dispatchEvent(new Event('change'));
-                                                    }
-                                                });
-                                            });
+                                                                                                    // Drag & drop for upload zones
+                                                                                                    document.querySelectorAll('.upload-zone').forEach(zone => {
+                                                                                                        zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+                                                                                                        zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+                                                                                                        zone.addEventListener('drop', (e) => {
+                                                                                                            e.preventDefault();
+                                                                                                            zone.classList.remove('dragover');
+                                                                                                            const input = zone.querySelector('input[type="file"]');
+                                                                                                            if (input && e.dataTransfer.files.length) {
+                                                                                                                input.files = e.dataTransfer.files;
+                                                                                                                input.dispatchEvent(new Event('change'));
+                                                                                                            }
+                                                                                                        });
+                                                                                                    });
 
-                                            // Theme presets
-                                            function applyPreset(primary, secondary, accent, danger, warning) {
-                                                const colors = [
-                                                    { name: 'PrimaryColor', value: primary },
-                                                    { name: 'SecondaryColor', value: secondary },
-                                                    { name: 'AccentColor', value: accent },
-                                                    { name: 'DangerColor', value: danger },
-                                                    { name: 'WarningColor', value: warning }
-                                                ];
-                                                colors.forEach(c => {
-                                                    const colorInput = document.querySelector(`input[name="${c.name}"][type="color"]`);
-                                                    const textInput = colorInput?.closest('.d-flex')?.querySelector('input[type="text"]');
-                                                    if (colorInput) { colorInput.value = c.value; colorInput.parentElement.style.background = c.value; }
-                                                    if (textInput) textInput.value = c.value;
-                                                });
-                                                // Update preview
-                                                const previewNavbar = document.querySelector('#themePreview .navbar-preview');
-                                                if (previewNavbar) previewNavbar.style.background = primary;
-                                            }
+                                                                                                    // Theme presets
+                                                                                                    function applyPreset(primary, secondary, accent, danger, warning) {
+                                                                                                        const colors = [
+                                                                                                            { name: 'PrimaryColor', value: primary },
+                                                                                                            { name: 'SecondaryColor', value: secondary },
+                                                                                                            { name: 'AccentColor', value: accent },
+                                                                                                            { name: 'DangerColor', value: danger },
+                                                                                                            { name: 'WarningColor', value: warning }
+                                                                                                        ];
+                                                                                                        colors.forEach(c => {
+                                                                                                            const colorInput = document.querySelector(`input[name="${c.name}"][type="color"]`);
+                                                                                                            const textInput = colorInput?.closest('.d-flex')?.querySelector('input[type="text"]');
+                                                                                                            if (colorInput) { colorInput.value = c.value; colorInput.parentElement.style.background = c.value; }
+                                                                                                            if (textInput) textInput.value = c.value;
+                                                                                                        });
+                                                                                                        // Update preview
+                                                                                                        const previewNavbar = document.querySelector('#themePreview .navbar-preview');
+                                                                                                        if (previewNavbar) previewNavbar.style.background = primary;
+                                                                                                    }
 
-                                            // Auto-dismiss alerts
-                                            setTimeout(() => {
-                                                document.querySelectorAll('.alert-success, .alert-danger').forEach(a => {
-                                                    try { new bootstrap.Alert(a).close(); } catch (e) { }
-                                                });
-                                            }, 5000);
+                                                                                                    // Auto-dismiss alerts
+                                                                                                    setTimeout(() => {
+                                                                                                        document.querySelectorAll('.alert-success, .alert-danger').forEach(a => {
+                                                                                                            try { new bootstrap.Alert(a).close(); } catch (e) { }
+                                                                                                        });
+                                                                                                    }, 5000);
 
-                                            // Persist active tab
-                                            const hash = window.location.hash;
-                                            if (hash) {
-                                                const tabBtn = document.querySelector(`[data-bs-target="${hash}"]`);
-                                                if (tabBtn) new bootstrap.Tab(tabBtn).show();
-                                            }
-                                            document.querySelectorAll('#appearanceTabs button').forEach(btn => {
-                                                btn.addEventListener('shown.bs.tab', (e) => {
-                                                    window.location.hash = e.target.dataset.bsTarget;
-                                                });
-                                            });
-                                        </script>
-                                    }
+                                                                                                    // Persist active tab
+                                                                                                    const hash = window.location.hash;
+                                                                                                    if (hash) {
+                                                                                                        const tabBtn = document.querySelector(`[data-bs-target="${hash}"]`);
+                                                                                                        if (tabBtn) new bootstrap.Tab(tabBtn).show();
+                                                                                                    }
+                                                                                                    document.querySelectorAll('#appearanceTabs button').forEach(btn => {
+                                                                                                        btn.addEventListener('shown.bs.tab', (e) => {
+                                                                                                            window.location.hash = e.target.dataset.bsTarget;
+                                                                                                        });
+                                                                                                    });
+
+                                                                                                    // Login background preview
+                                                                                                    function previewLoginBg(input) {
+                                                                                                        const file = input.files[0];
+                                                                                                        if (!file) return;
+                                                                                                        const isVideo = file.type.startsWith('video/');
+                                                                                                        if (isVideo && file.size > 200 * 1024 * 1024) {
+                                                                                                            alert('Video file must be under 200 MB (approximately 5 minutes).');
+                                                                                                            input.value = '';
+                                                                                                            return;
+                                                                                                        }
+                                                                                                        if (!isVideo && file.size > 10 * 1024 * 1024) {
+                                                                                                            alert('Image file must be under 10 MB.');
+                                                                                                            input.value = '';
+                                                                                                            return;
+                                                                                                        }
+                                                                                                    }
+
+                                                                                                    // Opacity slider preview
+                                                                                                    function updateOpacityPreview(value) {
+                                                                                                        const label = document.getElementById('opacityValue');
+                                                                                                        const card = document.getElementById('opacityPreviewCard');
+                                                                                                        if (label) label.textContent = value + '%';
+                                                                                                        if (card) card.style.background = `rgba(255,255,255,${value / 100})`;
+                                                                                                    }
+                                                                                                </script>
+                                                                                            }

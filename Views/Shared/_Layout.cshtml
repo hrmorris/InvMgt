@@ -20,6 +20,21 @@
     var footerLeftLinks = ViewData["Footer_LeftLinks"] as string ?? "";
     var footerRightLinks = ViewData["Footer_RightLinks"] as string ?? "";
 
+    var showFooterCompanyInfo = ViewData["Footer_ShowCompanyInfo"] is bool fci ? fci : true;
+    var showFooterSocialLinks = ViewData["Footer_ShowSocialLinks"] is bool fsl ? fsl : true;
+    var showHeaderCompanyInfo = ViewData["Header_ShowCompanyInfo"] is bool hci ? hci : false;
+
+    var companyAddress = ViewData["Company_Address"] as string ?? "";
+    var companyPhone = ViewData["Company_Phone"] as string ?? "";
+    var companyEmail = ViewData["Company_Email"] as string ?? "";
+    var companyWebsite = ViewData["Company_Website"] as string ?? "";
+
+    var socialFacebook = ViewData["Social_Facebook"] as string ?? "";
+    var socialTwitter = ViewData["Social_Twitter"] as string ?? "";
+    var socialLinkedIn = ViewData["Social_LinkedIn"] as string ?? "";
+    var socialInstagram = ViewData["Social_Instagram"] as string ?? "";
+    var socialYouTube = ViewData["Social_YouTube"] as string ?? "";
+
     var navbarBg = navbarStyle switch {
         "bg-dark" => "#212529",
         "bg-success" => accentColor,
@@ -293,6 +308,50 @@
 
 <body>
     
+    @if (showHeaderCompanyInfo && isLoggedIn && (!string.IsNullOrEmpty(companyPhone) || !string.IsNullOrEmpty(companyEmail) || !string.IsNullOrEmpty(companyAddress)))
+    {
+        <div class="company-info-bar d-none d-md-block" style="background: #1e293b; color: rgba(255,255,255,0.85); font-size: 0.78rem; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+            <div class="container-fluid px-4 d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-3 flex-wrap">
+                    @if (!string.IsNullOrEmpty(companyPhone))
+                    {
+                        <span><i class="bi bi-telephone-fill me-1"></i> @companyPhone</span>
+                    }
+                    @if (!string.IsNullOrEmpty(companyEmail))
+                    {
+                        <span><i class="bi bi-envelope-fill me-1"></i> <a href="mailto:@companyEmail" style="color: inherit; text-decoration: none;">@companyEmail</a></span>
+                    }
+                    @if (!string.IsNullOrEmpty(companyAddress))
+                    {
+                        <span><i class="bi bi-geo-alt-fill me-1"></i> @companyAddress</span>
+                    }
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    @if (!string.IsNullOrEmpty(socialFacebook))
+                    {
+                        <a href="@socialFacebook" target="_blank" style="color: rgba(255,255,255,0.7);" title="Facebook"><i class="bi bi-facebook"></i></a>
+                    }
+                    @if (!string.IsNullOrEmpty(socialTwitter))
+                    {
+                        <a href="@socialTwitter" target="_blank" style="color: rgba(255,255,255,0.7);" title="Twitter"><i class="bi bi-twitter-x"></i></a>
+                    }
+                    @if (!string.IsNullOrEmpty(socialLinkedIn))
+                    {
+                        <a href="@socialLinkedIn" target="_blank" style="color: rgba(255,255,255,0.7);" title="LinkedIn"><i class="bi bi-linkedin"></i></a>
+                    }
+                    @if (!string.IsNullOrEmpty(socialInstagram))
+                    {
+                        <a href="@socialInstagram" target="_blank" style="color: rgba(255,255,255,0.7);" title="Instagram"><i class="bi bi-instagram"></i></a>
+                    }
+                    @if (!string.IsNullOrEmpty(socialYouTube))
+                    {
+                        <a href="@socialYouTube" target="_blank" style="color: rgba(255,255,255,0.7);" title="YouTube"><i class="bi bi-youtube"></i></a>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
     <!-- Top Navigation Bar -->
     <nav class="navbar navbar-expand-lg navbar-dark sticky-top" style="background: @(navbarStyle == "bg-gradient-primary" ? navbarGradient : navbarBg);">
         <div class="container-fluid">
@@ -700,8 +759,39 @@
 
     @if (showFooter && isLoggedIn)
     {
-        <footer class="border-top py-3 mt-4" style="margin-left: 240px; background: linear-gradient(135deg, #f8fafc, #f1f5f9); border-color: #e2e8f0 !important;">
-            <div class="container-fluid px-4">
+        <footer class="border-top mt-4" style="margin-left: 240px; background: linear-gradient(135deg, #f8fafc, #f1f5f9); border-color: #e2e8f0 !important;">
+            @if (showFooterCompanyInfo && (!string.IsNullOrEmpty(companyAddress) || !string.IsNullOrEmpty(companyPhone) || !string.IsNullOrEmpty(companyEmail)))
+            {
+                <div class="container-fluid px-4 pt-3 pb-2">
+                    <div class="row g-2" style="font-size: 0.8rem;">
+                        @if (!string.IsNullOrEmpty(companyAddress))
+                        {
+                            <div class="col-auto">
+                                <span class="text-muted"><i class="bi bi-geo-alt-fill me-1" style="color: @primaryColor;"></i> @companyAddress</span>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(companyPhone))
+                        {
+                            <div class="col-auto">
+                                <span class="text-muted"><i class="bi bi-telephone-fill me-1" style="color: @primaryColor;"></i> <a href="tel:@companyPhone" class="text-muted text-decoration-none">@companyPhone</a></span>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(companyEmail))
+                        {
+                            <div class="col-auto">
+                                <span class="text-muted"><i class="bi bi-envelope-fill me-1" style="color: @primaryColor;"></i> <a href="mailto:@companyEmail" class="text-muted text-decoration-none">@companyEmail</a></span>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(companyWebsite))
+                        {
+                            <div class="col-auto">
+                                <span class="text-muted"><i class="bi bi-globe me-1" style="color: @primaryColor;"></i> <a href="@companyWebsite" target="_blank" class="text-muted text-decoration-none">@companyWebsite</a></span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+            <div class="container-fluid px-4 py-2">
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <div class="d-flex align-items-center gap-3">
                         <small class="text-muted" style="font-size: 0.8rem;">@footerText</small>
@@ -719,6 +809,29 @@
                         }
                     </div>
                     <div class="d-flex align-items-center gap-3">
+                        @if (showFooterSocialLinks)
+                        {
+                            @if (!string.IsNullOrEmpty(socialFacebook))
+                            {
+                                <a href="@socialFacebook" target="_blank" class="text-muted" title="Facebook" style="font-size: 1rem;"><i class="bi bi-facebook"></i></a>
+                            }
+                            @if (!string.IsNullOrEmpty(socialTwitter))
+                            {
+                                <a href="@socialTwitter" target="_blank" class="text-muted" title="Twitter" style="font-size: 1rem;"><i class="bi bi-twitter-x"></i></a>
+                            }
+                            @if (!string.IsNullOrEmpty(socialLinkedIn))
+                            {
+                                <a href="@socialLinkedIn" target="_blank" class="text-muted" title="LinkedIn" style="font-size: 1rem;"><i class="bi bi-linkedin"></i></a>
+                            }
+                            @if (!string.IsNullOrEmpty(socialInstagram))
+                            {
+                                <a href="@socialInstagram" target="_blank" class="text-muted" title="Instagram" style="font-size: 1rem;"><i class="bi bi-instagram"></i></a>
+                            }
+                            @if (!string.IsNullOrEmpty(socialYouTube))
+                            {
+                                <a href="@socialYouTube" target="_blank" class="text-muted" title="YouTube" style="font-size: 1rem;"><i class="bi bi-youtube"></i></a>
+                            }
+                        }
                         @{
                             try {
                                 if (!string.IsNullOrEmpty(footerRightLinks) && footerRightLinks.StartsWith("[")) {
