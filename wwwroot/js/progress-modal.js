@@ -357,6 +357,23 @@ class ProgressModal {
         ];
     }
 
+    static smartSplitStages() {
+        return [
+            { percent: 3, msg: 'Loading master PDF document...', icon: 'file-earmark-arrow-down' },
+            { percent: 8, msg: 'Reading PDF page structure...', icon: 'file-earmark-text' },
+            { percent: 14, msg: 'Analyzing with AI — detecting invoice boundaries...', icon: 'robot' },
+            { percent: 22, msg: 'AI is scanning page headers and footers...', icon: 'eye' },
+            { percent: 32, msg: 'Identifying invoice start/end pages...', icon: 'scissors' },
+            { percent: 42, msg: 'Extracting invoice metadata per boundary...', icon: 'cpu' },
+            { percent: 52, msg: 'Physically splitting PDF into individual files...', icon: 'files' },
+            { percent: 62, msg: 'Creating individual PDF documents...', icon: 'file-earmark-plus' },
+            { percent: 72, msg: 'Matching split files with existing invoices...', icon: 'diagram-3' },
+            { percent: 80, msg: 'Linking documents to invoice records...', icon: 'link-45deg' },
+            { percent: 88, msg: 'Storing split PDF files in database...', icon: 'database' },
+            { percent: 94, msg: 'Finalizing smart split results...', icon: 'check2-all' }
+        ];
+    }
+
     /**
      * Global toast notification
      */

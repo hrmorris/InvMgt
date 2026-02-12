@@ -1,0 +1,553 @@
+@model InvoiceManagement.Models.ViewModels.SmartSplitViewModel
+@{
+    ViewData["Title"] = "Smart Split Results";
+    var matchedPct = Model.TotalSplitFiles > 0
+        ? (int)((double)Model.MatchedCount / Model.TotalSplitFiles * 100)
+        : 0;
+    var splitPct = Model.TotalSplitFiles > 0
+        ? (int)((double)Model.UpdatedDocumentsCount / Model.TotalSplitFiles * 100)
+        : 0;
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="bi bi-scissors me-2"></i>Smart Split Results
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-action="SmartSplit" class="btn btn-secondary me-2">
+            <i class="bi bi-arrow-left"></i> Back
+        </a>
+        @if (Model.TotalSplitFiles > 0)
+        {
+            <a asp-action="DownloadAllSplitPdfs" asp-route-masterDocId="@Model.MasterDocumentId"
+               class="btn btn-success me-2">
+                <i class="bi bi-file-zip"></i> Download All (ZIP)
+            </a>
+        }
+        @if (Model.UpdatedDocumentsCount < Model.TotalSplitFiles)
+        {
+            <button type="button" class="btn btn-warning" onclick="relinkSplit(@Model.MasterDocumentId)">
+                <i class="bi bi-arrow-repeat"></i> Re-Split & Update
+            </button>
+        }
+    </div>
+</div>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle"></i> @Html.Raw(TempData["Error"])
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@foreach (var warning in Model.Warnings)
+{
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-circle me-1"></i> @warning
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- SUMMARY DASHBOARD                                                       -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div class="row g-3 mb-4">
+    <!-- Master Document Info -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);">
+            <div class="card-body text-white">
+                <div class="d-flex align-items-center mb-3">
+                    <i class="bi bi-file-earmark-pdf text-danger" style="font-size: 2.5rem;"></i>
+                    <div class="ms-3">
+                        <h6 class="mb-0 opacity-75">Source Document</h6>
+                        <strong class="text-truncate d-block" style="max-width: 200px;" title="@Model.OriginalFileName">
+                            @Model.OriginalFileName
+                        </strong>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <div class="text-center">
+                        <div class="fs-3 fw-bold text-warning">@Model.TotalPages</div>
+                        <small class="opacity-75">Total Pages</small>
+                    </div>
+                    <div class="text-center">
+                        <div class="fs-3 fw-bold text-info">@Model.TotalInvoicesDetected</div>
+                        <small class="opacity-75">Invoices Found</small>
+                    </div>
+                    <div class="text-center">
+                        <div class="fs-3 fw-bold text-success">@Model.TotalSplitFiles</div>
+                        <small class="opacity-75">PDFs Created</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Match Statistics -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h6 class="text-muted mb-3"><i class="bi bi-diagram-3 me-1"></i>Invoice Matching</h6>
+                <div class="d-flex align-items-center mb-2">
+                    <div class="progress flex-grow-1" style="height: 12px;">
+                        <div class="progress-bar bg-success" style="width: @matchedPct%"></div>
+                        <div class="progress-bar bg-danger" style="width: @(100 - matchedPct)%"></div>
+                    </div>
+                    <span class="ms-2 fw-bold">@matchedPct%</span>
+                </div>
+                <div class="row text-center mt-3">
+                    <div class="col-6">
+                        <span class="badge bg-success px-3 py-2 fs-6">@Model.MatchedCount</span>
+                        <div class="small text-muted mt-1">Matched</div>
+                    </div>
+                    <div class="col-6">
+                        <span class="badge bg-danger px-3 py-2 fs-6">@Model.UnmatchedCount</span>
+                        <div class="small text-muted mt-1">Unmatched</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Split Status -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h6 class="text-muted mb-3"><i class="bi bi-scissors me-1"></i>Split Status</h6>
+                <div class="d-flex align-items-center mb-2">
+                    <div class="progress flex-grow-1" style="height: 12px;">
+                        <div class="progress-bar bg-primary" style="width: @splitPct%"></div>
+                    </div>
+                    <span class="ms-2 fw-bold">@splitPct%</span>
+                </div>
+                <div class="row text-center mt-3">
+                    <div class="col-6">
+                        <span class="badge bg-primary px-3 py-2 fs-6">@Model.UpdatedDocumentsCount</span>
+                        <div class="small text-muted mt-1">Individual PDFs</div>
+                    </div>
+                    <div class="col-6">
+                        <span class="badge bg-secondary px-3 py-2 fs-6">@Model.NewDocumentsCount</span>
+                        <div class="small text-muted mt-1">Full Master PDF</div>
+                    </div>
+                </div>
+                @if (Model.ProcessingTimeSeconds > 0)
+                {
+                    <div class="text-center mt-2">
+                        <small class="text-muted">
+                            <i class="bi bi-stopwatch me-1"></i>
+                            Processed in @Model.ProcessingTimeSeconds.ToString("F1")s
+                        </small>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- SPLIT FILES TABLE                                                       -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+@if (Model.Matches.Any())
+{
+    <div class="card shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-files me-2"></i>Split Invoice Files
+                <span class="badge bg-secondary ms-2">@Model.Matches.Count</span>
+            </h5>
+            <div>
+                <button class="btn btn-sm btn-outline-secondary" onclick="toggleView()">
+                    <i class="bi bi-grid" id="viewIcon"></i> <span id="viewLabel">Card View</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- TABLE VIEW -->
+        <div class="card-body p-0" id="tableView">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 50px;">#</th>
+                            <th><i class="bi bi-bookmark"></i> Pages</th>
+                            <th><i class="bi bi-receipt"></i> Invoice #</th>
+                            <th><i class="bi bi-person"></i> Customer</th>
+                            <th class="text-end"><i class="bi bi-currency-dollar"></i> Amount</th>
+                            <th><i class="bi bi-link-45deg"></i> Match</th>
+                            <th><i class="bi bi-hdd"></i> Size</th>
+                            <th><i class="bi bi-check2-circle"></i> Status</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var match in Model.Matches)
+                        {
+                            var confidenceBadge = match.MatchConfidence switch
+                            {
+                                "High" => "bg-success",
+                                "Medium" => "bg-warning text-dark",
+                                "Low" => "bg-danger",
+                                _ => "bg-secondary"
+                            };
+                            var methodIcon = match.MatchMethod switch
+                            {
+                                "PageRange" or "Relink-PageRange" => "bi-bookmark-check",
+                                "InvoiceNumber" => "bi-hash",
+                                "Amount" or "Amount+Customer" => "bi-calculator",
+                                "NotesPageRange" => "bi-journal-text",
+                                "MultiPagePdf" => "bi-file-earmark-pdf",
+                                _ => "bi-question-circle"
+                            };
+
+                            <tr class="@(match.MatchedInvoiceId == null ? "table-warning" : "")">
+                                <td><span class="badge bg-dark">@match.Index</span></td>
+                                <td>
+                                    <span class="badge bg-info text-dark">
+                                        <i class="bi bi-file-earmark me-1"></i>
+                                        @match.PageRange
+                                    </span>
+                                    <small class="text-muted ms-1">(@match.PageCount pg@(match.PageCount > 1 ? "s" : ""))</small>
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(match.MatchedInvoiceNumber))
+                                    {
+                                        @if (match.MatchedInvoiceId.HasValue)
+                                        {
+                                            <a asp-controller="Invoices" asp-action="Details" asp-route-id="@match.MatchedInvoiceId"
+                                               class="text-decoration-none fw-semibold">
+                                                @match.MatchedInvoiceNumber
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <text>@match.MatchedInvoiceNumber</text>
+                                        }
+                                    }
+                                    else if (!string.IsNullOrEmpty(match.DetectedInvoiceNumber))
+                                    {
+                                        <span class="text-muted">@match.DetectedInvoiceNumber</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="text-truncate d-inline-block" style="max-width: 150px;"
+                                          title="@(match.MatchedCustomerName ?? match.DetectedCustomerName ?? "")">
+                                        @(match.MatchedCustomerName ?? match.DetectedCustomerName ?? "—")
+                                    </span>
+                                </td>
+                                <td class="text-end fw-semibold">
+                                    @if (match.MatchedTotalAmount.HasValue)
+                                    {
+                                        <text>$@match.MatchedTotalAmount.Value.ToString("N2")</text>
+                                    }
+                                    else if (match.DetectedAmount.HasValue)
+                                    {
+                                        <span class="text-muted">$@match.DetectedAmount.Value.ToString("N2")</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (match.MatchedInvoiceId.HasValue)
+                                    {
+                                        <span class="badge @confidenceBadge" title="@match.MatchMethod">
+                                            <i class="bi @methodIcon me-1"></i>@match.MatchConfidence
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger">
+                                            <i class="bi bi-x-circle me-1"></i>No Match
+                                        </span>
+                                    }
+                                </td>
+                                <td>
+                                    @{
+                                        var sizeKB = match.SplitFileSize / 1024.0;
+                                        if (sizeKB > 1024)
+                                        {
+                                            <text>@((sizeKB / 1024).ToString("F1")) MB</text>
+                                        }
+                                        else
+                                        {
+                                            <text>@sizeKB.ToString("F0") KB</text>
+                                        }
+                                    }
+                                </td>
+                                <td>
+                                    @if (match.ContentUpdated)
+                                    {
+                                        <span class="badge bg-success">
+                                            <i class="bi bi-check-circle me-1"></i>Split
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">
+                                            <i class="bi bi-file-earmark me-1"></i>Full PDF
+                                        </span>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    @if (match.DocumentId.HasValue)
+                                    {
+                                        <div class="btn-group btn-group-sm">
+                                            <a asp-action="DownloadSplitPdf" asp-route-id="@match.DocumentId"
+                                               class="btn btn-outline-success" title="Download PDF">
+                                                <i class="bi bi-download"></i>
+                                            </a>
+                                            @if (match.MatchedInvoiceId.HasValue)
+                                            {
+                                                <a asp-controller="Invoices" asp-action="Details" asp-route-id="@match.MatchedInvoiceId"
+                                                   class="btn btn-outline-primary" title="View Invoice">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                            }
+                                            <a asp-action="ViewDocument" asp-route-id="@match.DocumentId"
+                                               class="btn btn-outline-info" title="View Document">
+                                                <i class="bi bi-file-earmark-text"></i>
+                                            </a>
+                                        </div>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- CARD VIEW (hidden by default) -->
+        <div class="card-body d-none" id="cardView">
+            <div class="row g-3">
+                @foreach (var match in Model.Matches)
+                {
+                    var borderColor = match.MatchConfidence switch
+                    {
+                        "High" => "border-success",
+                        "Medium" => "border-warning",
+                        _ => match.MatchedInvoiceId.HasValue ? "border-info" : "border-danger"
+                    };
+
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card h-100 @borderColor" style="border-width: 2px;">
+                            <div class="card-header d-flex justify-content-between align-items-center py-2">
+                                <span class="fw-bold">
+                                    <i class="bi bi-file-earmark-pdf text-danger me-1"></i>
+                                    Invoice #@match.Index
+                                </span>
+                                <span class="badge bg-info text-dark">Pages @match.PageRange</span>
+                            </div>
+                            <div class="card-body py-2">
+                                <table class="table table-sm table-borderless mb-0">
+                                    <tr>
+                                        <td class="text-muted" style="width: 35%;">Invoice #</td>
+                                        <td class="fw-semibold">
+                                            @(match.MatchedInvoiceNumber ?? match.DetectedInvoiceNumber ?? "—")
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">Customer</td>
+                                        <td>@(match.MatchedCustomerName ?? match.DetectedCustomerName ?? "—")</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">Amount</td>
+                                        <td class="fw-semibold">
+                                            @if (match.MatchedTotalAmount.HasValue)
+                                            {
+                                                <text>$@match.MatchedTotalAmount.Value.ToString("N2")</text>
+                                            }
+                                            else if (match.DetectedAmount.HasValue)
+                                            {
+                                                <text>$@match.DetectedAmount.Value.ToString("N2")</text>
+                                            }
+                                            else
+                                            {
+                                                <text>—</text>
+                                            }
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">Match</td>
+                                        <td>
+                                            @if (match.MatchedInvoiceId.HasValue)
+                                            {
+                                                var cBadge = match.MatchConfidence switch
+                                                {
+                                                    "High" => "bg-success",
+                                                    "Medium" => "bg-warning text-dark",
+                                                    _ => "bg-secondary"
+                                                };
+                                                <span class="badge @cBadge">@match.MatchConfidence</span>
+                                                <small class="text-muted ms-1">via @match.MatchMethod</small>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-danger">No Match</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">Status</td>
+                                        <td>
+                                            @if (match.ContentUpdated)
+                                            {
+                                                <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Individual PDF</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary"><i class="bi bi-file-earmark me-1"></i>Full Master PDF</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                            @if (match.DocumentId.HasValue)
+                            {
+                                <div class="card-footer bg-transparent d-flex gap-1 py-2">
+                                    <a asp-action="DownloadSplitPdf" asp-route-id="@match.DocumentId"
+                                       class="btn btn-sm btn-success flex-fill">
+                                        <i class="bi bi-download me-1"></i>Download
+                                    </a>
+                                    @if (match.MatchedInvoiceId.HasValue)
+                                    {
+                                        <a asp-controller="Invoices" asp-action="Details" asp-route-id="@match.MatchedInvoiceId"
+                                           class="btn btn-sm btn-outline-primary flex-fill">
+                                            <i class="bi bi-eye me-1"></i>Invoice
+                                        </a>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card shadow-sm">
+        <div class="card-body text-center py-5">
+            <i class="bi bi-inbox" style="font-size: 4rem; opacity: 0.3;"></i>
+            <h5 class="mt-3 text-muted">No split files found</h5>
+            <p class="text-muted">
+                This document hasn't been split yet. Use the
+                <a asp-action="SmartSplit">Smart PDF Splitter</a> to process it.
+            </p>
+            <button type="button" class="btn btn-warning" onclick="smartSplitExisting(@Model.MasterDocumentId)">
+                <i class="bi bi-scissors me-2"></i>Smart Split Now
+            </button>
+        </div>
+    </div>
+}
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- LEGEND                                                                  -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div class="card shadow-sm mt-4">
+    <div class="card-body py-3">
+        <div class="row g-2">
+            <div class="col-auto">
+                <small class="text-muted fw-bold">Match Methods:</small>
+            </div>
+            <div class="col-auto">
+                <span class="badge bg-light text-dark border"><i class="bi bi-bookmark-check me-1"></i>PageRange</span>
+            </div>
+            <div class="col-auto">
+                <span class="badge bg-light text-dark border"><i class="bi bi-hash me-1"></i>InvoiceNumber</span>
+            </div>
+            <div class="col-auto">
+                <span class="badge bg-light text-dark border"><i class="bi bi-calculator me-1"></i>Amount</span>
+            </div>
+            <div class="col-auto">
+                <span class="badge bg-light text-dark border"><i class="bi bi-file-earmark-pdf me-1"></i>MultiPagePdf</span>
+            </div>
+            <div class="col-auto ms-3">
+                <small class="text-muted fw-bold">Status:</small>
+            </div>
+            <div class="col-auto">
+                <span class="badge bg-success">Individual PDF</span> = Physically split pages
+            </div>
+            <div class="col-auto">
+                <span class="badge bg-secondary">Full Master PDF</span> = Contains entire source PDF
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // ─── Toggle Table/Card view ──────────────────────────────────────────
+    function toggleView() {
+        const table = document.getElementById('tableView');
+        const cards = document.getElementById('cardView');
+        const icon = document.getElementById('viewIcon');
+        const label = document.getElementById('viewLabel');
+
+        if (table.classList.contains('d-none')) {
+            table.classList.remove('d-none');
+            cards.classList.add('d-none');
+            icon.className = 'bi bi-grid';
+            label.textContent = 'Card View';
+        } else {
+            table.classList.add('d-none');
+            cards.classList.remove('d-none');
+            icon.className = 'bi bi-table';
+            label.textContent = 'Table View';
+        }
+    }
+
+    // ─── Re-Split & Update ───────────────────────────────────────────────
+    function relinkSplit(docId) {
+        const fd = new FormData();
+        fd.append('id', docId);
+
+        ProgressModal.runWithProgress({
+            title: 'Re-Splitting PDF',
+            color: '#0dcaf0',
+            icon: 'arrow-repeat',
+            url: '@Url.Action("RelinkSmartSplitAjax")',
+            formData: fd,
+            stages: ProgressModal.smartSplitStages(),
+            stageInterval: 3000,
+            onSuccess: (result) => {
+                if (result.redirectUrl) {
+                    window.location.href = result.redirectUrl;
+                } else {
+                    window.location.reload();
+                }
+            }
+        });
+    }
+
+    // ─── Smart Split (existing document) ─────────────────────────────────
+    function smartSplitExisting(docId) {
+        const fd = new FormData();
+        fd.append('id', docId);
+
+        ProgressModal.runWithProgress({
+            title: 'Smart PDF Splitter',
+            color: '#ffc107',
+            icon: 'scissors',
+            url: '@Url.Action("SmartSplitExistingAjax")',
+            formData: fd,
+            stages: ProgressModal.smartSplitStages(),
+            stageInterval: 4000,
+            onSuccess: (result) => {
+                if (result.redirectUrl) {
+                    window.location.href = result.redirectUrl;
+                } else {
+                    window.location.reload();
+                }
+            }
+        });
+    }
+</script>
+}

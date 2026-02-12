@@ -322,4 +322,79 @@ namespace InvoiceManagement.Models.ViewModels
         // ─── Line Items ──────────────────────────────────────────────────
         public List<AiImportInvoiceItemViewModel> Items { get; set; } = new();
     }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Smart PDF Splitter ViewModels
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// ViewModel for the Smart PDF Splitter results page.
+    /// Displays the analysis and matching results after AI-powered splitting.
+    /// </summary>
+    public class SmartSplitViewModel
+    {
+        public int MasterDocumentId { get; set; }
+        public string OriginalFileName { get; set; } = "";
+        public int TotalPages { get; set; }
+        public int TotalInvoicesDetected { get; set; }
+        public int TotalSplitFiles { get; set; }
+        public int MatchedCount { get; set; }
+        public int UnmatchedCount { get; set; }
+        public int UpdatedDocumentsCount { get; set; }
+        public int NewDocumentsCount { get; set; }
+        public double ProcessingTimeSeconds { get; set; }
+        public string Summary { get; set; } = "";
+        public List<SmartSplitMatchEntry> Matches { get; set; } = new();
+        public List<string> Warnings { get; set; } = new();
+        public List<string> Errors { get; set; } = new();
+    }
+
+    /// <summary>
+    /// A single split-file entry with its match information.
+    /// </summary>
+    public class SmartSplitMatchEntry
+    {
+        public int Index { get; set; }
+        public int StartPage { get; set; }
+        public int EndPage { get; set; }
+        public string PageRange => StartPage == EndPage ? $"{StartPage}" : $"{StartPage}-{EndPage}";
+        public int PageCount => EndPage - StartPage + 1;
+        public long SplitFileSize { get; set; }
+
+        // Detected from AI
+        public string? DetectedInvoiceNumber { get; set; }
+        public string? DetectedCustomerName { get; set; }
+        public decimal? DetectedAmount { get; set; }
+
+        // Match result
+        public int? MatchedInvoiceId { get; set; }
+        public string? MatchedInvoiceNumber { get; set; }
+        public string? MatchedCustomerName { get; set; }
+        public decimal? MatchedTotalAmount { get; set; }
+        public string MatchMethod { get; set; } = "None";
+        public string MatchConfidence { get; set; } = "None";
+
+        // Document storage
+        public int? DocumentId { get; set; }
+        public bool ContentUpdated { get; set; }
+    }
+
+    /// <summary>
+    /// ViewModel for listing all completed smart-split jobs.
+    /// </summary>
+    public class SmartSplitHistoryViewModel
+    {
+        public List<SmartSplitHistoryEntry> Jobs { get; set; } = new();
+    }
+
+    public class SmartSplitHistoryEntry
+    {
+        public int MasterDocumentId { get; set; }
+        public string OriginalFileName { get; set; } = "";
+        public DateTime? ProcessedDate { get; set; }
+        public string ProcessingStatus { get; set; } = "";
+        public int ChildDocumentCount { get; set; }
+        public int SplitCompleteCount { get; set; }
+        public long MasterFileSize { get; set; }
+    }
 }

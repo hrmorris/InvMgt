@@ -16,6 +16,7 @@ namespace InvoiceManagement.Controllers
         private readonly IAiProcessingService _aiService;
         private readonly IDocumentStorageService _documentService;
         private readonly IEntityLookupService _entityLookupService;
+        private readonly ISmartPdfSplitterService _splitterService;
         private readonly ILogger<AiImportController> _logger;
         private readonly string[] _allowedExtensions = { ".pdf", ".png", ".jpg", ".jpeg", ".gif", ".webp" };
         private readonly long _maxFileSize = 500 * 1024 * 1024; // 500MB
@@ -25,12 +26,14 @@ namespace InvoiceManagement.Controllers
             IAiProcessingService aiService,
             IDocumentStorageService documentService,
             IEntityLookupService entityLookupService,
+            ISmartPdfSplitterService splitterService,
             ILogger<AiImportController> logger)
         {
             _context = context;
             _aiService = aiService;
             _documentService = documentService;
             _entityLookupService = entityLookupService;
+            _splitterService = splitterService;
             _logger = logger;
         }
 
@@ -4006,6 +4009,439 @@ namespace InvoiceManagement.Controllers
                 _logger.LogError(ex, "Error getting invoices list");
                 return Json(new List<object>());
             }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // SMART PDF SPLITTER MODULE
+        // ═══════════════════════════════════════════════════════════════════════
+
+        // GET: AiImport/SmartSplit — Landing page for the Smart PDF Splitter
+        public async Task<IActionResult> SmartSplit()
+        {
+            // Show history of previously split documents
+            var splitJobs = await _context.ImportedDocuments
+                .Where(d => d.DocumentType == "Invoice-Bulk" || d.ProcessingStatus == "Smart-Split" || d.ProcessingStatus == "Completed")
+                .Where(d => d.ContentType == "application/pdf")
+                .Where(d => d.InvoiceId == null) // Master documents only (no parent invoice)
+                .OrderByDescending(d => d.ProcessedDate ?? d.UploadDate)
+                .Select(d => new { d.Id, d.OriginalFileName, d.ProcessedDate, d.ProcessingStatus, d.FileSize, d.UploadDate })
+                .Take(50)
+                .ToListAsync();
+
+            // Count child documents for each master
+            var masterIds = splitJobs.Select(j => j.Id).ToList();
+            var childCounts = await _context.ImportedDocuments
+                .Where(d => d.ProcessingNotes != null && d.InvoiceId != null)
+                .Where(d => masterIds.Any(id => d.ProcessingNotes!.Contains($"Master document ID: {id}")))
+                .GroupBy(d => d.ProcessingNotes!)
+                .Select(g => new { Notes = g.Key, Total = g.Count(), SplitComplete = g.Count(d => d.ProcessingStatus == "Split-Complete") })
+                .ToListAsync();
+
+            var history = new SmartSplitHistoryViewModel
+            {
+                Jobs = splitJobs.Select(j =>
+                {
+                    var childInfo = childCounts.FirstOrDefault(c => c.Notes.Contains($"Master document ID: {j.Id}"));
+                    return new SmartSplitHistoryEntry
+                    {
+                        MasterDocumentId = j.Id,
+                        OriginalFileName = j.OriginalFileName,
+                        ProcessedDate = j.ProcessedDate ?? j.UploadDate,
+                        ProcessingStatus = j.ProcessingStatus,
+                        ChildDocumentCount = childInfo?.Total ?? 0,
+                        SplitCompleteCount = childInfo?.SplitComplete ?? 0,
+                        MasterFileSize = j.FileSize
+                    };
+                }).ToList()
+            };
+
+            return View(history);
+        }
+
+        // POST: AiImport/ProcessSmartSplitAjax — Upload & process (full pipeline)
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> ProcessSmartSplitAjax(IFormFile file)
+        {
+            try
+            {
+                if (file == null || file.Length == 0)
+                    return Json(new { success = false, message = "Please select a PDF file to upload." });
+
+                if (Path.GetExtension(file.FileName).ToLowerInvariant() != ".pdf")
+                    return Json(new { success = false, message = "Smart Split only supports PDF files." });
+
+                if (file.Length > _maxFileSize)
+                    return Json(new { success = false, message = $"File too large. Maximum size is {_maxFileSize / 1024 / 1024}MB." });
+
+                _logger.LogInformation("SmartSplit: Processing upload {FileName} ({Size} bytes)", file.FileName, file.Length);
+
+                // Store the master document
+                var userName = User.Identity?.Name ?? "System";
+                var document = await _documentService.StoreDocumentAsync(file, "Invoice-Bulk", userName);
+                var documentId = document.Id;
+
+                // Detach to avoid stale context during long AI processing
+                _context.Entry(document).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+
+                // Step 1: First process with Multi-Page PDF to extract invoice data
+                using var stream = file.OpenReadStream();
+                var extractionResult = await _aiService.ExtractInvoicesWithPageDetectionAsync(stream, file.FileName);
+
+                // Re-fetch document
+                var freshDoc = await _context.ImportedDocuments.FindAsync(documentId);
+                if (freshDoc == null)
+                    return Json(new { success = false, message = "Document removed during processing." });
+
+                // Store extraction data
+                var extractionData = new
+                {
+                    MultiPagePdf = true,
+                    TotalPages = extractionResult.TotalPages,
+                    TotalInvoicesDetected = extractionResult.TotalInvoicesDetected,
+                    SuccessfullyExtracted = extractionResult.SuccessfullyExtracted,
+                    FailedExtractions = extractionResult.FailedExtractions,
+                    ProcessingTimeSeconds = extractionResult.ProcessingTime.TotalSeconds,
+                    ProcessingSummary = extractionResult.ProcessingSummary,
+                    Warnings = extractionResult.Warnings,
+                    Errors = extractionResult.Errors,
+                    Invoices = extractionResult.Invoices.Select(inv => new
+                    {
+                        inv.StartPage,
+                        inv.EndPage,
+                        inv.PageRange,
+                        inv.Confidence,
+                        InvoiceNumber = inv.Invoice.InvoiceNumber ?? "",
+                        inv.Invoice.InvoiceDate,
+                        inv.Invoice.DueDate,
+                        CustomerName = inv.Invoice.CustomerName ?? "",
+                        CustomerAddress = inv.Invoice.CustomerAddress ?? "",
+                        CustomerEmail = inv.Invoice.CustomerEmail ?? "",
+                        CustomerPhone = inv.Invoice.CustomerPhone ?? "",
+                        inv.Invoice.SubTotal,
+                        inv.Invoice.GSTAmount,
+                        inv.Invoice.TotalAmount,
+                        Notes = inv.Invoice.Notes ?? "",
+                        InvoiceType = inv.Invoice.InvoiceType ?? "Payable",
+                        SupplierName = inv.Invoice.Supplier?.SupplierName ?? "",
+                        Items = inv.Invoice.InvoiceItems?.Select(i => new { i.Description, i.Quantity, i.UnitPrice }).ToList()
+                    }).ToList()
+                };
+
+                freshDoc.ProcessingStatus = "Extracted";
+                freshDoc.ProcessedDate = DateTime.Now;
+                freshDoc.ProcessingNotes = System.Text.Json.JsonSerializer.Serialize(extractionData);
+                await _context.SaveChangesAsync();
+
+                // Step 2: Now physically split the PDF
+                var pdfBytes = freshDoc.FileContent;
+                _context.Entry(freshDoc).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+
+                var result = await _splitterService.ProcessSmartSplitAsync(documentId);
+
+                return Json(new
+                {
+                    success = result.Success,
+                    message = result.Summary,
+                    documentId,
+                    redirectUrl = Url.Action("SmartSplitResults", new { id = documentId }),
+                    totalPages = result.TotalPages,
+                    totalSplit = result.TotalSplitFiles,
+                    matchedCount = result.MatchedCount,
+                    unmatchedCount = result.UnmatchedCount
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in ProcessSmartSplitAjax");
+                return Json(new { success = false, message = $"Processing error: {ex.Message}" });
+            }
+        }
+
+        // POST: AiImport/SmartSplitExistingAjax — Smart-split an already-uploaded document
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> SmartSplitExistingAjax(int id)
+        {
+            try
+            {
+                var document = await _context.ImportedDocuments.FindAsync(id);
+                if (document == null)
+                    return Json(new { success = false, message = "Document not found." });
+
+                if (document.ContentType?.Contains("pdf") != true)
+                    return Json(new { success = false, message = "Only PDF files can be smart-split." });
+
+                _logger.LogInformation("SmartSplit existing document {Id}: {FileName}", id, document.OriginalFileName);
+
+                // Check if this already has child documents from Multi-Page PDF
+                var hasChildren = await _context.ImportedDocuments
+                    .AnyAsync(d => d.ProcessingNotes != null &&
+                                   d.ProcessingNotes.Contains($"Master document ID: {id}") &&
+                                   d.InvoiceId != null);
+
+                SmartSplitResult result;
+
+                if (hasChildren)
+                {
+                    // Re-link mode: update existing child docs with physically-split content
+                    _logger.LogInformation("SmartSplit: Re-linking existing child documents for master {Id}", id);
+                    result = await _splitterService.RelinkSplitPdfsAsync(id);
+                }
+                else
+                {
+                    // Full pipeline: analyze + split + match
+                    result = await _splitterService.ProcessSmartSplitAsync(id);
+                }
+
+                return Json(new
+                {
+                    success = result.Success,
+                    message = result.Summary,
+                    documentId = id,
+                    redirectUrl = Url.Action("SmartSplitResults", new { id }),
+                    totalPages = result.TotalPages,
+                    totalSplit = result.TotalSplitFiles,
+                    matchedCount = result.MatchedCount,
+                    unmatchedCount = result.UnmatchedCount
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in SmartSplitExistingAjax for document {Id}", id);
+                return Json(new { success = false, message = $"Processing error: {ex.Message}" });
+            }
+        }
+
+        // GET: AiImport/SmartSplitResults/{id} — View results of a smart-split operation
+        public async Task<IActionResult> SmartSplitResults(int id)
+        {
+            var masterDoc = await _context.ImportedDocuments
+                .AsNoTracking()
+                .FirstOrDefaultAsync(d => d.Id == id);
+
+            if (masterDoc == null)
+            {
+                TempData["Error"] = "Document not found.";
+                return RedirectToAction(nameof(SmartSplit));
+            }
+
+            // Find all child documents for this master
+            var childDocs = await _context.ImportedDocuments
+                .AsNoTracking()
+                .Where(d => d.ProcessingNotes != null &&
+                           d.ProcessingNotes.Contains($"Master document ID: {id}"))
+                .Select(d => new
+                {
+                    d.Id,
+                    d.InvoiceId,
+                    d.OriginalFileName,
+                    d.ProcessingNotes,
+                    d.FileSize,
+                    d.ProcessingStatus,
+                    d.ProcessedDate
+                })
+                .ToListAsync();
+
+            // Get associated invoices
+            var invoiceIds = childDocs.Where(d => d.InvoiceId.HasValue).Select(d => d.InvoiceId!.Value).Distinct().ToList();
+            var invoices = await _context.Invoices
+                .AsNoTracking()
+                .Where(i => invoiceIds.Contains(i.Id))
+                .Select(i => new { i.Id, i.InvoiceNumber, i.CustomerName, i.TotalAmount, i.Notes })
+                .ToDictionaryAsync(i => i.Id);
+
+            // Get total pages from the master PDF
+            int totalPages = 0;
+            try
+            {
+                if (masterDoc.FileContent != null && masterDoc.FileContent.Length > 0)
+                {
+                    using var ms = new MemoryStream(masterDoc.FileContent);
+                    using var pdfDoc = PdfSharpCore.Pdf.IO.PdfReader.Open(ms, PdfSharpCore.Pdf.IO.PdfDocumentOpenMode.Import);
+                    totalPages = pdfDoc.PageCount;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not read page count for master document {Id}", id);
+            }
+
+            // Build view model
+            var matches = new List<SmartSplitMatchEntry>();
+            int idx = 1;
+
+            foreach (var child in childDocs.OrderBy(d => d.OriginalFileName))
+            {
+                // Parse page range from metadata
+                var pageRange = ExtractPageRange(child.ProcessingNotes, child.OriginalFileName);
+                var invoice = child.InvoiceId.HasValue && invoices.ContainsKey(child.InvoiceId.Value)
+                    ? invoices[child.InvoiceId.Value]
+                    : null;
+
+                // Determine match method from ProcessingNotes
+                var matchMethod = "None";
+                var matchConfidence = "None";
+                if (child.ProcessingNotes?.Contains("Match:") == true)
+                {
+                    var matchPart = child.ProcessingNotes.Split("Match:").LastOrDefault()?.Trim();
+                    if (matchPart != null)
+                    {
+                        var parts = matchPart.Split('(', ')');
+                        if (parts.Length >= 1) matchMethod = parts[0].Trim();
+                        if (parts.Length >= 2) matchConfidence = parts[1].Trim();
+                    }
+                }
+                else if (child.ProcessingNotes?.Contains("Extracted from multi-page PDF") == true)
+                {
+                    matchMethod = "MultiPagePdf";
+                    matchConfidence = child.ProcessingStatus == "Split-Complete" ? "High" : "Medium";
+                }
+
+                matches.Add(new SmartSplitMatchEntry
+                {
+                    Index = idx++,
+                    StartPage = pageRange?.start ?? 0,
+                    EndPage = pageRange?.end ?? 0,
+                    SplitFileSize = child.FileSize,
+                    DetectedInvoiceNumber = invoice?.InvoiceNumber,
+                    DetectedCustomerName = invoice?.CustomerName,
+                    DetectedAmount = invoice?.TotalAmount,
+                    MatchedInvoiceId = child.InvoiceId,
+                    MatchedInvoiceNumber = invoice?.InvoiceNumber,
+                    MatchedCustomerName = invoice?.CustomerName,
+                    MatchedTotalAmount = invoice?.TotalAmount,
+                    MatchMethod = matchMethod,
+                    MatchConfidence = matchConfidence,
+                    DocumentId = child.Id,
+                    ContentUpdated = child.ProcessingStatus == "Split-Complete"
+                });
+            }
+
+            var splitComplete = matches.Count(m => m.ContentUpdated);
+            var model = new SmartSplitViewModel
+            {
+                MasterDocumentId = id,
+                OriginalFileName = masterDoc.OriginalFileName,
+                TotalPages = totalPages,
+                TotalInvoicesDetected = childDocs.Count,
+                TotalSplitFiles = matches.Count,
+                MatchedCount = matches.Count(m => m.MatchedInvoiceId.HasValue),
+                UnmatchedCount = matches.Count(m => !m.MatchedInvoiceId.HasValue),
+                UpdatedDocumentsCount = splitComplete,
+                NewDocumentsCount = matches.Count - splitComplete,
+                Summary = $"{matches.Count} split files, {splitComplete} with individual PDF content",
+                Matches = matches,
+                Warnings = new List<string>()
+            };
+
+            if (splitComplete < matches.Count)
+            {
+                model.Warnings.Add($"{matches.Count - splitComplete} documents still contain the full master PDF. Use 'Re-Split & Update' to replace with individual page content.");
+            }
+
+            return View(model);
+        }
+
+        // GET: AiImport/DownloadSplitPdf/{id} — Download an individual split PDF
+        public async Task<IActionResult> DownloadSplitPdf(int id)
+        {
+            var doc = await _context.ImportedDocuments.FindAsync(id);
+            if (doc == null || doc.FileContent == null || doc.FileContent.Length == 0)
+                return NotFound("Document not found or has no content.");
+
+            return File(doc.FileContent, doc.ContentType ?? "application/pdf", doc.OriginalFileName);
+        }
+
+        // GET: AiImport/DownloadAllSplitPdfs/{masterDocId} — Download all split PDFs as a ZIP
+        public async Task<IActionResult> DownloadAllSplitPdfs(int masterDocId)
+        {
+            var masterDoc = await _context.ImportedDocuments
+                .AsNoTracking()
+                .Where(d => d.Id == masterDocId)
+                .Select(d => new { d.OriginalFileName })
+                .FirstOrDefaultAsync();
+
+            if (masterDoc == null)
+                return NotFound("Master document not found.");
+
+            var childDocs = await _context.ImportedDocuments
+                .Where(d => d.ProcessingNotes != null &&
+                           d.ProcessingNotes.Contains($"Master document ID: {masterDocId}") &&
+                           d.FileContent != null && d.FileContent.Length > 0)
+                .Select(d => new { d.OriginalFileName, d.FileContent })
+                .ToListAsync();
+
+            if (childDocs.Count == 0)
+                return NotFound("No split documents found.");
+
+            // Create ZIP in memory
+            using var zipStream = new MemoryStream();
+            using (var archive = new System.IO.Compression.ZipArchive(zipStream, System.IO.Compression.ZipArchiveMode.Create, true))
+            {
+                foreach (var doc in childDocs)
+                {
+                    var entry = archive.CreateEntry(doc.OriginalFileName, System.IO.Compression.CompressionLevel.Fastest);
+                    using var entryStream = entry.Open();
+                    await entryStream.WriteAsync(doc.FileContent);
+                }
+            }
+
+            zipStream.Position = 0;
+            var zipName = Path.GetFileNameWithoutExtension(masterDoc.OriginalFileName) + "_SplitInvoices.zip";
+            return File(zipStream.ToArray(), "application/zip", zipName);
+        }
+
+        // POST: AiImport/RelinkSmartSplitAjax — Re-split and update existing documents
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> RelinkSmartSplitAjax(int id)
+        {
+            try
+            {
+                _logger.LogInformation("SmartSplit Relink: Re-splitting document {Id}", id);
+                var result = await _splitterService.RelinkSplitPdfsAsync(id);
+
+                return Json(new
+                {
+                    success = result.Success,
+                    message = result.Summary,
+                    documentId = id,
+                    redirectUrl = Url.Action("SmartSplitResults", new { id }),
+                    updatedCount = result.UpdatedDocumentsCount
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in RelinkSmartSplitAjax for document {Id}", id);
+                return Json(new { success = false, message = $"Error: {ex.Message}" });
+            }
+        }
+
+        // Helper: extract page range from ProcessingNotes/OriginalFileName
+        private (int start, int end)? ExtractPageRange(string? notes, string? fileName)
+        {
+            if (!string.IsNullOrEmpty(notes))
+            {
+                var match = Regex.Match(notes, @"pages?\s+(\d+)(?:\s*-\s*(\d+))?", RegexOptions.IgnoreCase);
+                if (match.Success)
+                {
+                    var start = int.Parse(match.Groups[1].Value);
+                    var end = match.Groups[2].Success ? int.Parse(match.Groups[2].Value) : start;
+                    return (start, end);
+                }
+            }
+            if (!string.IsNullOrEmpty(fileName))
+            {
+                var match = Regex.Match(fileName, @"Pages?_(\d+)(?:-(\d+))?", RegexOptions.IgnoreCase);
+                if (match.Success)
+                {
+                    var start = int.Parse(match.Groups[1].Value);
+                    var end = match.Groups[2].Success ? int.Parse(match.Groups[2].Value) : start;
+                    return (start, end);
+                }
+            }
+            return null;
         }
 
         // Helper: Truncate a string to fit database column constraints

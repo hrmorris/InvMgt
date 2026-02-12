@@ -244,6 +244,9 @@ builder.Services.AddScoped<ICurrencyService, CurrencyService>();
 builder.Services.AddScoped<IDocumentStorageService, DocumentStorageService>();
 builder.Services.AddScoped<IEntityLookupService, EntityLookupService>();
 
+// Smart PDF Splitter service
+builder.Services.AddScoped<ISmartPdfSplitterService, SmartPdfSplitterService>();
+
 var app = builder.Build();
 
 // Apply database migrations and schema updates

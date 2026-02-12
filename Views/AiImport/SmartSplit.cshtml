@@ -1,0 +1,352 @@
+@model InvoiceManagement.Models.ViewModels.SmartSplitHistoryViewModel
+@{
+    ViewData["Title"] = "AI Smart PDF Splitter";
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-scissors me-2"></i>Smart PDF Splitter</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-action="MultiPagePdf" class="btn btn-outline-primary me-2">
+            <i class="bi bi-file-earmark-pdf"></i> Multi-Page PDF
+        </a>
+        <a asp-action="Documents" class="btn btn-secondary">
+            <i class="bi bi-folder2-open"></i> Document Library
+        </a>
+    </div>
+</div>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle"></i> @Html.Raw(TempData["Error"])
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle"></i> @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- HERO / FEATURE OVERVIEW                                                -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div class="card border-0 shadow-sm mb-4 bg-gradient"
+     style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);">
+    <div class="card-body p-4 text-white">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h3 class="mb-3">
+                    <i class="bi bi-stars me-2 text-warning"></i>
+                    AI-Powered PDF Invoice Splitter
+                </h3>
+                <p class="mb-2 opacity-90">
+                    Upload a large PDF containing <strong>hundreds of invoices</strong> and our AI engine will:
+                </p>
+                <div class="row g-3 mt-1">
+                    <div class="col-sm-6">
+                        <div class="d-flex align-items-start">
+                            <i class="bi bi-1-circle-fill text-warning me-2 mt-1"></i>
+                            <div>
+                                <strong>Analyze & Detect</strong><br>
+                                <small class="opacity-75">AI detects where each invoice starts and ends in the
+                                    PDF</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="d-flex align-items-start">
+                                <i class="bi bi-2-circle-fill text-warning me-2 mt-1"></i>
+                                <div>
+                                    <strong>Physically Split</strong><br>
+                                    <small class="opacity-75">Creates individual PDF files for each invoice</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="d-flex align-items-start">
+                                <i class="bi bi-3-circle-fill text-warning me-2 mt-1"></i>
+                                <div>
+                                    <strong>Smart Match</strong><br>
+                                    <small class="opacity-75">Matches split PDFs with extracted invoice records</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="d-flex align-items-start">
+                                <i class="bi bi-4-circle-fill text-warning me-2 mt-1"></i>
+                                <div>
+                                    <strong>Download</strong><br>
+                                    <small class="opacity-75">Download individual or all split PDFs as a ZIP</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 text-center mt-3 mt-md-0">
+                    <div class="position-relative d-inline-block">
+                        <i class="bi bi-file-earmark-pdf" style="font-size: 5rem; opacity: 0.3;"></i>
+                        <i class="bi bi-scissors position-absolute"
+                           style="font-size: 2.5rem; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ffc107;"></i>
+                    </div>
+                    <div class="mt-2">
+                        <span class="badge bg-warning text-dark px-3 py-2">
+                            <i class="bi bi-lightning-charge-fill me-1"></i>Powered by GPT
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <!-- UPLOAD SECTION                                                          -->
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-cloud-arrow-up me-2"></i>Upload PDF to Split</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Select a multi-invoice PDF file</label>
+                        <input type="file" class="form-control form-control-lg" id="smartSplitFile" accept=".pdf" />
+                        <div class="form-text">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Supports PDFs with 100+ pages containing multiple invoices. Maximum file size: 500MB.
+                        </div>
+                    </div>
+                    <div id="filePreview" class="d-none mb-3">
+                        <div class="d-flex align-items-center p-3 bg-light rounded">
+                            <i class="bi bi-file-earmark-pdf text-danger" style="font-size: 2rem;"></i>
+                            <div class="ms-3">
+                                <strong id="previewFileName"></strong>
+                                <div class="text-muted small" id="previewFileSize"></div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-danger ms-auto"
+                                    onclick="clearFileSelection()">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 d-flex align-items-end">
+                    <button type="button" class="btn btn-warning btn-lg w-100 mb-3" id="btnSmartSplit" disabled
+                            onclick="startSmartSplit()">
+                        <i class="bi bi-scissors me-2"></i>Analyze & Split PDF
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quick Actions for Existing Documents -->
+            <div class="border-top pt-3 mt-2">
+                <p class="text-muted small mb-2">
+                    <i class="bi bi-lightning-charge me-1"></i>
+                    <strong>Already uploaded?</strong> You can also smart-split documents from the
+                    <a asp-action="Documents">Document Library</a> or the
+                    <a asp-action="MultiPagePdf">Multi-Page PDF</a> results page.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <!-- SPLIT HISTORY                                                           -->
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    @if (Model.Jobs.Any())
+    {
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Previous Splits</h5>
+                <span class="badge bg-secondary">@Model.Jobs.Count document(s)</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th><i class="bi bi-hash"></i> ID</th>
+                                <th><i class="bi bi-file-earmark-pdf"></i> File Name</th>
+                                <th><i class="bi bi-hdd"></i> Size</th>
+                                <th><i class="bi bi-diagram-3"></i> Invoices</th>
+                                <th><i class="bi bi-check2-circle"></i> Split Status</th>
+                                <th><i class="bi bi-calendar-check"></i> Processed</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var job in Model.Jobs)
+                            {
+                                var isSplit = job.ProcessingStatus == "Smart-Split" || job.SplitCompleteCount > 0;
+                                var statusBadge = job.ProcessingStatus switch
+                                {
+                                    "Smart-Split" => "bg-success",
+                                    "Completed" => "bg-primary",
+                                    "Extracted" => "bg-info",
+                                    _ => "bg-secondary"
+                                };
+                                <tr>
+                                    <td><span class="badge bg-dark">@job.MasterDocumentId</span></td>
+                                    <td>
+                                        <i class="bi bi-file-earmark-pdf text-danger me-1"></i>
+                                        <span class="text-truncate d-inline-block" style="max-width: 250px;"
+                                              title="@job.OriginalFileName">
+                                            @job.OriginalFileName
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @if (job.MasterFileSize > 1024 * 1024)
+                                        {
+                                            <text>@((job.MasterFileSize / 1024.0 / 1024.0).ToString("F1")) MB</text>
+                                        }
+                                        else
+                                        {
+                                            <text>@((job.MasterFileSize / 1024.0).ToString("F0")) KB</text>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (job.ChildDocumentCount > 0)
+                                        {
+                                            <span class="badge bg-info">@job.ChildDocumentCount invoices</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">—</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (job.SplitCompleteCount > 0 && job.SplitCompleteCount == job.ChildDocumentCount)
+                                        {
+                                            <span class="badge bg-success">
+                                                <i class="bi bi-check-circle me-1"></i>All Split
+                                            </span>
+                                        }
+                                        else if (job.SplitCompleteCount > 0)
+                                        {
+                                            <span class="badge bg-warning text-dark">
+                                                @job.SplitCompleteCount / @job.ChildDocumentCount Split
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge @statusBadge">@job.ProcessingStatus</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            @(job.ProcessedDate?.ToString("dd/MM/yyyy HH:mm") ?? "—")
+                                        </small>
+                                    </td>
+                                    <td class="text-end">
+                                        <div class="btn-group btn-group-sm">
+                                            <a asp-action="SmartSplitResults" asp-route-id="@job.MasterDocumentId"
+                                                   class="btn btn-outline-primary" title="View Results">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            @if (!isSplit || job.SplitCompleteCount < job.ChildDocumentCount)
+                                            {
+                                                <button type="button" class="btn btn-outline-warning"
+                                                        onclick="smartSplitExisting(@job.MasterDocumentId)"                                         title="Smart Split">
+                                                    <i class="bi bi-scissors"></i>
+                                                </button>
+                                            }
+                                            @if (job.ChildDocumentCount > 0)
+                                            {
+                                                <a asp-action="DownloadAllSplitPdfs" asp-route-masterDocId="@job.MasterDocumentId"
+                                                       class="btn btn-outline-success" title="Download All as ZIP">
+                                                    <i class="bi bi-file-zip"></i>
+                                                </a>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-scissors" style="font-size: 4rem; opacity: 0.3;"></i>
+            <p class="mt-3">No documents have been smart-split yet. Upload a multi-invoice PDF above to get started.</p>
+        </div>
+    }
+
+    @section Scripts {
+        <script>
+            // ─── File selection preview ──────────────────────────────────────────
+            const fileInput = document.getElementById('smartSplitFile');
+            const btnSplit = document.getElementById('btnSmartSplit');
+
+            fileInput.addEventListener('change', function () {
+                const file = this.files[0];
+                if (file) {
+                    document.getElementById('previewFileName').textContent = file.name;
+                    const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+                    document.getElementById('previewFileSize').textContent =
+                        `${sizeMB} MB • ${file.type || 'application/pdf'}`;
+                    document.getElementById('filePreview').classList.remove('d-none');
+                    btnSplit.disabled = false;
+                } else {
+                    clearFileSelection();
+                }
+            });
+
+            function clearFileSelection() {
+                fileInput.value = '';
+                document.getElementById('filePreview').classList.add('d-none');
+                btnSplit.disabled = true;
+            }
+
+            // ─── Smart Split (new upload) ────────────────────────────────────────
+            function startSmartSplit() {
+                const file = fileInput.files[0];
+                if (!file) return;
+
+                const fd = new FormData();
+                fd.append('file', file);
+
+                ProgressModal.runWithProgress({
+                    title: 'Smart PDF Splitter',
+                    color: '#ffc107',
+                    icon: 'scissors',
+                    url: '@Url.Action("ProcessSmartSplitAjax")',
+                    formData: fd,
+                    stages: ProgressModal.smartSplitStages(),
+                    stageInterval: 4000,
+                    onSuccess: (result) => {
+                        if (result.redirectUrl) {
+                            window.location.href = result.redirectUrl;
+                        }
+                    }
+                });
+            }
+
+            // ─── Smart Split (existing document) ─────────────────────────────────
+            function smartSplitExisting(docId) {
+                const fd = new FormData();
+                fd.append('id', docId);
+
+                ProgressModal.runWithProgress({
+                    title: 'Smart PDF Splitter',
+                    color: '#ffc107',
+                    icon: 'scissors',
+                    url: '@Url.Action("SmartSplitExistingAjax")',
+                    formData: fd,
+                    stages: ProgressModal.smartSplitStages(),
+                    stageInterval: 4000,
+                    onSuccess: (result) => {
+                        if (result.redirectUrl) {
+                            window.location.href = result.redirectUrl;
+                        }
+                    }
+                });
+            }
+        </script>
+    }
