@@ -4018,44 +4018,64 @@ namespace InvoiceManagement.Controllers
         // GET: AiImport/SmartSplit — Landing page for the Smart PDF Splitter
         public async Task<IActionResult> SmartSplit()
         {
-            // Show history of previously split documents
-            var splitJobs = await _context.ImportedDocuments
-                .Where(d => d.DocumentType == "Invoice-Bulk" || d.ProcessingStatus == "Smart-Split" || d.ProcessingStatus == "Completed")
-                .Where(d => d.ContentType == "application/pdf")
-                .Where(d => d.InvoiceId == null) // Master documents only (no parent invoice)
-                .OrderByDescending(d => d.ProcessedDate ?? d.UploadDate)
-                .Select(d => new { d.Id, d.OriginalFileName, d.ProcessedDate, d.ProcessingStatus, d.FileSize, d.UploadDate })
-                .Take(50)
-                .ToListAsync();
-
-            // Count child documents for each master
-            var masterIds = splitJobs.Select(j => j.Id).ToList();
-            var childCounts = await _context.ImportedDocuments
-                .Where(d => d.ProcessingNotes != null && d.InvoiceId != null)
-                .Where(d => masterIds.Any(id => d.ProcessingNotes!.Contains($"Master document ID: {id}")))
-                .GroupBy(d => d.ProcessingNotes!)
-                .Select(g => new { Notes = g.Key, Total = g.Count(), SplitComplete = g.Count(d => d.ProcessingStatus == "Split-Complete") })
-                .ToListAsync();
-
-            var history = new SmartSplitHistoryViewModel
+            try
             {
-                Jobs = splitJobs.Select(j =>
-                {
-                    var childInfo = childCounts.FirstOrDefault(c => c.Notes.Contains($"Master document ID: {j.Id}"));
-                    return new SmartSplitHistoryEntry
-                    {
-                        MasterDocumentId = j.Id,
-                        OriginalFileName = j.OriginalFileName,
-                        ProcessedDate = j.ProcessedDate ?? j.UploadDate,
-                        ProcessingStatus = j.ProcessingStatus,
-                        ChildDocumentCount = childInfo?.Total ?? 0,
-                        SplitCompleteCount = childInfo?.SplitComplete ?? 0,
-                        MasterFileSize = j.FileSize
-                    };
-                }).ToList()
-            };
+                // Show history of previously split documents
+                var splitJobs = await _context.ImportedDocuments
+                    .Where(d => d.DocumentType == "Invoice-Bulk" || d.ProcessingStatus == "Smart-Split" || d.ProcessingStatus == "Completed")
+                    .Where(d => d.ContentType == "application/pdf")
+                    .Where(d => d.InvoiceId == null) // Master documents only (no parent invoice)
+                    .OrderByDescending(d => d.ProcessedDate ?? d.UploadDate)
+                    .Select(d => new { d.Id, d.OriginalFileName, d.ProcessedDate, d.ProcessingStatus, d.FileSize, d.UploadDate })
+                    .Take(50)
+                    .ToListAsync();
 
-            return View(history);
+                // Count child documents for each master — query per master to avoid SQL translation issues
+                var childCountDict = new Dictionary<int, (int total, int splitComplete)>();
+                foreach (var job in splitJobs)
+                {
+                    var searchKey = $"Master document ID: {job.Id}";
+                    var counts = await _context.ImportedDocuments
+                        .Where(d => d.ProcessingNotes != null && d.InvoiceId != null)
+                        .Where(d => d.ProcessingNotes!.Contains(searchKey))
+                        .GroupBy(d => 1)
+                        .Select(g => new
+                        {
+                            Total = g.Count(),
+                            SplitComplete = g.Count(d => d.ProcessingStatus == "Split-Complete")
+                        })
+                        .FirstOrDefaultAsync();
+
+                    if (counts != null)
+                        childCountDict[job.Id] = (counts.Total, counts.SplitComplete);
+                }
+
+                var history = new SmartSplitHistoryViewModel
+                {
+                    Jobs = splitJobs.Select(j =>
+                    {
+                        var hasChild = childCountDict.TryGetValue(j.Id, out var childInfo);
+                        return new SmartSplitHistoryEntry
+                        {
+                            MasterDocumentId = j.Id,
+                            OriginalFileName = j.OriginalFileName,
+                            ProcessedDate = j.ProcessedDate ?? j.UploadDate,
+                            ProcessingStatus = j.ProcessingStatus,
+                            ChildDocumentCount = hasChild ? childInfo.total : 0,
+                            SplitCompleteCount = hasChild ? childInfo.splitComplete : 0,
+                            MasterFileSize = j.FileSize
+                        };
+                    }).ToList()
+                };
+
+                return View(history);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading SmartSplit page");
+                TempData["Error"] = $"Error loading page: {ex.Message}";
+                return View(new SmartSplitHistoryViewModel());
+            }
         }
 
         // POST: AiImport/ProcessSmartSplitAjax — Upload & process (full pipeline)
