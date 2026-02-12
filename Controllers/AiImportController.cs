@@ -4081,6 +4081,7 @@ namespace InvoiceManagement.Controllers
         // POST: AiImport/ProcessSmartSplitAjax — Upload & process (full pipeline)
         [HttpPost]
         [IgnoreAntiforgeryToken]
+        [RequestSizeLimit(500_000_000)] // 500MB limit
         public async Task<IActionResult> ProcessSmartSplitAjax(IFormFile file)
         {
             try
@@ -4181,6 +4182,7 @@ namespace InvoiceManagement.Controllers
         // POST: AiImport/SmartSplitExistingAjax — Smart-split an already-uploaded document
         [HttpPost]
         [IgnoreAntiforgeryToken]
+        [RequestSizeLimit(500_000_000)] // 500MB limit
         public async Task<IActionResult> SmartSplitExistingAjax(int id)
         {
             try

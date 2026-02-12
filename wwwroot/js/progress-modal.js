@@ -247,10 +247,21 @@ class ProgressModal {
                 return;
             }
 
+            // Check for gateway timeout / server errors
+            if (response.status === 504 || response.status === 408) {
+                throw new Error('The request timed out. The file may be too large or the server is busy. Please try again with a smaller file, or wait and retry.');
+            }
+            if (response.status === 502 || response.status === 503) {
+                throw new Error('The server is temporarily unavailable. Please wait a moment and try again.');
+            }
+            if (response.status >= 500) {
+                throw new Error(`Server error (${response.status}). Please try again or contact support.`);
+            }
+
             // Validate JSON response
             const contentType = response.headers.get('content-type');
             if (!contentType || !contentType.includes('application/json')) {
-                throw new Error('Server returned non-JSON response. You may need to log in again.');
+                throw new Error('Server returned an unexpected response. You may need to log in again.');
             }
 
             const result = await response.json();
