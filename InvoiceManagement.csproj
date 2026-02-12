@@ -9,6 +9,7 @@
   <ItemGroup>
     <!-- Exclude the FixInvoiceSchema helper project from this build -->
     <Compile Remove="FixInvoiceSchema\**" />
+    <Compile Remove="CheckDocs\**" />
     <Content Remove="FixInvoiceSchema\**" />
     <EmbeddedResource Remove="FixInvoiceSchema\**" />
     <None Remove="FixInvoiceSchema\**" />

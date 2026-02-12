@@ -1176,6 +1176,30 @@ namespace InvoiceManagement.Controllers
             }
         }
 
+        // GET: Admin/CheckDocuments - Temporary diagnostic endpoint
+        [HttpGet]
+        public async Task<IActionResult> CheckDocuments()
+        {
+            var totalDocs = await _context.ImportedDocuments.CountAsync();
+            var withContent = await _context.ImportedDocuments.CountAsync(d => d.FileContent != null && d.FileContent.Length > 0);
+            var emptyContent = totalDocs - withContent;
+
+            // Get sample of last 10 docs
+            var sampleDocs = await _context.ImportedDocuments
+                .OrderByDescending(d => d.Id)
+                .Take(10)
+                .Select(d => new { d.Id, d.OriginalFileName, d.FileSize, ContentLength = d.FileContent.Length, d.ProcessingStatus, d.DocumentType, d.InvoiceId, d.UploadDate })
+                .ToListAsync();
+
+            return Json(new
+            {
+                totalDocuments = totalDocs,
+                withContent,
+                emptyContent,
+                sampleDocuments = sampleDocs
+            });
+        }
+
         // ==================== APPEARANCE & BRANDING ====================
 
         // GET: Admin/Appearance
