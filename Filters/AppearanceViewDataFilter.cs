@@ -36,14 +36,14 @@ namespace InvoiceManagement.Filters
                         Get(key, fallback.ToString().ToLower()) == "true";
 
                     // Theme
-                    controller.ViewData["Theme_PrimaryColor"] = Get("Theme_PrimaryColor", "#0d6efd");
+                    controller.ViewData["Theme_PrimaryColor"] = Get("Theme_PrimaryColor", "#667eea");
                     controller.ViewData["Theme_SecondaryColor"] = Get("Theme_SecondaryColor", "#6c757d");
-                    controller.ViewData["Theme_AccentColor"] = Get("Theme_AccentColor", "#198754");
+                    controller.ViewData["Theme_AccentColor"] = Get("Theme_AccentColor", "#764ba2");
                     controller.ViewData["Theme_DangerColor"] = Get("Theme_DangerColor", "#dc3545");
                     controller.ViewData["Theme_WarningColor"] = Get("Theme_WarningColor", "#ffc107");
-                    controller.ViewData["Theme_NavbarStyle"] = Get("Theme_NavbarStyle", "bg-primary");
-                    controller.ViewData["Theme_SidebarStyle"] = Get("Theme_SidebarStyle", "light");
-                    controller.ViewData["Theme_FontFamily"] = Get("Theme_FontFamily", "Segoe UI");
+                    controller.ViewData["Theme_NavbarStyle"] = Get("Theme_NavbarStyle", "bg-gradient-primary");
+                    controller.ViewData["Theme_SidebarStyle"] = Get("Theme_SidebarStyle", "dark");
+                    controller.ViewData["Theme_FontFamily"] = Get("Theme_FontFamily", "Inter");
 
                     // Branding
                     controller.ViewData["AppName"] = Get("ApplicationName", "Invoice Management System");

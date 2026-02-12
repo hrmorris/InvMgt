@@ -415,7 +415,11 @@
                             <div class="section-label">Quick Presets</div>
                             <div class="d-flex gap-2 flex-wrap">
                                 <button type="button" class="preset-btn"
-                                        style="background: linear-gradient(135deg, #0d6efd, #198754);" title="Default Blue"
+                                        style="background: linear-gradient(135deg, #667eea, #764ba2);"
+                                        title="Indigo Purple (Default)"
+                                        onclick="applyPreset('#667eea','#6c757d','#764ba2','#dc3545','#ffc107')"></button>
+                                <button type="button" class="preset-btn"
+                                        style="background: linear-gradient(135deg, #0d6efd, #198754);" title="Classic Blue"
                                         onclick="applyPreset('#0d6efd','#6c757d','#198754','#dc3545','#ffc107')"></button>
                                 <button type="button" class="preset-btn"
                                         style="background: linear-gradient(135deg, #6f42c1, #e83e8c);" title="Purple Rose"
@@ -850,16 +854,16 @@
                                                         <div class="row g-3">
                                                             @{
                                                                 var widgets = new[] {
-                                ("WidgetTotalInvoices", Model.WidgetTotalInvoices, "bi-receipt", "Total Invoices", "Invoice                    count & totals card"),
-                                ("WidgetUnpaidAmount", Model.WidgetUnpaidAmount, "bi-cash-stack", "Unpaid Amount", "Outstanding                 balance summary"),
-                                ("WidgetRecentPayments", Model.WidgetRecentPayments, "bi-credit-card", "Recent Payments",
+                        ("WidgetTotalInvoices", Model.WidgetTotalInvoices, "bi-receipt", "Total Invoices", "Invoice                    count & totals card"),
+                        ("WidgetUnpaidAmount", Model.WidgetUnpaidAmount, "bi-cash-stack", "Unpaid Amount", "Outstanding                 balance summary"),
+                        ("WidgetRecentPayments", Model.WidgetRecentPayments, "bi-credit-card", "Recent Payments",
                         "Latest payment activity"),
-                                ("WidgetOverdueInvoices", Model.WidgetOverdueInvoices, "bi-exclamation-triangle", "Overdue           Invoices", "Overdue invoice alerts"),
-                                ("WidgetProcurement", Model.WidgetProcurement, "bi-cart-check", "Procurement", "Requisitions &        purchase orders"),
-                                ("WidgetAuditLog", Model.WidgetAuditLog, "bi-clock-history", "Audit Log", "Recent system     activity"),
-                                ("WidgetQuickActions", Model.WidgetQuickActions, "bi-lightning", "Quick Actions", "Shortcut  buttons panel"),
-                                ("WidgetCharts", Model.WidgetCharts, "bi-bar-chart", "Charts & Analytics", "Visual data charts")
-                            };
+                        ("WidgetOverdueInvoices", Model.WidgetOverdueInvoices, "bi-exclamation-triangle", "Overdue           Invoices", "Overdue invoice alerts"),
+                        ("WidgetProcurement", Model.WidgetProcurement, "bi-cart-check", "Procurement", "Requisitions &        purchase orders"),
+                        ("WidgetAuditLog", Model.WidgetAuditLog, "bi-clock-history", "Audit Log", "Recent system     activity"),
+                        ("WidgetQuickActions", Model.WidgetQuickActions, "bi-lightning", "Quick Actions", "Shortcut  buttons panel"),
+                        ("WidgetCharts", Model.WidgetCharts, "bi-bar-chart", "Charts & Analytics", "Visual data charts")
+                        };
                                                             }
                                                             @foreach (var (name, enabled, icon, title, desc) in widgets)
                                                             {
@@ -937,72 +941,72 @@
 
                                     @section Scripts {
                                         <script>
-                                                // File preview
-                                                function previewFile(input, previewId, placeholderId) {
-                                                    const file = input.files[0];
-                                                    if (!file) return;
-                                                    const reader = new FileReader();
-                                                    reader.onload = (e) => {
-                                                        const preview = document.getElementById(previewId);
-                                                        const placeholder = document.getElementById(placeholderId);
-                                                        if (preview) { preview.src = e.target.result; preview.classList.remove('d-none'); }
-                                                        if (placeholder) placeholder.classList.add('d-none');
-                                                    };
-                                                    reader.readAsDataURL(file);
-                                                }
+                                            // File preview
+                                            function previewFile(input, previewId, placeholderId) {
+                                                const file = input.files[0];
+                                                if (!file) return;
+                                                const reader = new FileReader();
+                                                reader.onload = (e) => {
+                                                    const preview = document.getElementById(previewId);
+                                                    const placeholder = document.getElementById(placeholderId);
+                                                    if (preview) { preview.src = e.target.result; preview.classList.remove('d-none'); }
+                                                    if (placeholder) placeholder.classList.add('d-none');
+                                                };
+                                                reader.readAsDataURL(file);
+                                            }
 
-                                                // Drag & drop for upload zones
-                                                document.querySelectorAll('.upload-zone').forEach(zone => {
-                                                    zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
-                                                    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
-                                                    zone.addEventListener('drop', (e) => {
-                                                        e.preventDefault();
-                                                        zone.classList.remove('dragover');
-                                                        const input = zone.querySelector('input[type="file"]');
-                                                        if (input && e.dataTransfer.files.length) {
-                                                            input.files = e.dataTransfer.files;
-                                                            input.dispatchEvent(new Event('change'));
-                                                        }
-                                                    });
+                                            // Drag & drop for upload zones
+                                            document.querySelectorAll('.upload-zone').forEach(zone => {
+                                                zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+                                                zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+                                                zone.addEventListener('drop', (e) => {
+                                                    e.preventDefault();
+                                                    zone.classList.remove('dragover');
+                                                    const input = zone.querySelector('input[type="file"]');
+                                                    if (input && e.dataTransfer.files.length) {
+                                                        input.files = e.dataTransfer.files;
+                                                        input.dispatchEvent(new Event('change'));
+                                                    }
                                                 });
+                                            });
 
-                                                // Theme presets
-                                                function applyPreset(primary, secondary, accent, danger, warning) {
-                                                    const colors = [
-                                                        { name: 'PrimaryColor', value: primary },
-                                                        { name: 'SecondaryColor', value: secondary },
-                                                        { name: 'AccentColor', value: accent },
-                                                        { name: 'DangerColor', value: danger },
-                                                        { name: 'WarningColor', value: warning }
-                                                    ];
-                                                    colors.forEach(c => {
-                                                        const colorInput = document.querySelector(`input[name="${c.name}"][type="color"]`);
-                                                        const textInput = colorInput?.closest('.d-flex')?.querySelector('input[type="text"]');
-                                                        if (colorInput) { colorInput.value = c.value; colorInput.parentElement.style.background = c.value; }
-                                                        if (textInput) textInput.value = c.value;
-                                                    });
-                                                    // Update preview
-                                                    const previewNavbar = document.querySelector('#themePreview .navbar-preview');
-                                                    if (previewNavbar) previewNavbar.style.background = primary;
-                                                }
-
-                                                // Auto-dismiss alerts
-                                                setTimeout(() => {
-                                                    document.querySelectorAll('.alert-success, .alert-danger').forEach(a => {
-                                                        try { new bootstrap.Alert(a).close(); } catch (e) { }
-                                                    });
-                                                }, 5000);
-
-                                                // Persist active tab
-                                                const hash = window.location.hash;
-                                                if (hash) {
-                                                    const tabBtn = document.querySelector(`[data-bs-target="${hash}"]`);
-                                                    if (tabBtn) new bootstrap.Tab(tabBtn).show();
-                                                }
-                                                document.querySelectorAll('#appearanceTabs button').forEach(btn => {
-                                                    btn.addEventListener('shown.bs.tab', (e) => {
-                                                        window.location.hash = e.target.dataset.bsTarget;
-                                                    });
+                                            // Theme presets
+                                            function applyPreset(primary, secondary, accent, danger, warning) {
+                                                const colors = [
+                                                    { name: 'PrimaryColor', value: primary },
+                                                    { name: 'SecondaryColor', value: secondary },
+                                                    { name: 'AccentColor', value: accent },
+                                                    { name: 'DangerColor', value: danger },
+                                                    { name: 'WarningColor', value: warning }
+                                                ];
+                                                colors.forEach(c => {
+                                                    const colorInput = document.querySelector(`input[name="${c.name}"][type="color"]`);
+                                                    const textInput = colorInput?.closest('.d-flex')?.querySelector('input[type="text"]');
+                                                    if (colorInput) { colorInput.value = c.value; colorInput.parentElement.style.background = c.value; }
+                                                    if (textInput) textInput.value = c.value;
                                                 });
+                                                // Update preview
+                                                const previewNavbar = document.querySelector('#themePreview .navbar-preview');
+                                                if (previewNavbar) previewNavbar.style.background = primary;
+                                            }
+
+                                            // Auto-dismiss alerts
+                                            setTimeout(() => {
+                                                document.querySelectorAll('.alert-success, .alert-danger').forEach(a => {
+                                                    try { new bootstrap.Alert(a).close(); } catch (e) { }
+                                                });
+                                            }, 5000);
+
+                                            // Persist active tab
+                                            const hash = window.location.hash;
+                                            if (hash) {
+                                                const tabBtn = document.querySelector(`[data-bs-target="${hash}"]`);
+                                                if (tabBtn) new bootstrap.Tab(tabBtn).show();
+                                            }
+                                            document.querySelectorAll('#appearanceTabs button').forEach(btn => {
+                                                btn.addEventListener('shown.bs.tab', (e) => {
+                                                    window.location.hash = e.target.dataset.bsTarget;
+                                                });
+                                            });
                                         </script>
                                     }

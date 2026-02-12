@@ -616,7 +616,7 @@ namespace InvoiceManagement.Services
                 {
                     Category = "Appearance",
                     SettingKey = "Theme_PrimaryColor",
-                    SettingValue = "#0d6efd",
+                    SettingValue = "#667eea",
                     Description = "Primary brand color used throughout the application",
                     ModifiedBy = "System"
                 },
@@ -632,7 +632,7 @@ namespace InvoiceManagement.Services
                 {
                     Category = "Appearance",
                     SettingKey = "Theme_AccentColor",
-                    SettingValue = "#0dcaf0",
+                    SettingValue = "#764ba2",
                     Description = "Accent color for highlights and links",
                     ModifiedBy = "System"
                 },
@@ -640,7 +640,7 @@ namespace InvoiceManagement.Services
                 {
                     Category = "Appearance",
                     SettingKey = "Theme_NavbarStyle",
-                    SettingValue = "bg-primary",
+                    SettingValue = "bg-gradient-primary",
                     Description = "Navbar style: bg-primary, bg-dark, bg-gradient, bg-white",
                     ModifiedBy = "System"
                 },
@@ -664,7 +664,7 @@ namespace InvoiceManagement.Services
                 {
                     Category = "Appearance",
                     SettingKey = "Theme_FontFamily",
-                    SettingValue = "System Default",
+                    SettingValue = "Inter",
                     Description = "Font family: System Default, Inter, Poppins, Roboto, etc.",
                     ModifiedBy = "System"
                 },

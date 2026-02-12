@@ -295,6 +295,28 @@ using (var scope = app.Services.CreateScope())
         await adminService.InitializeDefaultSettingsAsync();
         Console.WriteLine("System settings initialized successfully");
 
+        // One-time migration: Update old Bootstrap defaults to modern theme values
+        var themeUpdates = new Dictionary<string, (string OldValue, string NewValue)>
+        {
+            { "Theme_PrimaryColor", ("#0d6efd", "#667eea") },
+            { "Theme_AccentColor", ("#0dcaf0", "#764ba2") },
+            { "Theme_NavbarStyle", ("bg-primary", "bg-gradient-primary") },
+            { "Theme_SidebarStyle", ("light", "dark") },
+            { "Theme_FontFamily", ("System Default", "Inter") }
+        };
+        foreach (var kvp in themeUpdates)
+        {
+            var setting = await db.SystemSettings.FirstOrDefaultAsync(s => s.SettingKey == kvp.Key && s.SettingValue == kvp.Value.OldValue);
+            if (setting != null)
+            {
+                setting.SettingValue = kvp.Value.NewValue;
+                setting.ModifiedDate = DateTime.Now;
+                setting.ModifiedBy = "System (Theme Upgrade)";
+            }
+        }
+        await db.SaveChangesAsync();
+        Console.WriteLine("Theme defaults updated to modern values");
+
         // Set default password for users who have no password set
         var usersWithoutPassword = db.Users.Where(u => string.IsNullOrEmpty(u.PasswordHash)).ToList();
         if (usersWithoutPassword.Any())
