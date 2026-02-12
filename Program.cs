@@ -44,6 +44,9 @@ builder.Services.AddControllersWithViews(options =>
     // Add currency view data filter to make currency settings available in all views
     options.Filters.Add<InvoiceManagement.Filters.CurrencyViewDataFilter>();
 
+    // Add appearance/branding filter to inject theme, logo, header/footer settings into all views
+    options.Filters.Add<InvoiceManagement.Filters.AppearanceViewDataFilter>();
+
     // Add maintenance mode filter to redirect non-admin users when maintenance is active
     options.Filters.Add<InvoiceManagement.Filters.MaintenanceModeFilter>();
 })

@@ -1,26 +1,75 @@
+@{
+    var appName = ViewData["AppName"] as string ?? "Invoice Management System";
+    var faviconUrl = ViewData["Branding_FaviconUrl"] as string ?? "";
+    var logoUrl = ViewData["Branding_LogoUrl"] as string ?? "";
+    var primaryColor = ViewData["Theme_PrimaryColor"] as string ?? "#0d6efd";
+    var secondaryColor = ViewData["Theme_SecondaryColor"] as string ?? "#6c757d";
+    var accentColor = ViewData["Theme_AccentColor"] as string ?? "#198754";
+    var dangerColor = ViewData["Theme_DangerColor"] as string ?? "#dc3545";
+    var warningColor = ViewData["Theme_WarningColor"] as string ?? "#ffc107";
+    var navbarStyle = ViewData["Theme_NavbarStyle"] as string ?? "bg-primary";
+    var sidebarStyle = ViewData["Theme_SidebarStyle"] as string ?? "light";
+    var fontFamily = ViewData["Theme_FontFamily"] as string ?? "Segoe UI";
+    var showSearch = ViewData["Header_ShowSearch"] is bool hs ? hs : true;
+    var showQuickAdd = ViewData["Header_ShowQuickAdd"] is bool qa ? qa : true;
+    var announcementText = ViewData["Header_AnnouncementText"] as string ?? "";
+    var announcementType = ViewData["Header_AnnouncementType"] as string ?? "info";
+    var showFooter = ViewData["Footer_Show"] is bool sf ? sf : true;
+    var footerText = (ViewData["Footer_Text"] as string ?? "© {year} Invoice Management System. All rights reserved.").Replace("{year}", DateTime.Now.Year.ToString());
+    var footerShowVersion = ViewData["Footer_ShowVersion"] is bool fv ? fv : true;
+    var footerLeftLinks = ViewData["Footer_LeftLinks"] as string ?? "";
+    var footerRightLinks = ViewData["Footer_RightLinks"] as string ?? "";
+
+    var navbarBg = navbarStyle switch {
+        "bg-dark" => "#212529",
+        "bg-success" => accentColor,
+        "bg-purple" => "#6f42c1",
+        "bg-danger" => dangerColor,
+        "bg-gradient-primary" => primaryColor,
+        _ => primaryColor
+    };
+    var navbarGradient = navbarStyle == "bg-gradient-primary"
+        ? $"linear-gradient(135deg, {primaryColor}, {accentColor})"
+        : navbarBg;
+
+    var isLoggedIn = Context.Session.GetInt32("UserId").HasValue;
+    var userRole = Context.Session.GetString("Role") ?? "";
+    var isAdmin = userRole == "Admin" || userRole == "SystemAdmin";
+}
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Invoice Management System</title>
-    <link rel="icon" type="image/svg+xml"
-        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📄</text></svg>">
+    <title>@ViewData["Title"] - @appName</title>
+    @if (!string.IsNullOrEmpty(faviconUrl))
+    {
+        <link rel="icon" href="@faviconUrl" />
+    }
+    else
+    {
+        <link rel="icon" type="image/svg+xml"
+              href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📄</text></svg>">
+    }
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    @if (fontFamily != "Segoe UI" && fontFamily != "system-ui")
+    {
+        <link href="https://fonts.googleapis.com/css2?family=@(fontFamily.Replace(" ", "+"))&display=swap" rel="stylesheet">
+    }
     <style>
         :root {
-            --primary-color: #0d6efd;
-            --secondary-color: #6c757d;
-            --success-color: #198754;
-            --danger-color: #dc3545;
-            --warning-color: #ffc107;
+            --primary-color: @primaryColor;
+            --secondary-color: @secondaryColor;
+            --success-color: @accentColor;
+            --danger-color: @dangerColor;
+            --warning-color: @warningColor;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: '@fontFamily', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
         .sidebar {
@@ -31,7 +80,7 @@
             z-index: 100;
             padding: 0;
             box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
-            background-color: #f8f9fa;
+            background-color: @(sidebarStyle == "dark" ? "#1e293b" : "#f8f9fa");
         }
 
         .sidebar-sticky {
@@ -45,19 +94,19 @@
 
         .sidebar .nav-link {
             font-weight: 500;
-            color: #333;
+            color: @(sidebarStyle == "dark" ? "#cbd5e1" : "#333");
             padding: 12px 20px;
             transition: all 0.3s;
         }
 
         .sidebar .nav-link:hover {
             color: var(--primary-color);
-            background-color: #e9ecef;
+            background-color: @(sidebarStyle == "dark" ? "#334155" : "#e9ecef");
         }
 
         .sidebar .nav-link.active {
             color: var(--primary-color);
-            background-color: #e7f1ff;
+            background-color: @(sidebarStyle == "dark" ? "#1e3a5f" : "#e7f1ff");
             border-left: 3px solid var(--primary-color);
         }
 
@@ -132,17 +181,20 @@
 </head>
 
 <body>
-    @{
-        var isLoggedIn = Context.Session.GetInt32("UserId").HasValue;
-        var userRole = Context.Session.GetString("Role") ?? "";
-        var isAdmin = userRole == "Admin" || userRole == "SystemAdmin";
-    }
     
     <!-- Top Navigation Bar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top shadow">
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top shadow" style="background: @(navbarStyle == "bg-gradient-primary" ? navbarGradient : navbarBg);">
         <div class="container-fluid">
             <a class="navbar-brand d-flex align-items-center" href="/">
-                <i class="bi bi-receipt me-2"></i> Invoice Manager
+                @if (!string.IsNullOrEmpty(logoUrl))
+                {
+                    <img src="@logoUrl" alt="@appName" style="height: 28px; max-width: 140px; object-fit: contain;" class="me-2" />
+                }
+                else
+                {
+                    <i class="bi bi-receipt me-2"></i>
+                }
+                @appName
             </a>
 
             @if (isLoggedIn)
@@ -214,6 +266,8 @@
                         </li>
                     </ul>
 
+                    @if (showSearch)
+                    {
                     <!-- Search Bar -->
                     <form class="d-flex me-3" asp-controller="Invoices" asp-action="Index" method="get">
                         <div class="input-group input-group-sm">
@@ -222,7 +276,10 @@
                             <button class="btn btn-light" type="submit"><i class="bi bi-search"></i></button>
                         </div>
                     </form>
+                    }
 
+                    @if (showQuickAdd)
+                    {
                     <!-- Quick Actions -->
                     <div class="dropdown me-3">
                         <button class="btn btn-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
@@ -251,6 +308,7 @@
                                         class="bi bi-folder2-open text-secondary"></i> Document Library</a></li>
                         </ul>
                     </div>
+                    }
 
                     <!-- User Menu -->
                     <div class="dropdown">
@@ -297,6 +355,14 @@
             <a asp-controller="Admin" asp-action="Settings" class="btn btn-sm btn-light fw-semibold">
                 <i class="bi bi-gear-fill"></i> Manage Settings
             </a>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(announcementText))
+    {
+        <div class="alert alert-@announcementType alert-dismissible mb-0 rounded-0 py-2 px-3 text-center border-0" role="alert" style="z-index: 1039;">
+            <i class="bi bi-megaphone me-1"></i> @announcementText
+            <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     }
 
@@ -485,6 +551,12 @@
                                         System Settings
                                     </a>
                                 </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" asp-controller="Admin" asp-action="Appearance">
+                                        <i class="bi bi-palette2"></i>
+                                        Appearance
+                                    </a>
+                                </li>
                             </ul>
                         }
                     </div>
@@ -512,6 +584,49 @@
             </main>
         </div>
     </div>
+
+    @if (showFooter && isLoggedIn)
+    {
+        <footer class="border-top py-3 mt-4" style="margin-left: 240px; background: #f8f9fa;">
+            <div class="container-fluid px-4">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-3">
+                        <small class="text-muted">@footerText</small>
+                        @{
+                            try {
+                                if (!string.IsNullOrEmpty(footerLeftLinks) && footerLeftLinks.StartsWith("[")) {
+                                    var links = System.Text.Json.JsonSerializer.Deserialize<List<Dictionary<string, string>>>(footerLeftLinks);
+                                    if (links != null) {
+                                        foreach (var link in links) {
+                                            <a href="@link.GetValueOrDefault("url", "#")" class="text-muted text-decoration-none ms-2"><small>@link.GetValueOrDefault("text", "")</small></a>
+                                        }
+                                    }
+                                }
+                            } catch { }
+                        }
+                    </div>
+                    <div class="d-flex align-items-center gap-3">
+                        @{
+                            try {
+                                if (!string.IsNullOrEmpty(footerRightLinks) && footerRightLinks.StartsWith("[")) {
+                                    var rlinks = System.Text.Json.JsonSerializer.Deserialize<List<Dictionary<string, string>>>(footerRightLinks);
+                                    if (rlinks != null) {
+                                        foreach (var link in rlinks) {
+                                            <a href="@link.GetValueOrDefault("url", "#")" class="text-muted text-decoration-none"><small>@link.GetValueOrDefault("text", "")</small></a>
+                                        }
+                                    }
+                                }
+                            } catch { }
+                        }
+                        @if (footerShowVersion)
+                        {
+                            <small class="text-muted"><i class="bi bi-code-slash me-1"></i>v2.5.0</small>
+                        }
+                    </div>
+                </div>
+            </div>
+        </footer>
+    }
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>

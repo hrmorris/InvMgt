@@ -1,0 +1,1008 @@
+@model InvoiceManagement.Models.ViewModels.AppearanceViewModel
+
+@{
+    ViewData["Title"] = "Appearance & Branding";
+}
+
+<style>
+    .appearance-hero {
+        background: linear-gradient(135deg,
+                @Model.PrimaryColor
+                0%,
+                @Model.AccentColor
+                100%);
+        border-radius: 16px;
+        padding: 2rem;
+        color: white;
+        margin-bottom: 1.5rem;
+    }
+
+    .appearance-hero h1 {
+        font-weight: 700;
+    }
+
+    .nav-pills-custom .nav-link {
+        border-radius: 12px;
+        padding: 0.75rem 1.25rem;
+        font-weight: 600;
+        color: #495057;
+        transition: all 0.2s;
+        border: 1px solid transparent;
+    }
+
+    .nav-pills-custom .nav-link:hover {
+        background: #f0f4ff;
+        color:
+            @Model.PrimaryColor
+        ;
+    }
+
+    .nav-pills-custom .nav-link.active {
+        background:
+            @Model.PrimaryColor
+        ;
+        color: white;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .nav-pills-custom .nav-link i {
+        font-size: 1.1rem;
+    }
+
+    .settings-card {
+        border: 1px solid #e9ecef;
+        border-radius: 16px;
+        background: white;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+        transition: box-shadow 0.3s;
+    }
+
+    .settings-card:hover {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        transform: none;
+    }
+
+    .settings-card .card-header {
+        background: transparent;
+        border-bottom: 1px solid #f0f0f0;
+        padding: 1.25rem 1.5rem;
+        font-weight: 700;
+    }
+
+    .settings-card .card-body {
+        padding: 1.5rem;
+    }
+
+    .color-swatch {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        border: 3px solid #e9ecef;
+        cursor: pointer;
+        transition: transform 0.2s, border-color 0.2s;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .color-swatch:hover {
+        transform: scale(1.1);
+        border-color:
+            @Model.PrimaryColor
+        ;
+    }
+
+    .color-swatch input[type="color"] {
+        position: absolute;
+        inset: -10px;
+        width: calc(100% + 20px);
+        height: calc(100% + 20px);
+        border: none;
+        cursor: pointer;
+        padding: 0;
+    }
+
+    .upload-zone {
+        border: 2px dashed #d1d5db;
+        border-radius: 16px;
+        padding: 2rem;
+        text-align: center;
+        transition: all 0.3s;
+        background: #fafbfc;
+        cursor: pointer;
+    }
+
+    .upload-zone:hover {
+        border-color:
+            @Model.PrimaryColor
+        ;
+        background: #f0f4ff;
+    }
+
+    .upload-zone.dragover {
+        border-color:
+            @Model.PrimaryColor
+        ;
+        background: #e8f0fe;
+    }
+
+    .upload-zone i.upload-icon {
+        font-size: 2.5rem;
+        color: #9ca3af;
+    }
+
+    .preview-box {
+        width: 120px;
+        height: 120px;
+        border-radius: 16px;
+        border: 2px solid #e9ecef;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        background: #f8f9fa;
+    }
+
+    .preview-box img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+    }
+
+    .toggle-switch {
+        position: relative;
+        width: 52px;
+        height: 28px;
+    }
+
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        inset: 0;
+        background: #d1d5db;
+        border-radius: 28px;
+        transition: 0.3s;
+    }
+
+    .toggle-slider::before {
+        content: '';
+        position: absolute;
+        height: 22px;
+        width: 22px;
+        left: 3px;
+        bottom: 3px;
+        background: white;
+        border-radius: 50%;
+        transition: 0.3s;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+
+    .toggle-switch input:checked+.toggle-slider {
+        background:
+            @Model.PrimaryColor
+        ;
+    }
+
+    .toggle-switch input:checked+.toggle-slider::before {
+        transform: translateX(24px);
+    }
+
+    .widget-card {
+        border: 2px solid #e9ecef;
+        border-radius: 14px;
+        padding: 1.25rem;
+        transition: all 0.2s;
+        cursor: pointer;
+        background: white;
+    }
+
+    .widget-card:hover {
+        border-color:
+            @Model.PrimaryColor
+        ;
+    }
+
+    .widget-card.active {
+        border-color:
+            @Model.PrimaryColor
+        ;
+        background: #f0f4ff;
+    }
+
+    .widget-card .widget-icon {
+        font-size: 1.8rem;
+    }
+
+    .preset-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 3px solid #e9ecef;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .preset-btn:hover {
+        transform: scale(1.15);
+        border-color: #333;
+    }
+
+    .preset-btn.active-preset {
+        border-color: #333;
+        box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.2);
+    }
+
+    .section-label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #6b7280;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-control,
+    .form-select {
+        border-radius: 10px;
+        border-color: #d1d5db;
+        padding: 0.6rem 0.9rem;
+    }
+
+    .form-control:focus,
+    .form-select:focus {
+        border-color:
+            @Model.PrimaryColor
+        ;
+        box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
+    }
+
+    .navbar-preview {
+        border-radius: 10px;
+        padding: 0.5rem 1rem;
+        color: white;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+</style>
+
+<!-- Hero Banner -->
+<div class="appearance-hero">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <h1 class="mb-1"><i class="bi bi-palette2 me-2"></i> Appearance & Branding</h1>
+            <p class="mb-0 opacity-75">Customize the look and feel of your Invoice Management System</p>
+        </div>
+        <div class="d-flex gap-2">
+            <form asp-action="ResetAppearance" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-outline-light btn-sm"
+                        onclick="return confirm('Reset all appearance settings to factory defaults?')">
+                    <i class="bi bi-arrow-counterclockwise"></i> Reset All
+                </button>
+            </form>
+            <a asp-action="Settings" class="btn btn-light btn-sm fw-semibold">
+                <i class="bi bi-gear"></i> System Settings
+            </a>
+        </div>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill me-1"></i> @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-1"></i> @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- Navigation Pills -->
+<ul class="nav nav-pills nav-pills-custom mb-4 flex-nowrap overflow-auto" id="appearanceTabs" role="tablist">
+    <li class="nav-item me-2">
+        <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#themeTab" type="button">
+            <i class="bi bi-palette me-1"></i> Theme
+        </button>
+    </li>
+    <li class="nav-item me-2">
+        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#brandingTab" type="button">
+            <i class="bi bi-brush me-1"></i> Branding
+        </button>
+    </li>
+    <li class="nav-item me-2">
+        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#headerFooterTab" type="button">
+            <i class="bi bi-layout-wtf me-1"></i> Header & Footer
+        </button>
+    </li>
+    <li class="nav-item me-2">
+        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#widgetsTab" type="button">
+            <i class="bi bi-grid-1x2 me-1"></i> Widgets
+        </button>
+    </li>
+</ul>
+
+<!-- Tab Content -->
+<div class="tab-content" id="appearanceTabContent">
+
+    <!-- ===== THEME TAB ===== -->
+    <div class="tab-pane fade show active" id="themeTab">
+        <form asp-action="SaveTheme" method="post">
+            @Html.AntiForgeryToken()
+            <div class="row g-4">
+                <!-- Color Palette -->
+                <div class="col-lg-8">
+                    <div class="settings-card card">
+                        <div class="card-header d-flex align-items-center">
+                            <i class="bi bi-droplet-half me-2 text-primary"></i> Color Palette
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-4">
+                                <div class="col-sm-6 col-md-4">
+                                    <div class="section-label">Primary</div>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="color-swatch" style="background: @Model.PrimaryColor;">
+                                            <input type="color" name="PrimaryColor" value="@Model.PrimaryColor"
+                                                   onchange="this.parentElement.style.background=this.value" />
+                                        </div>
+                                        <input type="text" class="form-control form-control-sm"
+                                               style="width:100px;font-family:monospace;" value="@Model.PrimaryColor"
+                                               oninput="this.previousElementSibling.querySelector('input').value=this.value;this.previousElementSibling.style.background=this.value" />
+                                    </div>
+                                </div>
+                                <div class="col-sm-6 col-md-4">
+                                    <div class="section-label">Secondary</div>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="color-swatch" style="background: @Model.SecondaryColor;">
+                                            <input type="color" name="SecondaryColor" value="@Model.SecondaryColor"
+                                                   onchange="this.parentElement.style.background=this.value" />
+                                        </div>
+                                        <input type="text" class="form-control form-control-sm"
+                                               style="width:100px;font-family:monospace;" value="@Model.SecondaryColor"
+                                               oninput="this.previousElementSibling.querySelector('input').value=this.value;this.previousElementSibling.style.background=this.value" />
+                                    </div>
+                                </div>
+                                <div class="col-sm-6 col-md-4">
+                                    <div class="section-label">Accent / Success</div>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="color-swatch" style="background: @Model.AccentColor;">
+                                            <input type="color" name="AccentColor" value="@Model.AccentColor"
+                                                   onchange="this.parentElement.style.background=this.value" />
+                                        </div>
+                                        <input type="text" class="form-control form-control-sm"
+                                               style="width:100px;font-family:monospace;" value="@Model.AccentColor"
+                                               oninput="this.previousElementSibling.querySelector('input').value=this.value;this.previousElementSibling.style.background=this.value" />
+                                    </div>
+                                </div>
+                                <div class="col-sm-6 col-md-4">
+                                    <div class="section-label">Danger</div>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="color-swatch" style="background: @Model.DangerColor;">
+                                            <input type="color" name="DangerColor" value="@Model.DangerColor"
+                                                   onchange="this.parentElement.style.background=this.value" />
+                                        </div>
+                                        <input type="text" class="form-control form-control-sm"
+                                               style="width:100px;font-family:monospace;" value="@Model.DangerColor"
+                                               oninput="this.previousElementSibling.querySelector('input').value=this.value;this.previousElementSibling.style.background=this.value" />
+                                    </div>
+                                </div>
+                                <div class="col-sm-6 col-md-4">
+                                    <div class="section-label">Warning</div>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="color-swatch" style="background: @Model.WarningColor;">
+                                            <input type="color" name="WarningColor" value="@Model.WarningColor"
+                                                   onchange="this.parentElement.style.background=this.value" />
+                                        </div>
+                                        <input type="text" class="form-control form-control-sm"
+                                               style="width:100px;font-family:monospace;" value="@Model.WarningColor"
+                                               oninput="this.previousElementSibling.querySelector('input').value=this.value;this.previousElementSibling.style.background=this.value" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr class="my-4" />
+
+                            <!-- Presets -->
+                            <div class="section-label">Quick Presets</div>
+                            <div class="d-flex gap-2 flex-wrap">
+                                <button type="button" class="preset-btn"
+                                        style="background: linear-gradient(135deg, #0d6efd, #198754);" title="Default Blue"
+                                        onclick="applyPreset('#0d6efd','#6c757d','#198754','#dc3545','#ffc107')"></button>
+                                <button type="button" class="preset-btn"
+                                        style="background: linear-gradient(135deg, #6f42c1, #e83e8c);" title="Purple Rose"
+                                        onclick="applyPreset('#6f42c1','#495057','#e83e8c','#dc3545','#fd7e14')"></button>
+                                <button type="button" class="preset-btn"
+                                        style="background: linear-gradient(135deg, #0dcaf0, #20c997);" title="Teal Fresh"
+                                        onclick="applyPreset('#0dcaf0','#6c757d','#20c997','#dc3545','#ffc107')"></button>
+                                <button type="button" class="preset-btn"
+                                        style="background: linear-gradient(135deg, #212529, #495057);" title="Dark Mode"
+                                        onclick="applyPreset('#212529','#495057','#198754','#dc3545','#ffc107')"></button>
+                                <button type="button" class="preset-btn"
+                                        style="background: linear-gradient(135deg, #d63384, #6f42c1);" title="Berry"
+                                        onclick="applyPreset('#d63384','#6c757d','#6f42c1','#dc3545','#fd7e14')"></button>
+                                <button type="button" class="preset-btn"
+                                        style="background: linear-gradient(135deg, #fd7e14, #ffc107);" title="Sunset"
+                                        onclick="applyPreset('#fd7e14','#6c757d','#198754','#dc3545','#ffc107')"></button>
+                                <button type="button" class="preset-btn"
+                                        style="background: linear-gradient(135deg, #198754, #0d6efd);" title="Forest"
+                                        onclick="applyPreset('#198754','#495057','#0d6efd','#dc3545','#ffc107')"></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Style Options -->
+                <div class="col-lg-4">
+                    <div class="settings-card card mb-4">
+                        <div class="card-header d-flex align-items-center">
+                            <i class="bi bi-layout-sidebar me-2 text-primary"></i> Layout Style
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <div class="section-label">Navbar</div>
+                                <select name="NavbarStyle" class="form-select form-select-sm">
+                                    <option value="bg-primary" selected="@(Model.NavbarStyle == "bg-primary")">Blue
+                                        (Default)</option>
+                                        <option value="bg-dark" selected="@(Model.NavbarStyle == "bg-dark")">Dark</option>
+                                        <option value="bg-success" selected="@(Model.NavbarStyle == "bg-success")">Green
+                                        </option>
+                                        <option value="bg-purple" selected="@(Model.NavbarStyle == "bg-purple")">Purple
+                                        </option>
+                                        <option value="bg-danger" selected="@(Model.NavbarStyle == "bg-danger")">Red
+                                        </option>
+                                        <option value="bg-gradient-primary"
+                                                selected="@(Model.NavbarStyle == "bg-gradient-primary")">Gradient</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <div class="section-label">Sidebar</div>
+                                    <select name="SidebarStyle" class="form-select form-select-sm">
+                                        <option value="light" selected="@(Model.SidebarStyle == "light")">Light</option>
+                                        <option value="dark" selected="@(Model.SidebarStyle == "dark")">Dark</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <div class="section-label">Card Style</div>
+                                    <select name="CardStyle" class="form-select form-select-sm">
+                                        <option value="shadow" selected="@(Model.CardStyle == "shadow")">Shadow (Default)
+                                        </option>
+                                        <option value="bordered" selected="@(Model.CardStyle == "bordered")">Bordered
+                                        </option>
+                                        <option value="flat" selected="@(Model.CardStyle == "flat")">Flat</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <div class="section-label">Font Family</div>
+                                    <select name="FontFamily" class="form-select form-select-sm">
+                                        <option value="Segoe UI" selected="@(Model.FontFamily == "Segoe UI")">Segoe UI
+                                        </option>
+                                        <option value="Inter" selected="@(Model.FontFamily == "Inter")">Inter</option>
+                                        <option value="Roboto" selected="@(Model.FontFamily == "Roboto")">Roboto</option>
+                                        <option value="Poppins" selected="@(Model.FontFamily == "Poppins")">Poppins</option>
+                                        <option value="Open Sans" selected="@(Model.FontFamily == "Open Sans")">Open Sans
+                                        </option>
+                                        <option value="system-ui" selected="@(Model.FontFamily == "system-ui")">System
+                                            Default</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Live Preview -->
+                            <div class="settings-card card">
+                                <div class="card-header d-flex align-items-center">
+                                    <i class="bi bi-eye me-2 text-primary"></i> Live Preview
+                                </div>
+                                <div class="card-body">
+                                    <div id="themePreview">
+                                        <div class="navbar-preview mb-2" style="background: @Model.PrimaryColor;">
+                                            <i class="bi bi-receipt me-1"></i> Invoice Manager
+                                        </div>
+                                        <div class="d-flex gap-1 mb-2">
+                                            <span class="badge" style="background: @Model.PrimaryColor;">Primary</span>
+                                            <span class="badge" style="background: @Model.AccentColor;">Success</span>
+                                            <span class="badge" style="background: @Model.DangerColor;">Danger</span>
+                                            <span class="badge"
+                                                  style="background: @Model.WarningColor; color: #333;">Warning</span>
+                                        </div>
+                                        <div class="p-2 rounded border" style="font-size: 0.8rem;">
+                                            <div class="d-flex justify-content-between">
+                                                <span style="color: @Model.PrimaryColor; font-weight: 600;">INV-001</span>
+                                                <span class="badge" style="background: @Model.AccentColor;">Paid</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg px-4">
+                            <i class="bi bi-check-lg me-1"></i> Save Theme
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- ===== BRANDING TAB ===== -->
+            <div class="tab-pane fade" id="brandingTab">
+                <div class="row g-4">
+                    <!-- App Name & Tagline -->
+                    <div class="col-lg-6">
+                        <div class="settings-card card">
+                            <div class="card-header"><i class="bi bi-type-h1 me-2 text-primary"></i> Application Identity</div>
+                            <div class="card-body">
+                                <form asp-action="SaveBranding" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Application Name</label>
+                                        <input type="text" name="ApplicationName" class="form-control"
+                                               value="@Model.ApplicationName" placeholder="Invoice Management System" />
+                                        <div class="form-text">Displayed in the navbar, browser title, and footer.</div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Tagline</label>
+                                        <input type="text" name="TagLine" class="form-control" value="@Model.TagLine"
+                                               placeholder="e.g., Streamlined Financial Management" />
+                                        <div class="form-text">Short description shown below the app name.</div>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-check-lg me-1"></i> Save Identity
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Logo Upload -->
+                    <div class="col-lg-6">
+                        <div class="settings-card card">
+                            <div class="card-header"><i class="bi bi-image me-2 text-primary"></i> Application Logo</div>
+                            <div class="card-body">
+                                <div class="d-flex align-items-start gap-4 mb-3">
+                                    <div class="preview-box">
+                                        @if (!string.IsNullOrEmpty(Model.LogoUrl))
+                                        {
+                                            <img src="@Model.LogoUrl" alt="Logo" id="logoPreview" />
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-image text-muted" style="font-size: 2.5rem;" id="logoPlaceholder"></i>
+                                            <img src="" alt="Logo" id="logoPreview" class="d-none" />
+                                        }
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <form asp-action="UploadLogo" method="post" enctype="multipart/form-data" id="logoForm">
+                                            @Html.AntiForgeryToken()
+                                            <div class="upload-zone" onclick="document.getElementById('logoFile').click()"
+                                                 id="logoDropZone">
+                                                <i class="bi bi-cloud-arrow-up upload-icon d-block mb-2"></i>
+                                                <span class="text-muted">Click or drag & drop logo here</span>
+                                                <br /><small class="text-muted">PNG, JPG, SVG, WebP • Max 2 MB</small>
+                                                <input type="file" name="logoFile" id="logoFile" class="d-none"
+                                                       accept=".png,.jpg,.jpeg,.svg,.webp,.gif"
+                                                       onchange="previewFile(this, 'logoPreview', 'logoPlaceholder'); this.form.submit();" />
+                                            </div>
+                                        </form>
+                                        @if (!string.IsNullOrEmpty(Model.LogoUrl))
+                                        {
+                                            <form asp-action="RemoveLogo" method="post" class="mt-2">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-outline-danger btn-sm"
+                                                        onclick="return confirm('Remove the current logo?')">
+                                                    <i class="bi bi-trash me-1"></i> Remove Logo
+                                                </button>
+                                            </form>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Favicon Upload -->
+                    <div class="col-lg-6">
+                        <div class="settings-card card">
+                            <div class="card-header"><i class="bi bi-star me-2 text-primary"></i> Favicon</div>
+                            <div class="card-body">
+                                <div class="d-flex align-items-start gap-4 mb-3">
+                                    <div class="preview-box" style="width: 80px; height: 80px;">
+                                        @if (!string.IsNullOrEmpty(Model.FaviconUrl))
+                                        {
+                                            <img src="@Model.FaviconUrl" alt="Favicon" id="faviconPreview" />
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-star text-muted" style="font-size: 2rem;" id="faviconPlaceholder"></i>
+                                            <img src="" alt="Favicon" id="faviconPreview" class="d-none" />
+                                        }
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <form asp-action="UploadFavicon" method="post" enctype="multipart/form-data"
+                                              id="faviconForm">
+                                            @Html.AntiForgeryToken()
+                                            <div class="upload-zone" onclick="document.getElementById('faviconFile').click()"
+                                                 id="faviconDropZone">
+                                                <i class="bi bi-cloud-arrow-up upload-icon d-block mb-2"></i>
+                                                <span class="text-muted">Click or drag & drop favicon</span>
+                                                <br /><small class="text-muted">ICO, PNG, SVG • Max 512 KB</small>
+                                                <input type="file" name="faviconFile" id="faviconFile" class="d-none"
+                                                       accept=".ico,.png,.svg"
+                                                       onchange="previewFile(this, 'faviconPreview', 'faviconPlaceholder'); this.form.submit();" />
+                                            </div>
+                                        </form>
+                                        @if (!string.IsNullOrEmpty(Model.FaviconUrl))
+                                        {
+                                            <form asp-action="RemoveFavicon" method="post" class="mt-2">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-outline-danger btn-sm"
+                                                        onclick="return confirm('Remove the current favicon?')">
+                                                    <i class="bi bi-trash me-1"></i> Remove Favicon
+                                                </button>
+                                            </form>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Current Branding Summary -->
+                    <div class="col-lg-6">
+                        <div class="settings-card card">
+                            <div class="card-header"><i class="bi bi-info-circle me-2 text-primary"></i> Current Branding</div>
+                            <div class="card-body">
+                                <table class="table table-sm mb-0">
+                                    <tr>
+                                        <td class="text-muted fw-semibold" style="width: 40%;">App Name</td>
+                                        <td>@Model.ApplicationName</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted fw-semibold">Tagline</td>
+                                        <td>@(string.IsNullOrEmpty(Model.TagLine) ? "—" : Model.TagLine)</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted fw-semibold">Logo</td>
+                                        <td>
+                                            @if (!string.IsNullOrEmpty(Model.LogoUrl))
+                                            {
+                                                <span class="badge bg-success"><i class="bi bi-check"></i> Uploaded</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary">Default icon</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted fw-semibold">Favicon</td>
+                                        <td>
+                                            @if (!string.IsNullOrEmpty(Model.FaviconUrl))
+                                            {
+                                                <span class="badge bg-success"><i class="bi bi-check"></i> Uploaded</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary">Default emoji</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== HEADER & FOOTER TAB ===== -->
+            <div class="tab-pane fade" id="headerFooterTab">
+                <form asp-action="SaveHeaderFooter" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="row g-4">
+                        <!-- Header Settings -->
+                        <div class="col-lg-6">
+                            <div class="settings-card card">
+                                <div class="card-header"><i class="bi bi-layout-text-window me-2 text-primary"></i> Header
+                                    Configuration</div>
+                                    <div class="card-body">
+                                        <div class="mb-3 d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <div class="fw-semibold">Search Bar</div>
+                                                <small class="text-muted">Show the invoice search bar in the navbar</small>
+                                            </div>
+                                            <label class="toggle-switch">
+                                                <input type="checkbox" name="ShowHeaderSearch" value="true"
+                                                       checked="@Model.ShowHeaderSearch" />
+                                                <span class="toggle-slider"></span>
+                                            </label>
+                                        </div>
+                                        <hr />
+                                        <div class="mb-3 d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <div class="fw-semibold">Quick Add Menu</div>
+                                                <small class="text-muted">Show the "+ Quick Add" dropdown in the navbar</small>
+                                            </div>
+                                            <label class="toggle-switch">
+                                                <input type="checkbox" name="ShowQuickAdd" value="true"
+                                                       checked="@Model.ShowQuickAdd" />
+                                                <span class="toggle-slider"></span>
+                                            </label>
+                                        </div>
+                                        <hr />
+                                        <div class="mb-3 d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <div class="fw-semibold">Notification Bell</div>
+                                                <small class="text-muted">Show notification indicator (future feature)</small>
+                                            </div>
+                                            <label class="toggle-switch">
+                                                <input type="checkbox" name="ShowHeaderNotifications" value="true"
+                                                       checked="@Model.ShowHeaderNotifications" />
+                                                <span class="toggle-slider"></span>
+                                            </label>
+                                        </div>
+                                        <hr />
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold">Announcement Banner</label>
+                                            <input type="text" name="HeaderAnnouncementText" class="form-control"
+                                                   value="@Model.HeaderAnnouncementText"
+                                                   placeholder="e.g., System update scheduled for tonight at 10 PM" />
+                                            <div class="form-text">Leave empty to hide the announcement bar.</div>
+                                        </div>
+                                        <div>
+                                            <label class="form-label fw-semibold">Banner Type</label>
+                                            <select name="HeaderAnnouncementType" class="form-select form-select-sm">
+                                                <option value="info" selected="@(Model.HeaderAnnouncementType == "info")">ℹ️ Info
+                                                    (Blue)</option>
+                                                    <option value="warning" selected="@(Model.HeaderAnnouncementType == "warning")">⚠️
+                                                        Warning (Yellow)</option>
+                                                        <option value="success" selected="@(Model.HeaderAnnouncementType == "success")">✅
+                                                            Success (Green)</option>
+                                                            <option value="danger" selected="@(Model.HeaderAnnouncementType == "danger")">🚨
+                                                                Danger (Red)</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Footer Settings -->
+                                            <div class="col-lg-6">
+                                                <div class="settings-card card">
+                                                    <div class="card-header"><i class="bi bi-layout-text-window-reverse me-2 text-primary"></i>
+                                                        Footer Configuration</div>
+                                                        <div class="card-body">
+                                                            <div class="mb-3 d-flex justify-content-between align-items-center">
+                                                                <div>
+                                                                    <div class="fw-semibold">Show Footer</div>
+                                                                    <small class="text-muted">Display a footer bar at the bottom of every page</small>
+                                                                </div>
+                                                                <label class="toggle-switch">
+                                                                    <input type="checkbox" name="ShowFooter" value="true" checked="@Model.ShowFooter" />
+                                                                    <span class="toggle-slider"></span>
+                                                                </label>
+                                                            </div>
+                                                            <hr />
+                                                            <div class="mb-3">
+                                                                <label class="form-label fw-semibold">Footer Text</label>
+                                                                <input type="text" name="FooterText" class="form-control" value="@Model.FooterText"
+                                                                       placeholder="© {year} Your Company. All rights reserved." />
+                                                                <div class="form-text">Use <code>{year}</code> for the current year.</div>
+                                                            </div>
+                                                            <hr />
+                                                            <div class="mb-3 d-flex justify-content-between align-items-center">
+                                                                <div>
+                                                                    <div class="fw-semibold">Show Version</div>
+                                                                    <small class="text-muted">Display app version in the footer</small>
+                                                                </div>
+                                                                <label class="toggle-switch">
+                                                                    <input type="checkbox" name="ShowFooterVersion" value="true"
+                                                                           checked="@Model.ShowFooterVersion" />
+                                                                    <span class="toggle-slider"></span>
+                                                                </label>
+                                                            </div>
+                                                            <hr />
+                                                            <div class="mb-3">
+                                                                <label class="form-label fw-semibold">Left Links (JSON)</label>
+                                                                <textarea name="FooterLeftLinks" class="form-control" rows="2"
+                                                                          placeholder='[{"text":"Privacy","url":"/privacy"},{"text":"Terms","url":"/terms"}]'>@Model.FooterLeftLinks</textarea>
+                                                                <div class="form-text">JSON array of <code>{"text":"...", "url":"..."}</code> objects.
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <label class="form-label fw-semibold">Right Links (JSON)</label>
+                                                                <textarea name="FooterRightLinks" class="form-control" rows="2"
+                                                                          placeholder='[{"text":"Help","url":"/help"}]'>@Model.FooterRightLinks</textarea>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="mt-4 d-flex gap-2">
+                                                <button type="submit" class="btn btn-primary btn-lg px-4">
+                                                    <i class="bi bi-check-lg me-1"></i> Save Header & Footer
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+
+                                    <!-- ===== WIDGETS TAB ===== -->
+                                    <div class="tab-pane fade" id="widgetsTab">
+                                        <form asp-action="SaveWidgets" method="post">
+                                            @Html.AntiForgeryToken()
+
+                                            <div class="settings-card card mb-4">
+                                                <div class="card-header"><i class="bi bi-grid-1x2 me-2 text-primary"></i> Dashboard Widget Visibility
+                                                </div>
+                                                <div class="card-body">
+                                                    <p class="text-muted mb-4">Toggle which widgets appear on the main dashboard. Disabled widgets are
+                                                        hidden for all users.</p>
+                                                        <div class="row g-3">
+                                                            @{
+                                                                var widgets = new[] {
+                                ("WidgetTotalInvoices", Model.WidgetTotalInvoices, "bi-receipt", "Total Invoices", "Invoice                    count & totals card"),
+                                ("WidgetUnpaidAmount", Model.WidgetUnpaidAmount, "bi-cash-stack", "Unpaid Amount", "Outstanding                 balance summary"),
+                                ("WidgetRecentPayments", Model.WidgetRecentPayments, "bi-credit-card", "Recent Payments",
+                        "Latest payment activity"),
+                                ("WidgetOverdueInvoices", Model.WidgetOverdueInvoices, "bi-exclamation-triangle", "Overdue           Invoices", "Overdue invoice alerts"),
+                                ("WidgetProcurement", Model.WidgetProcurement, "bi-cart-check", "Procurement", "Requisitions &        purchase orders"),
+                                ("WidgetAuditLog", Model.WidgetAuditLog, "bi-clock-history", "Audit Log", "Recent system     activity"),
+                                ("WidgetQuickActions", Model.WidgetQuickActions, "bi-lightning", "Quick Actions", "Shortcut  buttons panel"),
+                                ("WidgetCharts", Model.WidgetCharts, "bi-bar-chart", "Charts & Analytics", "Visual data charts")
+                            };
+                                                            }
+                                                            @foreach (var (name, enabled, icon, title, desc) in widgets)
+                                                            {
+                                                                <div class="col-sm-6 col-md-4 col-lg-3">
+                                                                    <label class="widget-card d-block @(enabled ? "active" : "")" id="wc-@name">
+                                                                        <div class="d-flex align-items-start gap-3">
+                                                                            <input type="checkbox" name="@name" value="true" checked="@enabled" class="d-none"
+                                                                                   onchange="this.closest('.widget-card').classList.toggle('active', this.checked)" />
+                                                                            <div class="widget-icon"
+                                                                                 style="color: @(enabled ? Model.PrimaryColor : "#adb5bd");">
+                                                                                <i class="bi @icon"></i>
+                                                                            </div>
+                                                                            <div>
+                                                                                <div class="fw-bold" style="font-size: 0.95rem;">@title</div>
+                                                                                <small class="text-muted">@desc</small>
+                                                                            </div>
+                                                                        </div>
+                                                                    </label>
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="settings-card card mb-4">
+                                                    <div class="card-header"><i class="bi bi-layout-three-columns me-2 text-primary"></i> Dashboard Layout
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <div class="row g-3">
+                                                            <div class="col-md-4">
+                                                                <label
+                                                                    class="widget-card d-block text-center @(Model.DashboardLayout == "default" ? "active" : "")">
+                                                                    <input type="radio" name="DashboardLayout" value="default"
+                                                                           checked="@(Model.DashboardLayout == "default")" class="d-none"
+                                                                           onclick="document.querySelectorAll('[name=DashboardLayout]').forEach(r=>{r.closest('.widget-card').classList.toggle('active',r.checked)})" />
+                                                                    <i class="bi bi-grid-3x2-gap text-primary" style="font-size: 2rem;"></i>
+                                                                    <div class="fw-bold mt-2">Default</div>
+                                                                    <small class="text-muted">Standard grid layout</small>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-md-4">
+                                                                <label
+                                                                    class="widget-card d-block text-center @(Model.DashboardLayout == "compact" ? "active" : "")">
+                                                                    <input type="radio" name="DashboardLayout" value="compact"
+                                                                           checked="@(Model.DashboardLayout == "compact")" class="d-none"
+                                                                           onclick="document.querySelectorAll('[name=DashboardLayout]').forEach(r=>{r.closest('.widget-card').classList.toggle('active',r.checked)})" />
+                                                                    <i class="bi bi-grid text-primary" style="font-size: 2rem;"></i>
+                                                                    <div class="fw-bold mt-2">Compact</div>
+                                                                    <small class="text-muted">Dense, minimal spacing</small>
+                                                                </label>
+                                                            </div>
+                                                            <div class="col-md-4">
+                                                                <label
+                                                                    class="widget-card d-block text-center @(Model.DashboardLayout == "expanded" ? "active" : "")">
+                                                                    <input type="radio" name="DashboardLayout" value="expanded"
+                                                                           checked="@(Model.DashboardLayout == "expanded")" class="d-none"
+                                                                           onclick="document.querySelectorAll('[name=DashboardLayout]').forEach(r=>{r.closest('.widget-card').classList.toggle('active',r.checked)})" />
+                                                                    <i class="bi bi-grid-1x2 text-primary" style="font-size: 2rem;"></i>
+                                                                    <div class="fw-bold mt-2">Expanded</div>
+                                                                    <small class="text-muted">Large cards, more detail</small>
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="mt-4 d-flex gap-2">
+                                                    <button type="submit" class="btn btn-primary btn-lg px-4">
+                                                        <i class="bi bi-check-lg me-1"></i> Save Widget Settings
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+
+                                    @section Scripts {
+                                        <script>
+                                                // File preview
+                                                function previewFile(input, previewId, placeholderId) {
+                                                    const file = input.files[0];
+                                                    if (!file) return;
+                                                    const reader = new FileReader();
+                                                    reader.onload = (e) => {
+                                                        const preview = document.getElementById(previewId);
+                                                        const placeholder = document.getElementById(placeholderId);
+                                                        if (preview) { preview.src = e.target.result; preview.classList.remove('d-none'); }
+                                                        if (placeholder) placeholder.classList.add('d-none');
+                                                    };
+                                                    reader.readAsDataURL(file);
+                                                }
+
+                                                // Drag & drop for upload zones
+                                                document.querySelectorAll('.upload-zone').forEach(zone => {
+                                                    zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+                                                    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+                                                    zone.addEventListener('drop', (e) => {
+                                                        e.preventDefault();
+                                                        zone.classList.remove('dragover');
+                                                        const input = zone.querySelector('input[type="file"]');
+                                                        if (input && e.dataTransfer.files.length) {
+                                                            input.files = e.dataTransfer.files;
+                                                            input.dispatchEvent(new Event('change'));
+                                                        }
+                                                    });
+                                                });
+
+                                                // Theme presets
+                                                function applyPreset(primary, secondary, accent, danger, warning) {
+                                                    const colors = [
+                                                        { name: 'PrimaryColor', value: primary },
+                                                        { name: 'SecondaryColor', value: secondary },
+                                                        { name: 'AccentColor', value: accent },
+                                                        { name: 'DangerColor', value: danger },
+                                                        { name: 'WarningColor', value: warning }
+                                                    ];
+                                                    colors.forEach(c => {
+                                                        const colorInput = document.querySelector(`input[name="${c.name}"][type="color"]`);
+                                                        const textInput = colorInput?.closest('.d-flex')?.querySelector('input[type="text"]');
+                                                        if (colorInput) { colorInput.value = c.value; colorInput.parentElement.style.background = c.value; }
+                                                        if (textInput) textInput.value = c.value;
+                                                    });
+                                                    // Update preview
+                                                    const previewNavbar = document.querySelector('#themePreview .navbar-preview');
+                                                    if (previewNavbar) previewNavbar.style.background = primary;
+                                                }
+
+                                                // Auto-dismiss alerts
+                                                setTimeout(() => {
+                                                    document.querySelectorAll('.alert-success, .alert-danger').forEach(a => {
+                                                        try { new bootstrap.Alert(a).close(); } catch (e) { }
+                                                    });
+                                                }, 5000);
+
+                                                // Persist active tab
+                                                const hash = window.location.hash;
+                                                if (hash) {
+                                                    const tabBtn = document.querySelector(`[data-bs-target="${hash}"]`);
+                                                    if (tabBtn) new bootstrap.Tab(tabBtn).show();
+                                                }
+                                                document.querySelectorAll('#appearanceTabs button').forEach(btn => {
+                                                    btn.addEventListener('shown.bs.tab', (e) => {
+                                                        window.location.hash = e.target.dataset.bsTarget;
+                                                    });
+                                                });
+                                        </script>
+                                    }

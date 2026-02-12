@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using InvoiceManagement.Models;
+using InvoiceManagement.Models.ViewModels;
 using InvoiceManagement.Services;
 using InvoiceManagement.Data;
 using Microsoft.EntityFrameworkCore;
@@ -1174,6 +1175,354 @@ namespace InvoiceManagement.Controllers
                 return Json(new { success = false, message = $"Migration failed: {ex.Message}" });
             }
         }
+
+        // ==================== APPEARANCE & BRANDING ====================
+
+        // GET: Admin/Appearance
+        public async Task<IActionResult> Appearance()
+        {
+            var settings = await _context.SystemSettings.ToListAsync();
+            var vm = BuildAppearanceViewModel(settings);
+            return View(vm);
+        }
+
+        // POST: Admin/SaveTheme
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveTheme(AppearanceViewModel model)
+        {
+            var username = HttpContext.Session.GetString("Username") ?? "Admin";
+            var themeSettings = new Dictionary<string, string>
+            {
+                ["Theme_PrimaryColor"] = model.PrimaryColor ?? "#0d6efd",
+                ["Theme_SecondaryColor"] = model.SecondaryColor ?? "#6c757d",
+                ["Theme_AccentColor"] = model.AccentColor ?? "#198754",
+                ["Theme_DangerColor"] = model.DangerColor ?? "#dc3545",
+                ["Theme_WarningColor"] = model.WarningColor ?? "#ffc107",
+                ["Theme_NavbarStyle"] = model.NavbarStyle ?? "bg-primary",
+                ["Theme_SidebarStyle"] = model.SidebarStyle ?? "light",
+                ["Theme_CardStyle"] = model.CardStyle ?? "shadow",
+                ["Theme_FontFamily"] = model.FontFamily ?? "Segoe UI"
+            };
+
+            await SaveSettingsBatchAsync(themeSettings, "Appearance", username);
+            TempData["SuccessMessage"] = "Theme settings saved successfully!";
+            return RedirectToAction(nameof(Appearance));
+        }
+
+        // POST: Admin/SaveBranding
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveBranding(AppearanceViewModel model)
+        {
+            var username = HttpContext.Session.GetString("Username") ?? "Admin";
+            var brandingSettings = new Dictionary<string, string>
+            {
+                ["ApplicationName"] = model.ApplicationName ?? "Invoice Management System",
+                ["Branding_TagLine"] = model.TagLine ?? ""
+            };
+
+            await SaveSettingsBatchAsync(brandingSettings, "Appearance", username);
+
+            // Also update the General category ApplicationName
+            await _adminService.UpdateSettingAsync("ApplicationName", model.ApplicationName ?? "Invoice Management System", username);
+
+            TempData["SuccessMessage"] = "Branding saved successfully!";
+            return RedirectToAction(nameof(Appearance));
+        }
+
+        // POST: Admin/UploadLogo
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UploadLogo(IFormFile logoFile)
+        {
+            if (logoFile == null || logoFile.Length == 0)
+            {
+                TempData["ErrorMessage"] = "Please select a logo file to upload.";
+                return RedirectToAction(nameof(Appearance));
+            }
+
+            var allowedExtensions = new[] { ".png", ".jpg", ".jpeg", ".svg", ".webp", ".gif" };
+            var ext = Path.GetExtension(logoFile.FileName).ToLowerInvariant();
+            if (!allowedExtensions.Contains(ext))
+            {
+                TempData["ErrorMessage"] = "Invalid file type. Allowed: PNG, JPG, SVG, WebP, GIF.";
+                return RedirectToAction(nameof(Appearance));
+            }
+
+            if (logoFile.Length > 2 * 1024 * 1024)
+            {
+                TempData["ErrorMessage"] = "Logo file must be under 2 MB.";
+                return RedirectToAction(nameof(Appearance));
+            }
+
+            try
+            {
+                var uploadsDir = Path.Combine(_environment.WebRootPath, "uploads", "branding");
+                Directory.CreateDirectory(uploadsDir);
+
+                var fileName = $"logo{ext}";
+                var filePath = Path.Combine(uploadsDir, fileName);
+
+                // Delete old logos
+                foreach (var oldFile in Directory.GetFiles(uploadsDir, "logo.*"))
+                    System.IO.File.Delete(oldFile);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                    await logoFile.CopyToAsync(stream);
+
+                var relativePath = $"/uploads/branding/{fileName}";
+                var username = HttpContext.Session.GetString("Username") ?? "Admin";
+                await SaveSettingsBatchAsync(new Dictionary<string, string> { ["Branding_LogoUrl"] = relativePath }, "Appearance", username);
+
+                TempData["SuccessMessage"] = "Logo uploaded successfully!";
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"Error uploading logo: {ex.Message}";
+            }
+
+            return RedirectToAction(nameof(Appearance));
+        }
+
+        // POST: Admin/RemoveLogo
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RemoveLogo()
+        {
+            var username = HttpContext.Session.GetString("Username") ?? "Admin";
+            await SaveSettingsBatchAsync(new Dictionary<string, string> { ["Branding_LogoUrl"] = "" }, "Appearance", username);
+
+            // Delete physical file
+            var uploadsDir = Path.Combine(_environment.WebRootPath, "uploads", "branding");
+            foreach (var file in Directory.GetFiles(uploadsDir, "logo.*"))
+                System.IO.File.Delete(file);
+
+            TempData["SuccessMessage"] = "Logo removed.";
+            return RedirectToAction(nameof(Appearance));
+        }
+
+        // POST: Admin/UploadFavicon
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UploadFavicon(IFormFile faviconFile)
+        {
+            if (faviconFile == null || faviconFile.Length == 0)
+            {
+                TempData["ErrorMessage"] = "Please select a favicon file to upload.";
+                return RedirectToAction(nameof(Appearance));
+            }
+
+            var allowedExtensions = new[] { ".ico", ".png", ".svg" };
+            var ext = Path.GetExtension(faviconFile.FileName).ToLowerInvariant();
+            if (!allowedExtensions.Contains(ext))
+            {
+                TempData["ErrorMessage"] = "Invalid file type. Allowed: ICO, PNG, SVG.";
+                return RedirectToAction(nameof(Appearance));
+            }
+
+            if (faviconFile.Length > 512 * 1024)
+            {
+                TempData["ErrorMessage"] = "Favicon must be under 512 KB.";
+                return RedirectToAction(nameof(Appearance));
+            }
+
+            try
+            {
+                var uploadsDir = Path.Combine(_environment.WebRootPath, "uploads", "branding");
+                Directory.CreateDirectory(uploadsDir);
+
+                var fileName = $"favicon{ext}";
+                var filePath = Path.Combine(uploadsDir, fileName);
+
+                foreach (var oldFile in Directory.GetFiles(uploadsDir, "favicon.*"))
+                    System.IO.File.Delete(oldFile);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                    await faviconFile.CopyToAsync(stream);
+
+                var relativePath = $"/uploads/branding/{fileName}";
+                var username = HttpContext.Session.GetString("Username") ?? "Admin";
+                await SaveSettingsBatchAsync(new Dictionary<string, string> { ["Branding_FaviconUrl"] = relativePath }, "Appearance", username);
+
+                TempData["SuccessMessage"] = "Favicon uploaded successfully!";
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"Error uploading favicon: {ex.Message}";
+            }
+
+            return RedirectToAction(nameof(Appearance));
+        }
+
+        // POST: Admin/RemoveFavicon
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RemoveFavicon()
+        {
+            var username = HttpContext.Session.GetString("Username") ?? "Admin";
+            await SaveSettingsBatchAsync(new Dictionary<string, string> { ["Branding_FaviconUrl"] = "" }, "Appearance", username);
+
+            var uploadsDir = Path.Combine(_environment.WebRootPath, "uploads", "branding");
+            foreach (var file in Directory.GetFiles(uploadsDir, "favicon.*"))
+                System.IO.File.Delete(file);
+
+            TempData["SuccessMessage"] = "Favicon removed.";
+            return RedirectToAction(nameof(Appearance));
+        }
+
+        // POST: Admin/SaveHeaderFooter
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveHeaderFooter(AppearanceViewModel model)
+        {
+            var username = HttpContext.Session.GetString("Username") ?? "Admin";
+            var settings = new Dictionary<string, string>
+            {
+                ["Header_ShowSearch"] = model.ShowHeaderSearch.ToString().ToLower(),
+                ["Header_ShowQuickAdd"] = model.ShowQuickAdd.ToString().ToLower(),
+                ["Header_ShowNotifications"] = model.ShowHeaderNotifications.ToString().ToLower(),
+                ["Header_AnnouncementText"] = model.HeaderAnnouncementText ?? "",
+                ["Header_AnnouncementType"] = model.HeaderAnnouncementType ?? "info",
+                ["Footer_Show"] = model.ShowFooter.ToString().ToLower(),
+                ["Footer_Text"] = model.FooterText ?? "",
+                ["Footer_LeftLinks"] = model.FooterLeftLinks ?? "",
+                ["Footer_RightLinks"] = model.FooterRightLinks ?? "",
+                ["Footer_ShowVersion"] = model.ShowFooterVersion.ToString().ToLower()
+            };
+
+            await SaveSettingsBatchAsync(settings, "Appearance", username);
+            TempData["SuccessMessage"] = "Header & footer settings saved!";
+            return RedirectToAction(nameof(Appearance));
+        }
+
+        // POST: Admin/SaveWidgets
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveWidgets(AppearanceViewModel model)
+        {
+            var username = HttpContext.Session.GetString("Username") ?? "Admin";
+            var settings = new Dictionary<string, string>
+            {
+                ["Widget_TotalInvoices"] = model.WidgetTotalInvoices.ToString().ToLower(),
+                ["Widget_UnpaidAmount"] = model.WidgetUnpaidAmount.ToString().ToLower(),
+                ["Widget_RecentPayments"] = model.WidgetRecentPayments.ToString().ToLower(),
+                ["Widget_OverdueInvoices"] = model.WidgetOverdueInvoices.ToString().ToLower(),
+                ["Widget_Procurement"] = model.WidgetProcurement.ToString().ToLower(),
+                ["Widget_AuditLog"] = model.WidgetAuditLog.ToString().ToLower(),
+                ["Widget_QuickActions"] = model.WidgetQuickActions.ToString().ToLower(),
+                ["Widget_Charts"] = model.WidgetCharts.ToString().ToLower(),
+                ["Widget_DashboardLayout"] = model.DashboardLayout ?? "default"
+            };
+
+            await SaveSettingsBatchAsync(settings, "Appearance", username);
+            TempData["SuccessMessage"] = "Widget configuration saved!";
+            return RedirectToAction(nameof(Appearance));
+        }
+
+        // POST: Admin/ResetAppearance
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ResetAppearance()
+        {
+            var appearanceKeys = await _context.SystemSettings
+                .Where(s => s.Category == "Appearance")
+                .ToListAsync();
+
+            _context.SystemSettings.RemoveRange(appearanceKeys);
+            await _context.SaveChangesAsync();
+
+            // Delete uploaded branding files
+            var uploadsDir = Path.Combine(_environment.WebRootPath, "uploads", "branding");
+            if (Directory.Exists(uploadsDir))
+            {
+                foreach (var file in Directory.GetFiles(uploadsDir))
+                    System.IO.File.Delete(file);
+            }
+
+            TempData["SuccessMessage"] = "All appearance settings reset to defaults.";
+            return RedirectToAction(nameof(Appearance));
+        }
+
+        // Helper: Save multiple settings in one batch
+        private async Task SaveSettingsBatchAsync(Dictionary<string, string> settings, string category, string username)
+        {
+            foreach (var kvp in settings)
+            {
+                var existing = await _context.SystemSettings.FirstOrDefaultAsync(s => s.SettingKey == kvp.Key);
+                if (existing != null)
+                {
+                    existing.SettingValue = kvp.Value;
+                    existing.ModifiedBy = username;
+                    existing.ModifiedDate = DateTime.Now;
+                }
+                else
+                {
+                    _context.SystemSettings.Add(new SystemSetting
+                    {
+                        Category = category,
+                        SettingKey = kvp.Key,
+                        SettingValue = kvp.Value,
+                        Description = $"Appearance setting: {kvp.Key}",
+                        ModifiedBy = username,
+                        ModifiedDate = DateTime.Now
+                    });
+                }
+            }
+            await _context.SaveChangesAsync();
+        }
+
+        // Helper: Build AppearanceViewModel from settings list
+        private AppearanceViewModel BuildAppearanceViewModel(List<SystemSetting> settings)
+        {
+            string Get(string key, string fallback = "") =>
+                settings.FirstOrDefault(s => s.SettingKey == key)?.SettingValue ?? fallback;
+
+            bool GetBool(string key, bool fallback = true) =>
+                Get(key, fallback.ToString().ToLower()) == "true";
+
+            return new AppearanceViewModel
+            {
+                PrimaryColor = Get("Theme_PrimaryColor", "#0d6efd"),
+                SecondaryColor = Get("Theme_SecondaryColor", "#6c757d"),
+                AccentColor = Get("Theme_AccentColor", "#198754"),
+                DangerColor = Get("Theme_DangerColor", "#dc3545"),
+                WarningColor = Get("Theme_WarningColor", "#ffc107"),
+                NavbarStyle = Get("Theme_NavbarStyle", "bg-primary"),
+                SidebarStyle = Get("Theme_SidebarStyle", "light"),
+                CardStyle = Get("Theme_CardStyle", "shadow"),
+                FontFamily = Get("Theme_FontFamily", "Segoe UI"),
+
+                ApplicationName = Get("ApplicationName", "Invoice Management System"),
+                LogoUrl = Get("Branding_LogoUrl"),
+                FaviconUrl = Get("Branding_FaviconUrl"),
+                TagLine = Get("Branding_TagLine"),
+
+                ShowHeaderSearch = GetBool("Header_ShowSearch"),
+                ShowQuickAdd = GetBool("Header_ShowQuickAdd"),
+                ShowHeaderNotifications = GetBool("Header_ShowNotifications", false),
+                HeaderAnnouncementText = Get("Header_AnnouncementText"),
+                HeaderAnnouncementType = Get("Header_AnnouncementType", "info"),
+
+                ShowFooter = GetBool("Footer_Show"),
+                FooterText = Get("Footer_Text", "© {year} Invoice Management System. All rights reserved."),
+                FooterLeftLinks = Get("Footer_LeftLinks"),
+                FooterRightLinks = Get("Footer_RightLinks"),
+                ShowFooterVersion = GetBool("Footer_ShowVersion"),
+
+                WidgetTotalInvoices = GetBool("Widget_TotalInvoices"),
+                WidgetUnpaidAmount = GetBool("Widget_UnpaidAmount"),
+                WidgetRecentPayments = GetBool("Widget_RecentPayments"),
+                WidgetOverdueInvoices = GetBool("Widget_OverdueInvoices"),
+                WidgetProcurement = GetBool("Widget_Procurement"),
+                WidgetAuditLog = GetBool("Widget_AuditLog"),
+                WidgetQuickActions = GetBool("Widget_QuickActions"),
+                WidgetCharts = GetBool("Widget_Charts"),
+                DashboardLayout = Get("Widget_DashboardLayout", "default"),
+
+                MaintenanceEnabled = GetBool("MaintenanceMode_Enabled", false)
+            };
+        }
     }
 
     // ==================== ADMIN VIEW MODELS ====================
@@ -1384,4 +1733,3 @@ public class SetupController : ControllerBase
         }
     }
 }
-

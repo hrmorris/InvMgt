@@ -609,6 +609,136 @@ namespace InvoiceManagement.Services
                     SettingValue = "",
                     Description = "Estimated end time for maintenance (e.g., 2025-01-15T14:00). Leave empty if unknown.",
                     ModifiedBy = "System"
+                },
+
+                // Appearance & Theme defaults
+                new SystemSetting
+                {
+                    Category = "Appearance",
+                    SettingKey = "Theme_PrimaryColor",
+                    SettingValue = "#0d6efd",
+                    Description = "Primary brand color used throughout the application",
+                    ModifiedBy = "System"
+                },
+                new SystemSetting
+                {
+                    Category = "Appearance",
+                    SettingKey = "Theme_SecondaryColor",
+                    SettingValue = "#6c757d",
+                    Description = "Secondary color for muted UI elements",
+                    ModifiedBy = "System"
+                },
+                new SystemSetting
+                {
+                    Category = "Appearance",
+                    SettingKey = "Theme_AccentColor",
+                    SettingValue = "#0dcaf0",
+                    Description = "Accent color for highlights and links",
+                    ModifiedBy = "System"
+                },
+                new SystemSetting
+                {
+                    Category = "Appearance",
+                    SettingKey = "Theme_NavbarStyle",
+                    SettingValue = "bg-primary",
+                    Description = "Navbar style: bg-primary, bg-dark, bg-gradient, bg-white",
+                    ModifiedBy = "System"
+                },
+                new SystemSetting
+                {
+                    Category = "Appearance",
+                    SettingKey = "Theme_SidebarStyle",
+                    SettingValue = "dark",
+                    Description = "Sidebar style: dark or light",
+                    ModifiedBy = "System"
+                },
+                new SystemSetting
+                {
+                    Category = "Appearance",
+                    SettingKey = "Theme_CardStyle",
+                    SettingValue = "shadow-sm",
+                    Description = "Card shadow style: shadow-sm, shadow, shadow-lg, border",
+                    ModifiedBy = "System"
+                },
+                new SystemSetting
+                {
+                    Category = "Appearance",
+                    SettingKey = "Theme_FontFamily",
+                    SettingValue = "System Default",
+                    Description = "Font family: System Default, Inter, Poppins, Roboto, etc.",
+                    ModifiedBy = "System"
+                },
+                new SystemSetting
+                {
+                    Category = "Appearance",
+                    SettingKey = "Header_ShowSearch",
+                    SettingValue = "true",
+                    Description = "Show search bar in the header",
+                    ModifiedBy = "System"
+                },
+                new SystemSetting
+                {
+                    Category = "Appearance",
+                    SettingKey = "Header_ShowQuickAdd",
+                    SettingValue = "true",
+                    Description = "Show Quick Add button in the header",
+                    ModifiedBy = "System"
+                },
+                new SystemSetting
+                {
+                    Category = "Appearance",
+                    SettingKey = "Footer_ShowFooter",
+                    SettingValue = "true",
+                    Description = "Show the application footer",
+                    ModifiedBy = "System"
+                },
+                new SystemSetting
+                {
+                    Category = "Appearance",
+                    SettingKey = "Footer_Text",
+                    SettingValue = "© {year} Invoice Management System. All rights reserved.",
+                    Description = "Footer text. Use {year} for current year.",
+                    ModifiedBy = "System"
+                },
+                new SystemSetting
+                {
+                    Category = "Appearance",
+                    SettingKey = "Widget_ShowTotalInvoices",
+                    SettingValue = "true",
+                    Description = "Show Total Invoices widget on dashboard",
+                    ModifiedBy = "System"
+                },
+                new SystemSetting
+                {
+                    Category = "Appearance",
+                    SettingKey = "Widget_ShowUnpaidAmount",
+                    SettingValue = "true",
+                    Description = "Show Unpaid Amount widget on dashboard",
+                    ModifiedBy = "System"
+                },
+                new SystemSetting
+                {
+                    Category = "Appearance",
+                    SettingKey = "Widget_ShowRecentPayments",
+                    SettingValue = "true",
+                    Description = "Show Recent Payments widget on dashboard",
+                    ModifiedBy = "System"
+                },
+                new SystemSetting
+                {
+                    Category = "Appearance",
+                    SettingKey = "Widget_ShowQuickActions",
+                    SettingValue = "true",
+                    Description = "Show Quick Actions widget on dashboard",
+                    ModifiedBy = "System"
+                },
+                new SystemSetting
+                {
+                    Category = "Appearance",
+                    SettingKey = "DashboardLayout",
+                    SettingValue = "default",
+                    Description = "Dashboard layout: default, compact, expanded",
+                    ModifiedBy = "System"
                 }
             };
 
