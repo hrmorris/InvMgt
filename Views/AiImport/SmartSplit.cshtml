@@ -33,16 +33,16 @@
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
 <!-- HERO / FEATURE OVERVIEW                                                -->
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
-<div class="card border-0 shadow-sm mb-4 bg-gradient"
-     style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);">
-    <div class="card-body p-4 text-white">
+<div class="card border-0 shadow-sm mb-4"
+     style="background: linear-gradient(135deg, #e8edf5 0%, #dce3f0 50%, #d0d9eb 100%);">
+    <div class="card-body p-4" style="color: #1a2a5e;">
         <div class="row align-items-center">
             <div class="col-md-8">
-                <h3 class="mb-3">
+                <h3 class="mb-3" style="color: #0f1d45;">
                     <i class="bi bi-stars me-2 text-warning"></i>
                     AI-Powered PDF Invoice Splitter
                 </h3>
-                <p class="mb-2 opacity-90">
+                <p class="mb-2" style="color: #2a3d6e;">
                     Upload a large PDF containing <strong>hundreds of invoices</strong> and our AI engine will:
                 </p>
                 <div class="row g-3 mt-1">
@@ -50,8 +50,8 @@
                         <div class="d-flex align-items-start">
                             <i class="bi bi-1-circle-fill text-warning me-2 mt-1"></i>
                             <div>
-                                <strong>Analyze & Detect</strong><br>
-                                <small class="opacity-75">AI detects where each invoice starts and ends in the
+                                <strong style="color: #0f1d45;">Analyze & Detect</strong><br>
+                                <small style="color: #3a5080;">AI detects where each invoice starts and ends in the
                                     PDF</small>
                                 </div>
                             </div>
@@ -60,8 +60,8 @@
                             <div class="d-flex align-items-start">
                                 <i class="bi bi-2-circle-fill text-warning me-2 mt-1"></i>
                                 <div>
-                                    <strong>Physically Split</strong><br>
-                                    <small class="opacity-75">Creates individual PDF files for each invoice</small>
+                                    <strong style="color: #0f1d45;">Physically Split</strong><br>
+                                    <small style="color: #3a5080;">Creates individual PDF files for each invoice</small>
                                 </div>
                             </div>
                         </div>
@@ -69,8 +69,8 @@
                             <div class="d-flex align-items-start">
                                 <i class="bi bi-3-circle-fill text-warning me-2 mt-1"></i>
                                 <div>
-                                    <strong>Smart Match</strong><br>
-                                    <small class="opacity-75">Matches split PDFs with extracted invoice records</small>
+                                    <strong style="color: #0f1d45;">Smart Match</strong><br>
+                                    <small style="color: #3a5080;">Matches split PDFs with extracted invoice records</small>
                                 </div>
                             </div>
                         </div>
@@ -78,8 +78,8 @@
                             <div class="d-flex align-items-start">
                                 <i class="bi bi-4-circle-fill text-warning me-2 mt-1"></i>
                                 <div>
-                                    <strong>Download</strong><br>
-                                    <small class="opacity-75">Download individual or all split PDFs as a ZIP</small>
+                                    <strong style="color: #0f1d45;">Download</strong><br>
+                                    <small style="color: #3a5080;">Download individual or all split PDFs as a ZIP</small>
                                 </div>
                             </div>
                         </div>
@@ -87,7 +87,7 @@
                 </div>
                 <div class="col-md-4 text-center mt-3 mt-md-0">
                     <div class="position-relative d-inline-block">
-                        <i class="bi bi-file-earmark-pdf" style="font-size: 5rem; opacity: 0.3;"></i>
+                        <i class="bi bi-file-earmark-pdf" style="font-size: 5rem; opacity: 0.3; color: #1a2a5e;"></i>
                         <i class="bi bi-scissors position-absolute"
                            style="font-size: 2.5rem; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ffc107;"></i>
                     </div>
@@ -249,7 +249,7 @@
                                             @if (!isSplit || job.SplitCompleteCount < job.ChildDocumentCount)
                                             {
                                                 <button type="button" class="btn btn-outline-warning"
-                                                        onclick="smartSplitExisting(@job.MasterDocumentId)"                                         title="Smart Split">
+                                                        onclick="smartSplitExisting(@job.MasterDocumentId)" title="Smart Split">
                                                     <i class="bi bi-scissors"></i>
                                                 </button>
                                             }
@@ -280,73 +280,73 @@
 
     @section Scripts {
         <script>
-            // ─── File selection preview ──────────────────────────────────────────
-            const fileInput = document.getElementById('smartSplitFile');
-            const btnSplit = document.getElementById('btnSmartSplit');
+                    // ─── File selection preview ──────────────────────────────────────────
+                    const fileInput = document.getElementById('smartSplitFile');
+                    const btnSplit = document.getElementById('btnSmartSplit');
 
-            fileInput.addEventListener('change', function () {
-                const file = this.files[0];
-                if (file) {
-                    document.getElementById('previewFileName').textContent = file.name;
-                    const sizeMB = (file.size / 1024 / 1024).toFixed(1);
-                    document.getElementById('previewFileSize').textContent =
-                        `${sizeMB} MB • ${file.type || 'application/pdf'}`;
-                    document.getElementById('filePreview').classList.remove('d-none');
-                    btnSplit.disabled = false;
-                } else {
-                    clearFileSelection();
-                }
-            });
-
-            function clearFileSelection() {
-                fileInput.value = '';
-                document.getElementById('filePreview').classList.add('d-none');
-                btnSplit.disabled = true;
-            }
-
-            // ─── Smart Split (new upload) ────────────────────────────────────────
-            function startSmartSplit() {
-                const file = fileInput.files[0];
-                if (!file) return;
-
-                const fd = new FormData();
-                fd.append('file', file);
-
-                ProgressModal.runWithProgress({
-                    title: 'Smart PDF Splitter',
-                    color: '#ffc107',
-                    icon: 'scissors',
-                    url: '@Url.Action("ProcessSmartSplitAjax")',
-                    formData: fd,
-                    stages: ProgressModal.smartSplitStages(),
-                    stageInterval: 4000,
-                    onSuccess: (result) => {
-                        if (result.redirectUrl) {
-                            window.location.href = result.redirectUrl;
+                    fileInput.addEventListener('change', function () {
+                        const file = this.files[0];
+                        if (file) {
+                            document.getElementById('previewFileName').textContent = file.name;
+                            const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+                            document.getElementById('previewFileSize').textContent =
+                                `${sizeMB} MB • ${file.type || 'application/pdf'}`;
+                            document.getElementById('filePreview').classList.remove('d-none');
+                            btnSplit.disabled = false;
+                        } else {
+                            clearFileSelection();
                         }
-                    }
-                });
-            }
+                    });
 
-            // ─── Smart Split (existing document) ─────────────────────────────────
-            function smartSplitExisting(docId) {
-                const fd = new FormData();
-                fd.append('id', docId);
-
-                ProgressModal.runWithProgress({
-                    title: 'Smart PDF Splitter',
-                    color: '#ffc107',
-                    icon: 'scissors',
-                    url: '@Url.Action("SmartSplitExistingAjax")',
-                    formData: fd,
-                    stages: ProgressModal.smartSplitStages(),
-                    stageInterval: 4000,
-                    onSuccess: (result) => {
-                        if (result.redirectUrl) {
-                            window.location.href = result.redirectUrl;
-                        }
+                    function clearFileSelection() {
+                        fileInput.value = '';
+                        document.getElementById('filePreview').classList.add('d-none');
+                        btnSplit.disabled = true;
                     }
-                });
-            }
+
+                    // ─── Smart Split (new upload) ────────────────────────────────────────
+                    function startSmartSplit() {
+                        const file = fileInput.files[0];
+                        if (!file) return;
+
+                        const fd = new FormData();
+                        fd.append('file', file);
+
+                        ProgressModal.runWithProgress({
+                            title: 'Smart PDF Splitter',
+                            color: '#ffc107',
+                            icon: 'scissors',
+                            url: '@Url.Action("ProcessSmartSplitAjax")',
+                            formData: fd,
+                            stages: ProgressModal.smartSplitStages(),
+                            stageInterval: 4000,
+                            onSuccess: (result) => {
+                                if (result.redirectUrl) {
+                                    window.location.href = result.redirectUrl;
+                                }
+                            }
+                        });
+                    }
+
+                    // ─── Smart Split (existing document) ─────────────────────────────────
+                    function smartSplitExisting(docId) {
+                        const fd = new FormData();
+                        fd.append('id', docId);
+
+                        ProgressModal.runWithProgress({
+                            title: 'Smart PDF Splitter',
+                            color: '#ffc107',
+                            icon: 'scissors',
+                            url: '@Url.Action("SmartSplitExistingAjax")',
+                            formData: fd,
+                            stages: ProgressModal.smartSplitStages(),
+                            stageInterval: 4000,
+                            onSuccess: (result) => {
+                                if (result.redirectUrl) {
+                                    window.location.href = result.redirectUrl;
+                                }
+                            }
+                        });
+                    }
         </script>
     }

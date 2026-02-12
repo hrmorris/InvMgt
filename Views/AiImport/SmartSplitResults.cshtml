@@ -55,13 +55,13 @@
 <div class="row g-3 mb-4">
     <!-- Master Document Info -->
     <div class="col-lg-4">
-        <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);">
-            <div class="card-body text-white">
+        <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #e8edf5 0%, #d0d9eb 100%);">
+            <div class="card-body" style="color: #1a2a5e;">
                 <div class="d-flex align-items-center mb-3">
                     <i class="bi bi-file-earmark-pdf text-danger" style="font-size: 2.5rem;"></i>
                     <div class="ms-3">
-                        <h6 class="mb-0 opacity-75">Source Document</h6>
-                        <strong class="text-truncate d-block" style="max-width: 200px;" title="@Model.OriginalFileName">
+                        <h6 class="mb-0" style="color: #3a5080;">Source Document</h6>
+                        <strong class="text-truncate d-block" style="max-width: 200px; color: #0f1d45;" title="@Model.OriginalFileName">
                             @Model.OriginalFileName
                         </strong>
                     </div>
@@ -69,15 +69,15 @@
                 <div class="d-flex justify-content-between">
                     <div class="text-center">
                         <div class="fs-3 fw-bold text-warning">@Model.TotalPages</div>
-                        <small class="opacity-75">Total Pages</small>
+                        <small style="color: #3a5080;">Total Pages</small>
                     </div>
                     <div class="text-center">
                         <div class="fs-3 fw-bold text-info">@Model.TotalInvoicesDetected</div>
-                        <small class="opacity-75">Invoices Found</small>
+                        <small style="color: #3a5080;">Invoices Found</small>
                     </div>
                     <div class="text-center">
                         <div class="fs-3 fw-bold text-success">@Model.TotalSplitFiles</div>
-                        <small class="opacity-75">PDFs Created</small>
+                        <small style="color: #3a5080;">PDFs Created</small>
                     </div>
                 </div>
             </div>
