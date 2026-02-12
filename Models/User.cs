@@ -36,7 +36,7 @@ namespace InvoiceManagement.Models
 
         [Required]
         [StringLength(50)]
-        public string Role { get; set; } = "User"; 
+        public string Role { get; set; } = "User";
         // Admin, OIC, Supervisor, Finance_Officer, Health_Manager, Hospital_Executive, Finance_Manager, Procurement_Officer, User
 
         [StringLength(50)]
@@ -108,6 +108,37 @@ namespace InvoiceManagement.Models
 
         [StringLength(100)]
         public string? ModifiedBy { get; set; }
+    }
+
+    /// <summary>
+    /// Stores uploaded branding assets (logo, favicon, login background) in the database
+    /// so they persist across Cloud Run container restarts (ephemeral filesystem).
+    /// </summary>
+    public class UploadedAsset
+    {
+        public int Id { get; set; }
+
+        [Required]
+        [StringLength(50)]
+        public string AssetKey { get; set; } = string.Empty; // "logo", "favicon", "login-bg"
+
+        [Required]
+        [StringLength(255)]
+        public string FileName { get; set; } = string.Empty;
+
+        [Required]
+        [StringLength(100)]
+        public string ContentType { get; set; } = string.Empty;
+
+        [Required]
+        public byte[] FileContent { get; set; } = Array.Empty<byte>();
+
+        public long FileSize { get; set; }
+
+        public DateTime UploadedDate { get; set; } = DateTime.Now;
+
+        [StringLength(100)]
+        public string? UploadedBy { get; set; }
     }
 }
 

@@ -112,7 +112,9 @@ if (databaseProvider == "PostgreSQL")
                 @"ALTER TABLE ""BatchPayments"" ADD COLUMN IF NOT EXISTS ""ApprovedDate"" TIMESTAMP;",
                 // BatchPaymentItems columns that might be missing
                 @"ALTER TABLE ""BatchPaymentItems"" ADD COLUMN IF NOT EXISTS ""IsProcessed"" BOOLEAN NOT NULL DEFAULT FALSE;",
-                @"ALTER TABLE ""BatchPaymentItems"" ADD COLUMN IF NOT EXISTS ""PaymentId"" INT REFERENCES ""Payments""(""Id"") ON DELETE SET NULL;"
+                @"ALTER TABLE ""BatchPaymentItems"" ADD COLUMN IF NOT EXISTS ""PaymentId"" INT REFERENCES ""Payments""(""Id"") ON DELETE SET NULL;",
+                // UploadedAssets table for branding files (persists across Cloud Run container restarts)
+                @"CREATE TABLE IF NOT EXISTS ""UploadedAssets"" (""Id"" SERIAL PRIMARY KEY, ""AssetKey"" VARCHAR(50) NOT NULL UNIQUE, ""FileName"" VARCHAR(255) NOT NULL, ""ContentType"" VARCHAR(100) NOT NULL, ""FileContent"" BYTEA NOT NULL, ""FileSize"" BIGINT NOT NULL DEFAULT 0, ""UploadedDate"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, ""UploadedBy"" VARCHAR(100));"
             };
 
             foreach (var stmt in alterStatements)
@@ -161,7 +163,8 @@ if (databaseProvider == "PostgreSQL")
                     @"CREATE TABLE IF NOT EXISTS ""UserRoles"" (""Id"" SERIAL PRIMARY KEY, ""UserId"" INT NOT NULL REFERENCES ""Users""(""Id"") ON DELETE CASCADE, ""RoleId"" INT NOT NULL REFERENCES ""Roles""(""Id"") ON DELETE CASCADE, ""AssignedDate"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, ""AssignedBy"" VARCHAR(100));",
                     @"CREATE TABLE IF NOT EXISTS ""AuditLogs"" (""Id"" SERIAL PRIMARY KEY, ""UserId"" INT REFERENCES ""Users""(""Id"") ON DELETE SET NULL, ""Username"" VARCHAR(100), ""Action"" VARCHAR(100) NOT NULL, ""Entity"" VARCHAR(100) NOT NULL, ""EntityId"" INT, ""Details"" VARCHAR(1000), ""ActionDate"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, ""IpAddress"" VARCHAR(50));",
                     @"CREATE TABLE IF NOT EXISTS ""BatchPayments"" (""Id"" SERIAL PRIMARY KEY, ""BatchReference"" VARCHAR(50) NOT NULL UNIQUE, ""BatchName"" VARCHAR(200), ""Status"" VARCHAR(50) NOT NULL DEFAULT 'Draft', ""PaymentMethod"" VARCHAR(50), ""BankAccount"" VARCHAR(100), ""ScheduledPaymentDate"" TIMESTAMP, ""ProcessedDate"" TIMESTAMP, ""Notes"" VARCHAR(1000), ""CreatedDate"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, ""CreatedBy"" VARCHAR(100), ""ApprovedBy"" VARCHAR(100), ""ApprovedDate"" TIMESTAMP);",
-                    @"CREATE TABLE IF NOT EXISTS ""BatchPaymentItems"" (""Id"" SERIAL PRIMARY KEY, ""BatchPaymentId"" INT NOT NULL REFERENCES ""BatchPayments""(""Id"") ON DELETE CASCADE, ""InvoiceId"" INT NOT NULL REFERENCES ""Invoices""(""Id"") ON DELETE RESTRICT, ""AmountToPay"" DECIMAL(18,2) NOT NULL, ""IsProcessed"" BOOLEAN NOT NULL DEFAULT FALSE, ""PaymentId"" INT REFERENCES ""Payments""(""Id"") ON DELETE SET NULL, ""AddedDate"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, ""Notes"" VARCHAR(500));"
+                    @"CREATE TABLE IF NOT EXISTS ""BatchPaymentItems"" (""Id"" SERIAL PRIMARY KEY, ""BatchPaymentId"" INT NOT NULL REFERENCES ""BatchPayments""(""Id"") ON DELETE CASCADE, ""InvoiceId"" INT NOT NULL REFERENCES ""Invoices""(""Id"") ON DELETE RESTRICT, ""AmountToPay"" DECIMAL(18,2) NOT NULL, ""IsProcessed"" BOOLEAN NOT NULL DEFAULT FALSE, ""PaymentId"" INT REFERENCES ""Payments""(""Id"") ON DELETE SET NULL, ""AddedDate"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, ""Notes"" VARCHAR(500));",
+                    @"CREATE TABLE IF NOT EXISTS ""UploadedAssets"" (""Id"" SERIAL PRIMARY KEY, ""AssetKey"" VARCHAR(50) NOT NULL UNIQUE, ""FileName"" VARCHAR(255) NOT NULL, ""ContentType"" VARCHAR(100) NOT NULL, ""FileContent"" BYTEA NOT NULL, ""FileSize"" BIGINT NOT NULL DEFAULT 0, ""UploadedDate"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, ""UploadedBy"" VARCHAR(100));"
                 };
 
                 foreach (var stmt in schemaStatements)
@@ -287,6 +290,24 @@ using (var scope = app.Services.CreateScope())
     catch (Exception ex)
     {
         Console.WriteLine($"Schema update note: {ex.Message}");
+    }
+
+    // Ensure UploadedAssets table exists (for branding file persistence)
+    try
+    {
+        if (isPostgres)
+        {
+            db.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS ""UploadedAssets"" (""Id"" SERIAL PRIMARY KEY, ""AssetKey"" VARCHAR(50) NOT NULL UNIQUE, ""FileName"" VARCHAR(255) NOT NULL, ""ContentType"" VARCHAR(100) NOT NULL, ""FileContent"" BYTEA NOT NULL, ""FileSize"" BIGINT NOT NULL DEFAULT 0, ""UploadedDate"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, ""UploadedBy"" VARCHAR(100));");
+        }
+        else
+        {
+            db.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS ""UploadedAssets"" (""Id"" INTEGER PRIMARY KEY AUTOINCREMENT, ""AssetKey"" TEXT NOT NULL UNIQUE, ""FileName"" TEXT NOT NULL, ""ContentType"" TEXT NOT NULL, ""FileContent"" BLOB NOT NULL, ""FileSize"" INTEGER NOT NULL DEFAULT 0, ""UploadedDate"" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, ""UploadedBy"" TEXT);");
+        }
+        Console.WriteLine("UploadedAssets table ensured.");
+    }
+    catch (Exception uaEx)
+    {
+        Console.WriteLine($"UploadedAssets table note: {uaEx.Message}");
     }
 
     // Fix ProcessingNotes column type for PostgreSQL (must be TEXT for bulk invoice data)

@@ -36,6 +36,9 @@ namespace InvoiceManagement.Data
         public DbSet<BatchPayment> BatchPayments { get; set; }
         public DbSet<BatchPaymentItem> BatchPaymentItems { get; set; }
 
+        // Branding Assets (stored in DB for Cloud Run persistence)
+        public DbSet<UploadedAsset> UploadedAssets { get; set; }
+
         // Data Protection Keys (for session/cookie encryption in Cloud Run)
         public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
 
@@ -263,6 +266,13 @@ namespace InvoiceManagement.Data
                     .HasForeignKey(e => e.PaymentId)
                     .OnDelete(DeleteBehavior.SetNull)
                     .IsRequired(false);
+            });
+
+            // Uploaded Assets (branding files stored in DB)
+            modelBuilder.Entity<UploadedAsset>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.AssetKey).IsUnique();
             });
         }
     }

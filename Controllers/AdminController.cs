@@ -1258,22 +1258,12 @@ namespace InvoiceManagement.Controllers
 
             try
             {
-                var uploadsDir = Path.Combine(_environment.WebRootPath, "uploads", "branding");
-                Directory.CreateDirectory(uploadsDir);
-
-                var fileName = $"logo{ext}";
-                var filePath = Path.Combine(uploadsDir, fileName);
-
-                // Delete old logos
-                foreach (var oldFile in Directory.GetFiles(uploadsDir, "logo.*"))
-                    System.IO.File.Delete(oldFile);
-
-                using (var stream = new FileStream(filePath, FileMode.Create))
-                    await logoFile.CopyToAsync(stream);
-
-                var relativePath = $"/uploads/branding/{fileName}";
+                // Save to database for persistence across Cloud Run restarts
                 var username = HttpContext.Session.GetString("Username") ?? "Admin";
-                await SaveSettingsBatchAsync(new Dictionary<string, string> { ["Branding_LogoUrl"] = relativePath }, "Appearance", username);
+                await SaveAssetToDatabaseAsync("logo", $"logo{ext}", logoFile, username);
+
+                var servePath = "/Assets/Get/logo";
+                await SaveSettingsBatchAsync(new Dictionary<string, string> { ["Branding_LogoUrl"] = servePath }, "Appearance", username);
 
                 TempData["SuccessMessage"] = "Logo uploaded successfully!";
             }
@@ -1292,11 +1282,7 @@ namespace InvoiceManagement.Controllers
         {
             var username = HttpContext.Session.GetString("Username") ?? "Admin";
             await SaveSettingsBatchAsync(new Dictionary<string, string> { ["Branding_LogoUrl"] = "" }, "Appearance", username);
-
-            // Delete physical file
-            var uploadsDir = Path.Combine(_environment.WebRootPath, "uploads", "branding");
-            foreach (var file in Directory.GetFiles(uploadsDir, "logo.*"))
-                System.IO.File.Delete(file);
+            await DeleteAssetFromDatabaseAsync("logo");
 
             TempData["SuccessMessage"] = "Logo removed.";
             return RedirectToAction(nameof(Appearance));
@@ -1329,21 +1315,12 @@ namespace InvoiceManagement.Controllers
 
             try
             {
-                var uploadsDir = Path.Combine(_environment.WebRootPath, "uploads", "branding");
-                Directory.CreateDirectory(uploadsDir);
-
-                var fileName = $"favicon{ext}";
-                var filePath = Path.Combine(uploadsDir, fileName);
-
-                foreach (var oldFile in Directory.GetFiles(uploadsDir, "favicon.*"))
-                    System.IO.File.Delete(oldFile);
-
-                using (var stream = new FileStream(filePath, FileMode.Create))
-                    await faviconFile.CopyToAsync(stream);
-
-                var relativePath = $"/uploads/branding/{fileName}";
+                // Save to database for persistence across Cloud Run restarts
                 var username = HttpContext.Session.GetString("Username") ?? "Admin";
-                await SaveSettingsBatchAsync(new Dictionary<string, string> { ["Branding_FaviconUrl"] = relativePath }, "Appearance", username);
+                await SaveAssetToDatabaseAsync("favicon", $"favicon{ext}", faviconFile, username);
+
+                var servePath = "/Assets/Get/favicon";
+                await SaveSettingsBatchAsync(new Dictionary<string, string> { ["Branding_FaviconUrl"] = servePath }, "Appearance", username);
 
                 TempData["SuccessMessage"] = "Favicon uploaded successfully!";
             }
@@ -1362,10 +1339,7 @@ namespace InvoiceManagement.Controllers
         {
             var username = HttpContext.Session.GetString("Username") ?? "Admin";
             await SaveSettingsBatchAsync(new Dictionary<string, string> { ["Branding_FaviconUrl"] = "" }, "Appearance", username);
-
-            var uploadsDir = Path.Combine(_environment.WebRootPath, "uploads", "branding");
-            foreach (var file in Directory.GetFiles(uploadsDir, "favicon.*"))
-                System.IO.File.Delete(file);
+            await DeleteAssetFromDatabaseAsync("favicon");
 
             TempData["SuccessMessage"] = "Favicon removed.";
             return RedirectToAction(nameof(Appearance));
@@ -1463,25 +1437,15 @@ namespace InvoiceManagement.Controllers
 
             try
             {
-                var uploadsDir = Path.Combine(_environment.WebRootPath, "uploads", "branding");
-                Directory.CreateDirectory(uploadsDir);
-
-                var fileName = $"login-bg{ext}";
-                var filePath = Path.Combine(uploadsDir, fileName);
-
-                // Delete old login backgrounds
-                foreach (var oldFile in Directory.GetFiles(uploadsDir, "login-bg.*"))
-                    System.IO.File.Delete(oldFile);
-
-                using (var stream = new FileStream(filePath, FileMode.Create))
-                    await loginBgFile.CopyToAsync(stream);
-
-                var relativePath = $"/uploads/branding/{fileName}";
-                var bgType = isVideo ? "video" : "image";
+                // Save to database for persistence across Cloud Run restarts
                 var username = HttpContext.Session.GetString("Username") ?? "Admin";
+                await SaveAssetToDatabaseAsync("login-bg", $"login-bg{ext}", loginBgFile, username);
+
+                var servePath = "/Assets/Get/login-bg";
+                var bgType = isVideo ? "video" : "image";
                 await SaveSettingsBatchAsync(new Dictionary<string, string>
                 {
-                    ["Login_BackgroundUrl"] = relativePath,
+                    ["Login_BackgroundUrl"] = servePath,
                     ["Login_BackgroundType"] = bgType
                 }, "Appearance", username);
 
@@ -1506,10 +1470,7 @@ namespace InvoiceManagement.Controllers
                 ["Login_BackgroundUrl"] = "",
                 ["Login_BackgroundType"] = "gradient"
             }, "Appearance", username);
-
-            var uploadsDir = Path.Combine(_environment.WebRootPath, "uploads", "branding");
-            foreach (var file in Directory.GetFiles(uploadsDir, "login-bg.*"))
-                System.IO.File.Delete(file);
+            await DeleteAssetFromDatabaseAsync("login-bg");
 
             TempData["SuccessMessage"] = "Login background removed.";
             return RedirectToAction(nameof(Appearance));
@@ -1589,6 +1550,50 @@ namespace InvoiceManagement.Controllers
                 }
             }
             await _context.SaveChangesAsync();
+        }
+
+        // Helper: Save uploaded file to UploadedAssets table (persists across Cloud Run restarts)
+        private async Task SaveAssetToDatabaseAsync(string assetKey, string fileName, IFormFile file, string username)
+        {
+            using var memoryStream = new MemoryStream();
+            await file.CopyToAsync(memoryStream);
+            var fileBytes = memoryStream.ToArray();
+
+            var existing = await _context.UploadedAssets.FirstOrDefaultAsync(a => a.AssetKey == assetKey);
+            if (existing != null)
+            {
+                existing.FileName = fileName;
+                existing.ContentType = file.ContentType;
+                existing.FileContent = fileBytes;
+                existing.FileSize = file.Length;
+                existing.UploadedDate = DateTime.Now;
+                existing.UploadedBy = username;
+            }
+            else
+            {
+                _context.UploadedAssets.Add(new UploadedAsset
+                {
+                    AssetKey = assetKey,
+                    FileName = fileName,
+                    ContentType = file.ContentType,
+                    FileContent = fileBytes,
+                    FileSize = file.Length,
+                    UploadedDate = DateTime.Now,
+                    UploadedBy = username
+                });
+            }
+            await _context.SaveChangesAsync();
+        }
+
+        // Helper: Delete uploaded asset from UploadedAssets table
+        private async Task DeleteAssetFromDatabaseAsync(string assetKey)
+        {
+            var existing = await _context.UploadedAssets.FirstOrDefaultAsync(a => a.AssetKey == assetKey);
+            if (existing != null)
+            {
+                _context.UploadedAssets.Remove(existing);
+                await _context.SaveChangesAsync();
+            }
         }
 
         // Helper: Build AppearanceViewModel from settings list
