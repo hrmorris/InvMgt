@@ -1065,13 +1065,10 @@
                                                                                                         <div class="mb-3">
                                                                                                             <label class="form-label fw-semibold">Background Type</label>
                                                                                                             <select name="LoginBackgroundType" class="form-select form-select-sm">
-                                                                                                                <!option value="gradient" @(Model.LoginBackgroundType == "gradient" ? "selected" : "")>🎨
-                                                                                                                    Theme Gradient (Default)</!option>
-                                                                                                                    <!option value="image" @(Model.LoginBackgroundType == "image" ? "selected" : "")>🖼️ Custom
-                                                                                                                        Image</!option>
-                                                                                                                        <!option value="video" @(Model.LoginBackgroundType == "video" ? "selected" : "")>🎬 Custom
-                                                                                                                            Video</!option>
-                                                                                                                        </select>
+                                                                                                                @Html.Raw($"<option value=\"gradient\" {(Model.LoginBackgroundType == "gradient" ? "selected" : "")}>🎨 Theme Gradient (Default)</option>")
+                                                                                                                @Html.Raw($"<option value=\"image\" {(Model.LoginBackgroundType == "image" ? "selected" : "")}>🖼️ Custom Image</option>")
+                                                                                                                @Html.Raw($"<option value=\"video\" {(Model.LoginBackgroundType == "video" ? "selected" : "")}>🎬 Custom Video</option>")
+                                                                                                            </select>
                                                                                                                         <div class="form-text">This is auto-set when you upload a file, but you can override it.
                                                                                                                         </div>
                                                                                                                     </div>

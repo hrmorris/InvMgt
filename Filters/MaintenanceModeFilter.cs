@@ -44,6 +44,13 @@ namespace InvoiceManagement.Filters
                 }
             }
 
+            // Always allow Assets controller (branding images must load on login/maintenance pages)
+            if (string.Equals(controllerName, "Assets", StringComparison.OrdinalIgnoreCase))
+            {
+                await next();
+                return;
+            }
+
             // Always allow Admin controller (admins need full access during maintenance)
             if (string.Equals(controllerName, "Admin", StringComparison.OrdinalIgnoreCase))
             {

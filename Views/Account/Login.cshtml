@@ -72,7 +72,12 @@
             /* Custom image background */
             .login-bg-image {
                 position: fixed;
-                inset: 0;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                width: 100%;
+                height: 100%;
                 z-index: 0;
                 background-size: cover;
                 background-position: center;
@@ -251,7 +256,8 @@
     }
     else if (isImage)
     {
-        <div class="login-bg-image" style="background-image: url('@loginBgUrl');"></div>
+        <div class="login-bg-gradient"></div>
+        <div class="login-bg-image" style="background-image: url('@Html.Raw(loginBgUrl)');"></div>
         <div class="login-bg-overlay"></div>
     }
     else
