@@ -65,13 +65,19 @@ namespace InvoiceManagement.Controllers
         // POST: Admin/CreateUser
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> CreateUser(User user)
+        public async Task<IActionResult> CreateUser(User user, string password)
         {
             ModelState.Remove("PasswordHash");
 
+            if (string.IsNullOrEmpty(password) || password.Length < 6)
+            {
+                ModelState.AddModelError("", "Password is required and must be at least 6 characters.");
+                return View(user);
+            }
+
             if (ModelState.IsValid)
             {
-                await _adminService.CreateUserAsync(user);
+                await _adminService.CreateUserAsync(user, password);
                 TempData["SuccessMessage"] = $"User {user.FullName} created successfully!";
                 return RedirectToAction(nameof(Users));
             }
