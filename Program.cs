@@ -85,7 +85,8 @@ if (databaseProvider == "PostgreSQL")
     // Create a temporary service provider to run migrations first
     var tempServices = new ServiceCollection();
     tempServices.AddDbContext<ApplicationDbContext>(options =>
-        options.UseNpgsql(connectionString));
+        options.UseNpgsql(connectionString)
+              .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
 
     using (var tempProvider = tempServices.BuildServiceProvider())
     using (var scope = tempProvider.CreateScope())
@@ -226,7 +227,8 @@ if (databaseProvider == "PostgreSQL")
                 maxRetryDelay: TimeSpan.FromSeconds(30),
                 errorCodesToAdd: null);
             npgsqlOptions.CommandTimeout(300); // 5-minute command timeout for large operations
-        }));
+        })
+        .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
 }
 else
 {
@@ -362,9 +364,21 @@ using (var scope = app.Services.CreateScope())
             foreach (var user in usersWithoutPassword)
             {
                 user.PasswordHash = defaultPasswordHash;
+                Console.WriteLine($"[STARTUP] Setting default password for user: Id={user.Id}, Username='{user.Username}'");
             }
             db.SaveChanges();
-            Console.WriteLine($"Set default password for {usersWithoutPassword.Count} user(s). Default password is: Password123!");
+            Console.WriteLine($"[STARTUP] Set default password for {usersWithoutPassword.Count} user(s). Default password is: Password123!");
+        }
+        else
+        {
+            Console.WriteLine("[STARTUP] All users already have passwords set.");
+        }
+
+        // Log all user states for debugging
+        var allUsers = db.Users.Select(u => new { u.Id, u.Username, u.Email, u.Status, HashLength = u.PasswordHash != null ? u.PasswordHash.Length : 0 }).ToList();
+        foreach (var u in allUsers)
+        {
+            Console.WriteLine($"[STARTUP] User: Id={u.Id}, Username='{u.Username}', Email='{u.Email}', Status='{u.Status}', PasswordHashLength={u.HashLength}");
         }
     }
     catch (Exception ex)
