@@ -46,8 +46,21 @@ namespace InvoiceManagement.Services
 
         public async Task UpdateUserAsync(User user)
         {
-            user.ModifiedDate = DateTime.Now;
-            _context.Entry(user).State = EntityState.Modified;
+            var existingUser = await _context.Users.FindAsync(user.Id);
+            if (existingUser == null) return;
+
+            // Update only non-password fields — preserve the existing PasswordHash
+            existingUser.Username = user.Username;
+            existingUser.FullName = user.FullName;
+            existingUser.Email = user.Email;
+            existingUser.Phone = user.Phone;
+            existingUser.Department = user.Department;
+            existingUser.Facility = user.Facility;
+            existingUser.FacilityType = user.FacilityType;
+            existingUser.Role = user.Role;
+            existingUser.Status = user.Status;
+            existingUser.ModifiedDate = DateTime.Now;
+
             await _context.SaveChangesAsync();
 
             await LogActionAsync(null, "System", "Updated", "User", user.Id, $"Updated user: {user.FullName}");
