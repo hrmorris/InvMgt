@@ -381,36 +381,7 @@ using (var scope = app.Services.CreateScope())
             Console.WriteLine($"[STARTUP] User: Id={u.Id}, Username='{u.Username}', Email='{u.Email}', Status='{u.Status}', PasswordHashLength={u.HashLength}");
         }
 
-        // Normalize InvoiceType: convert 'Payable' -> 'Supplier' and 'Receivable' -> 'Customer'
-        var payableInvoices = db.Invoices.Where(i => i.InvoiceType == "Payable" || i.InvoiceType == "Receivable").ToList();
-        if (payableInvoices.Any())
-        {
-            foreach (var inv in payableInvoices)
-            {
-                var oldType = inv.InvoiceType;
-                inv.InvoiceType = oldType == "Payable" ? "Supplier" : "Customer";
-                Console.WriteLine($"[STARTUP] Normalized Invoice #{inv.InvoiceNumber}: InvoiceType '{oldType}' -> '{inv.InvoiceType}'");
-            }
-            db.SaveChanges();
-            Console.WriteLine($"[STARTUP] Normalized {payableInvoices.Count} invoice(s) with incorrect InvoiceType.");
-        }
-
-        // Normalize Status: convert 'Draft' -> 'Unpaid'
-        var draftInvoices = db.Invoices.Where(i => i.Status == "Draft").ToList();
-        if (draftInvoices.Any())
-        {
-            foreach (var inv in draftInvoices)
-            {
-                inv.Status = "Unpaid";
-                Console.WriteLine($"[STARTUP] Normalized Invoice #{inv.InvoiceNumber}: Status 'Draft' -> 'Unpaid'");
-            }
-            db.SaveChanges();
-            Console.WriteLine($"[STARTUP] Normalized {draftInvoices.Count} invoice(s) with Draft status to Unpaid.");
-        }
-
-        // Log invoice count
-        var invoiceCount = db.Invoices.Count();
-        Console.WriteLine($"[STARTUP] Total invoices in database: {invoiceCount}");
+        // Data normalization already completed (Payable->Supplier, Draft->Unpaid) - removed to avoid DB timeout on cold start
     }
     catch (Exception ex)
     {
