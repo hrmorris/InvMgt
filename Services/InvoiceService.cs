@@ -16,13 +16,33 @@ namespace InvoiceManagement.Services
 
         public async Task<IEnumerable<Invoice>> GetAllInvoicesAsync()
         {
-            return await _context.Invoices
+            var invoices = await _context.Invoices
                 .Include(i => i.InvoiceItems)
                 .Include(i => i.Payments)
                 .Include(i => i.Supplier)
-                .Include(i => i.ImportedDocuments)
+                .AsSplitQuery()
                 .OrderByDescending(i => i.InvoiceDate)
                 .ToListAsync();
+
+            // Load document metadata separately (without FileContent binary data) to avoid massive query
+            var invoiceIds = invoices.Select(i => i.Id).ToList();
+            var docsByInvoice = await _context.ImportedDocuments
+                .Where(d => d.InvoiceId != null && invoiceIds.Contains(d.InvoiceId.Value))
+                .Select(d => new { d.Id, d.InvoiceId })
+                .GroupBy(d => d.InvoiceId!.Value)
+                .ToDictionaryAsync(g => g.Key, g => g.Count());
+
+            foreach (var invoice in invoices)
+            {
+                if (docsByInvoice.TryGetValue(invoice.Id, out var count) && count > 0)
+                {
+                    invoice.ImportedDocuments = Enumerable.Range(0, count)
+                        .Select(_ => new ImportedDocument { InvoiceId = invoice.Id })
+                        .ToList();
+                }
+            }
+
+            return invoices;
         }
 
         public async Task<Invoice?> GetInvoiceByIdAsync(int id)
@@ -152,16 +172,36 @@ namespace InvoiceManagement.Services
 
         public async Task<IEnumerable<Invoice>> SearchInvoicesAsync(string searchTerm)
         {
-            return await _context.Invoices
+            var invoices = await _context.Invoices
                 .Include(i => i.InvoiceItems)
                 .Include(i => i.Payments)
                 .Include(i => i.Supplier)
-                .Include(i => i.ImportedDocuments)
+                .AsSplitQuery()
                 .Where(i => i.InvoiceNumber.Contains(searchTerm) ||
                            i.CustomerName.Contains(searchTerm) ||
                            (i.CustomerEmail != null && i.CustomerEmail.Contains(searchTerm)))
                 .OrderByDescending(i => i.InvoiceDate)
                 .ToListAsync();
+
+            // Load document metadata separately (without FileContent binary data)
+            var invoiceIds = invoices.Select(i => i.Id).ToList();
+            var docsByInvoice = await _context.ImportedDocuments
+                .Where(d => d.InvoiceId != null && invoiceIds.Contains(d.InvoiceId.Value))
+                .Select(d => new { d.Id, d.InvoiceId })
+                .GroupBy(d => d.InvoiceId!.Value)
+                .ToDictionaryAsync(g => g.Key, g => g.Count());
+
+            foreach (var invoice in invoices)
+            {
+                if (docsByInvoice.TryGetValue(invoice.Id, out var count) && count > 0)
+                {
+                    invoice.ImportedDocuments = Enumerable.Range(0, count)
+                        .Select(_ => new ImportedDocument { InvoiceId = invoice.Id })
+                        .ToList();
+                }
+            }
+
+            return invoices;
         }
 
         public async Task UpdateInvoiceStatusAsync(int invoiceId)
