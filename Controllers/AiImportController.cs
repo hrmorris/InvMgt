@@ -1272,13 +1272,16 @@ namespace InvoiceManagement.Controllers
                         invoice.GSTRate = model.GSTAmount > 0 && model.SubTotal > 0 ? (model.GSTAmount / model.SubTotal) * 100 : 0;
                         invoice.TotalAmount = model.TotalAmount;
                         invoice.Notes = model.Notes + $" (Bulk imported from: {documentId})";
-                        invoice.InvoiceType = model.InvoiceType ?? "Payable";
+                        var normalizedType = model.InvoiceType ?? "Supplier";
+                        if (normalizedType == "Payable") normalizedType = "Supplier";
+                        else if (normalizedType == "Receivable") normalizedType = "Customer";
+                        invoice.InvoiceType = normalizedType;
                         invoice.ModifiedDate = DateTime.Now;
 
                         if (!isUpdate)
                         {
                             invoice.PaidAmount = 0;
-                            invoice.Status = "Draft";
+                            invoice.Status = "Unpaid";
                             invoice.CreatedDate = DateTime.Now;
                         }
 
@@ -1430,8 +1433,8 @@ namespace InvoiceManagement.Controllers
                     GSTRate = model.GSTAmount > 0 && model.SubTotal > 0 ? (model.GSTAmount / model.SubTotal) * 100 : 0,
                     TotalAmount = model.TotalAmount,
                     Notes = model.Notes,
-                    InvoiceType = model.InvoiceType,
-                    Status = "Draft",
+                    InvoiceType = model.InvoiceType == "Payable" ? "Supplier" : model.InvoiceType == "Receivable" ? "Customer" : model.InvoiceType,
+                    Status = "Unpaid",
                     CreatedDate = DateTime.Now,
                     ModifiedDate = DateTime.Now
                 };
@@ -3497,9 +3500,12 @@ namespace InvoiceManagement.Controllers
                         invoice.GSTRate = entry.GSTAmount > 0 && entry.SubTotal > 0 ? (entry.GSTAmount / entry.SubTotal) * 100 : 0;
                         invoice.TotalAmount = entry.TotalAmount;
                         invoice.Notes = Truncate($"{entry.Notes} (Multi-page PDF import, pages {entry.PageRange}, from: {model.MasterDocumentId})", 500);
-                        invoice.InvoiceType = entry.InvoiceType ?? "Payable";
+                        var splitNormalizedType = entry.InvoiceType ?? "Supplier";
+                        if (splitNormalizedType == "Payable") splitNormalizedType = "Supplier";
+                        else if (splitNormalizedType == "Receivable") splitNormalizedType = "Customer";
+                        invoice.InvoiceType = splitNormalizedType;
                         invoice.PaidAmount = 0;
-                        invoice.Status = "Draft";
+                        invoice.Status = "Unpaid";
                         invoice.CreatedDate = DateTime.Now;
                         invoice.ModifiedDate = DateTime.Now;
 

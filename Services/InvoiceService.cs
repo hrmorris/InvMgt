@@ -19,6 +19,8 @@ namespace InvoiceManagement.Services
             return await _context.Invoices
                 .Include(i => i.InvoiceItems)
                 .Include(i => i.Payments)
+                .Include(i => i.Supplier)
+                .Include(i => i.ImportedDocuments)
                 .OrderByDescending(i => i.InvoiceDate)
                 .ToListAsync();
         }
@@ -153,6 +155,8 @@ namespace InvoiceManagement.Services
             return await _context.Invoices
                 .Include(i => i.InvoiceItems)
                 .Include(i => i.Payments)
+                .Include(i => i.Supplier)
+                .Include(i => i.ImportedDocuments)
                 .Where(i => i.InvoiceNumber.Contains(searchTerm) ||
                            i.CustomerName.Contains(searchTerm) ||
                            (i.CustomerEmail != null && i.CustomerEmail.Contains(searchTerm)))

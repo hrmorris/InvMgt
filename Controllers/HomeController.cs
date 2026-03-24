@@ -41,8 +41,8 @@ namespace InvoiceManagement.Controllers
             ViewBag.TotalAmount = invoices.Sum(i => i.TotalAmount);
             ViewBag.TotalPaid = invoices.Sum(i => i.PaidAmount);
             ViewBag.TotalBalance = invoices.Sum(i => i.BalanceAmount);
-            ViewBag.UnpaidInvoices = invoices.Count(i => i.Status == "Unpaid");
-            ViewBag.PartiallyPaidInvoices = invoices.Count(i => i.Status == "Partially Paid");
+            ViewBag.UnpaidInvoices = invoices.Count(i => i.Status == "Unpaid" || i.Status == "Draft");
+            ViewBag.PartiallyPaidInvoices = invoices.Count(i => i.Status == "Partially Paid" || i.Status == "Partial");
             ViewBag.PaidInvoices = invoices.Count(i => i.Status == "Paid");
             ViewBag.OverdueInvoices = invoices.Count(i => i.Status == "Overdue");
 

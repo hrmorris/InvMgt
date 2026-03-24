@@ -21,8 +21,8 @@
 }
 
 @{
-    var supplierInvoices = Model.Where(i => i.InvoiceType == "Supplier" || i.SupplierId.HasValue).ToList();
-    var customerInvoices = Model.Where(i => i.InvoiceType == "Customer" && !i.SupplierId.HasValue).ToList();
+    var supplierInvoices = Model.Where(i => i.InvoiceType == "Supplier" || i.InvoiceType == "Payable" || i.SupplierId.HasValue).ToList();
+    var customerInvoices = Model.Where(i => (i.InvoiceType == "Customer" || i.InvoiceType == "Receivable") && !i.SupplierId.HasValue).ToList();
 
     var supplierGroups = supplierInvoices
     .GroupBy(i => i.Supplier?.SupplierName ?? i.CustomerName)
@@ -190,7 +190,7 @@
                         <tbody>
                             @foreach (var item in Model)
                             {
-                                var isSupplierInvoice = item.InvoiceType == "Supplier" || item.SupplierId.HasValue;
+                                var isSupplierInvoice = item.InvoiceType == "Supplier" || item.InvoiceType == "Payable" || item.SupplierId.HasValue;
                                 var hasDocuments = item.ImportedDocuments != null && item.ImportedDocuments.Any();
                                 <tr>
                                     <td><a asp-action="Details" asp-route-id="@item.Id">@item.InvoiceNumber</a></td>
