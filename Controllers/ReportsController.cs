@@ -4,7 +4,7 @@ using InvoiceManagement.Authorization;
 
 namespace InvoiceManagement.Controllers
 {
-    [Authorize]
+    [AuthorizeRoles]
     public class ReportsController : Controller
     {
         private readonly IInvoiceService _invoiceService;

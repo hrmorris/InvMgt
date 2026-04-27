@@ -5,7 +5,7 @@ using InvoiceManagement.Authorization;
 
 namespace InvoiceManagement.Controllers
 {
-    [Authorize]
+    [AuthorizeRoles]
     public class PurchaseOrdersController : Controller
     {
         private readonly IPurchaseOrderService _purchaseOrderService;

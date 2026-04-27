@@ -9,7 +9,7 @@ using System.Text.RegularExpressions;
 
 namespace InvoiceManagement.Controllers
 {
-    [Authorize]
+    [AuthorizeRoles]
     public class AiImportController : Controller
     {
         private readonly ApplicationDbContext _context;

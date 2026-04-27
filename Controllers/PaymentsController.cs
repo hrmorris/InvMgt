@@ -6,7 +6,7 @@ using InvoiceManagement.Authorization;
 
 namespace InvoiceManagement.Controllers
 {
-    [Authorize]
+    [AuthorizeRoles]
     public class PaymentsController : Controller
     {
         private readonly IPaymentService _paymentService;

@@ -5,7 +5,7 @@ using InvoiceManagement.Authorization;
 
 namespace InvoiceManagement.Controllers
 {
-    [Authorize]
+    [AuthorizeRoles]
     public class RequisitionsController : Controller
     {
         private readonly IRequisitionService _requisitionService;
